@@ -1,0 +1,54 @@
+[tool.poetry]
+name = "ktch"
+version = "0.1.0"
+description = "**ktch** is a python package for model-based morphometrics."
+license = "ISC"
+authors = ["Noshita, Koji <noshita@morphometrics.jp>"]
+readme = "README.md"
+repository = "https://github.com/noshita/ktch"
+keywords = ["morphometrics", "theoretical morphology"]
+classifiers = [
+	'Intended Audience :: Science/Research',
+	'Intended Audience :: Developers',
+	'License :: ISC',
+	'Programming Language :: Python',
+	'Topic :: Software Development',
+	'Topic :: Scientific/Engineering',
+	'Operating System :: Microsoft :: Windows',
+	'Operating System :: POSIX',
+	'Operating System :: Unix',
+	'Operating System :: MacOS',
+	'Programming Language :: Python :: 3.8'
+	]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+numpy = "^1.19.4"
+scipy = "^1.5.4"
+scikit-learn = "^0.23.2"
+sphinx = {version = "^3.3", optional = true}
+sphinx-rtd-theme = {version = "^0.5.0", optional = true}
+toml = {version = "^0.10", optional = true}
+sphinx-gallery = {version = "^0.8.1", optional = true}
+numpydoc = {version = "^1.1.0", optional = true}
+matplotlib = {version = "^3.3.3", optional = true}
+
+[tool.poetry.extras]
+docs = ["sphinx", "sphinx-gallery", "sphinx_rtd_theme", "numpydoc", "matplotlib", "toml"]
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.1.2"
+pytest-cov = "^2.10.1"
+sphinx = "^3.3"
+sphinx-autobuild = "^2020.9"
+toml = "^0.10"
+sphinx-rtd-theme = "^0.5.0"
+invoke = "^1.4.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+# [tool.pytest.ini_options]
+# minversion = "6.1"
+# addopts = "--doctest-modules"
