@@ -68,3 +68,6 @@ target/
 
 # Poetry
 poetry.lock
+
+# mics
+tmp_ref/*
