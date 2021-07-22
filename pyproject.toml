@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ktch"
-version = "0.1.0"
+version = "0.1.0a"
 description = "**ktch** is a python package for model-based morphometrics."
 license = "ISC"
 authors = ["Noshita, Koji <noshita@morphometrics.jp>"]
@@ -45,6 +45,11 @@ toml = "^0.10"
 sphinx-rtd-theme = "^0.5.0"
 invoke = "^1.4.1"
 poetry2conda = "^0.3.0"
+jupyter = "^1.0.0"
+jupyterlab = "^2.2.9"
+matplotlib = "^3.3.3"
+seaborn = "^0.11.0"
+plotly = "^4.13.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

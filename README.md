@@ -11,9 +11,9 @@ Git repoをリセットするタイミングで以下は削除 or Wiki，docな�
 
 ### CI tools
 
-* Travis CI
 * Circle CI
 * CodeCov
+* Travis CI
 
 は順次導入．
 それ以外はpublicにするタイミングで導入する．
