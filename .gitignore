@@ -71,4 +71,4 @@ poetry.lock
 
 # mics
 tmp_ref/*
-playgroupd/*
+playground/*
