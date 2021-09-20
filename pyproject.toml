@@ -2,7 +2,7 @@
 name = "ktch"
 version = "0.1.0a"
 description = "**ktch** is a python package for model-based morphometrics."
-license = "ISC"
+license = "Apache-2.0"
 authors = ["Noshita, Koji <noshita@morphometrics.jp>"]
 readme = "README.md"
 repository = "https://github.com/noshita/ktch"
@@ -10,7 +10,7 @@ keywords = ["morphometrics", "theoretical morphology"]
 classifiers = [
 	'Intended Audience :: Science/Research',
 	'Intended Audience :: Developers',
-	'License :: ISC',
+	'License :: Apache-2.0',
 	'Programming Language :: Python',
 	'Topic :: Software Development',
 	'Topic :: Scientific/Engineering',
@@ -22,7 +22,7 @@ classifiers = [
 	]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.7"
 numpy = "^1.19.4"
 scipy = "^1.5.4"
 scikit-learn = "^0.23.2"
@@ -50,6 +50,7 @@ jupyterlab = "^2.2.9"
 matplotlib = "^3.3.3"
 seaborn = "^0.11.0"
 plotly = "^4.13.0"
+liccheck = "^0.6.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -61,3 +62,27 @@ name = "ktch"
 # [tool.pytest.ini_options]
 # minversion = "6.1"
 # addopts = "--doctest-modules"
+
+[tool.liccheck]
+authorized_licenses = [
+  "bsd",
+  "new bsd",
+  "bsd license",
+  "simplified bsd",
+  "apache",
+  "apache 2.0",
+  "apache software license",
+  "isc license",
+  "isc license (iscl)",
+  "mit",
+  "mit license",
+  "python software foundation license",
+  "Python Software Foundation"
+]
+unauthorized_licenses = [
+  "gpl v3",
+  "gnu agplv3"
+]
+
+[tool.liccheck.authorized_packages]
+uuid = "<=1.30"
