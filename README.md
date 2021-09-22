@@ -42,3 +42,18 @@ poetry run poetry2conda pyproject.toml -
 # 生成するとき
 poetry run poetry2conda pyproject.toml environment.yml
 ```
+
+
+## License
+
+ktch is licensed under the Apache License, Version2.0
+
+### ライセンスの確認
+
+[liccheck](https://github.com/dhatim/python-license-check)を使っておこなう．
+
+```sh
+poetry export > requirements.txt
+poetry run liccheck -s pyproject.toml  
+
+```

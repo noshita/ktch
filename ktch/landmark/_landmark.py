@@ -1,8 +1,18 @@
-
 """Landmark-based Morphometrics"""
 
-# Author: Koji Noshita <noshita@morphometrics.jp>
-# License: ISC
+# Copyright 2020 Koji Noshita
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 from sklearn.base import BaseEstimator, TransformerMixin
 
@@ -64,12 +74,15 @@ class PositionAligner(TransformerMixin, BaseEstimator):
 	def __init__(self, copy=True):
 		self.copy = copy
 
-	def transform(self, X):
+	def transform(self, X, reference_point=None):
 	"""Perform alignment by centroid position
 	Parameters
 	----------
 	X : {array-like, dense matrix of shape (n_samples, n_landmarks, n_dims)
-	    The coordinate values used to align by the centroid position onto the origin.
+	    The coordinate values to be aligned
+	reference_point: {array-like}
+ 		The coordinate value of the reference point to be aligned onto the origin. 
+ 		If `reference_point` is `None`, the centroid computed from `X` is used as the reference point. 
 	Returns
 	-------
 	X_tr : {ndarray, sparse matrix} of shape (n_samples, n_landmarks,n_dims)
