@@ -17,7 +17,13 @@
 import numpy as np
 import scipy as sp
 
+from sklearn.base import BaseEstimator, TransformerMixin
+
+
 class OPA(TransformerMixin, BaseEstimator):
+	"""Ordinary Procrustes Analysis
+
+	"""
 	def __init__(
 		self, dtype = np.float64,
 		scale = True,
@@ -39,6 +45,7 @@ class OPA(TransformerMixin, BaseEstimator):
 
 
 	def fit_transform(self, X):
+		pass
 
 		
 
