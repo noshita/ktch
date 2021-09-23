@@ -6,8 +6,7 @@
 ktch
 ============================================
 
-This project is a reference implementation to anyone who wishes to develop
-scikit-learn compatible classes.
+ktch is a python package for model-based morphometrics.
 
 .. toctree::
    :maxdepth: 2
@@ -22,7 +21,7 @@ scikit-learn compatible classes.
    :caption: Documentation
 
    user_guide
-   api
+   modules/classes
 
 .. toctree::
    :maxdepth: 2
@@ -41,10 +40,16 @@ Information regarding this template and how to modify it for your own project.
 
 An example of narrative documentation.
 
-`API Documentation <api.html>`_
+`API Documentation sample <api.html>`_
 -------------------------------
 
 An example of API documentation.
+
+`API Documentation <modules/classes.html>`_
+-------------------------------
+
+An example of API documentation.
+
 
 `Examples <auto_examples/index.html>`_
 --------------------------------------
