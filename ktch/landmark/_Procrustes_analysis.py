@@ -20,7 +20,7 @@ import scipy as sp
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
-class OPA(TransformerMixin, BaseEstimator):
+class OrdinaryProcrustesAnalysis(TransformerMixin, BaseEstimator):
 	"""Ordinary Procrustes Analysis
 
 	"""
