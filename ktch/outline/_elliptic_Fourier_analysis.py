@@ -21,7 +21,29 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
-    """Elliptic Fourier Analysis (EFA)
+    r"""Elliptic Fourier Analysis (EFA)
+    
+
+    Notes
+    ------------
+
+    :cite:`KUHL:1982bq` 
+
+    .. math:: 
+
+        \begin{align}
+            x(l) &= \frac{a_0}{2} + \sum_{i=1}^{n} \left[ a_i \cos\left(\frac{2\pi i t}{T}\right) + b_i \sin\left(\frac{2\pi i t}{T}\right) \right]\\
+            y(l) &= \frac{c_0}{2} + \sum_{i=1}^{n} \left[ c_i \cos\left(\frac{2\pi i t}{T}\right) + d_i \sin\left(\frac{2\pi i t}{T}\right) \right]\\
+        \end{align}
+
+
+    See the examples of implimentation :cite:`Claude2008,Bonhomme2013`.
+
+
+    References
+    ------------
+    .. bibliography::
+
 
     """
 
@@ -39,7 +61,7 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         """Fit the model with X.
 
         Parameters
-        ----------
+        ------------
         X: list of array-like
                 Coordinate values of n_samples. The i-th array-like whose shape (n_coords_i, 2) represents 2D coordinate values of the i-th sample .
 
@@ -47,7 +69,7 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
                 Parameters indicating the position on the outline of n_samples. The i-th ndarray whose shape (n_coords_i, ) corresponds to each coordinate value in the i-th element of X. If `t=None`, then t is calculated based on the coordinate values with the linear interpolation.
 
         Returns
-        -------
+        ------------
         X_transformed: array-like of shape (n_samples, (1+2*n_harmonics)*n_dim)
             Returns the array-like of coefficients.
         """
