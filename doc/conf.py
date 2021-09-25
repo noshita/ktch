@@ -16,7 +16,7 @@ import sys
 import os
 
 import sphinx_gallery
-import sphinx_rtd_theme
+# import sphinx_rtd_theme
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -36,7 +36,10 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
+    # "sphinx.ext.linkcode",
+    "sphinxcontrib.bibtex",
     'sphinx.ext.viewcode',
+    'sphinx.ext.mathjax',
     'numpydoc',
     'sphinx_gallery.gen_gallery',
 ]
@@ -45,13 +48,17 @@ extensions = [
 # see https://github.com/numpy/numpydoc/issues/69
 numpydoc_show_class_members = False
 
+# bibtex file
+bibtex_bibfiles = ["references.bib"]
+
 # pngmath / imgmath compatibility layer for different sphinx versions
 import sphinx
 from distutils.version import LooseVersion
-if LooseVersion(sphinx.__version__) < LooseVersion('1.4'):
-    extensions.append('sphinx.ext.pngmath')
-else:
-    extensions.append('sphinx.ext.imgmath')
+# if LooseVersion(sphinx.__version__) < LooseVersion('1.4'):
+#     extensions.append('sphinx.ext.pngmath')
+# else:
+#     extensions.append('sphinx.ext.imgmath')
+mathjax_path = "https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
 
 autodoc_default_flags = ['members', 'inherited-members']
 
@@ -68,7 +75,7 @@ source_suffix = '.rst'
 #source_encoding = 'utf-8-sig'
 
 # Generate the plots for the gallery
-plot_gallery = True
+plot_gallery = 'True'
 
 # The master toctree document.
 master_doc = 'index'
@@ -120,7 +127,8 @@ exclude_patterns = ['_build', '_templates']
 pygments_style = 'sphinx'
 
 # Custom style
-html_style = 'css/project-template.css'
+# html_style = 'css/ktch.css'
+html_css_files = ['css/ktch.css']
 
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
@@ -128,6 +136,7 @@ html_style = 'css/project-template.css'
 # If true, keep warnings as "system message" paragraphs in the built documents.
 #keep_warnings = False
 
+html_js_files = ['js/copybutton.js']
 
 # -- Options for HTML output ----------------------------------------------
 
@@ -140,6 +149,15 @@ html_theme = 'pydata_sphinx_theme'
 # further.  For a list of options available for each theme, see the
 # documentation.
 #html_theme_options = {}
+html_theme_options = {
+  "logo_link": "index",
+  "github_url": "https://github.com/noshita/ktch",
+  # "twitter_url": "https://twitter.com/numpy_team",
+  "collapse_navigation": True,
+  # "external_links": [
+  #     {"name": "Learn", "url": "https://numpy.org/numpy-tutorials/"}
+  #     ],
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
@@ -263,8 +281,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'project-template', u'project-template Documentation',
-     [u'Vighnesh Birodkar'], 1)
+    ('index', 'ktch', u'ktch Documentation',
+     [u'Noshita, Koji'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -303,7 +321,9 @@ intersphinx_mapping = {
     'numpy': ('https://docs.scipy.org/doc/numpy/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
     'matplotlib': ('https://matplotlib.org/', None),
-    'sklearn': ('http://scikit-learn.org/stable', None)
+    'sklearn': ('http://scikit-learn.org/stable', None),
+    "pandas": ("http://pandas.pydata.org/pandas-docs/stable/", None),
+    "seaborn": ("https://seaborn.pydata.org/", None),
 }
 
 # sphinx-gallery configuration
@@ -314,6 +334,6 @@ sphinx_gallery_conf = {
         'ktch': None}
 }
 
-def setup(app):
-    # a copy button to copy snippet of code from the documentation
-    app.add_javascript('js/copybutton.js')
+# def setup(app):
+#     # a copy button to copy snippet of code from the documentation
+#     app.add_javascript('js/copybutton.js')

@@ -1,4 +1,4 @@
-:mod:`{{module}}`.{{objname}}
+{{objname}}
 {{ underline }}====================
 
 .. currentmodule:: {{ module }}
@@ -10,3 +10,4 @@
 .. raw:: html
 
     <div style='clear:both'></div>
+
