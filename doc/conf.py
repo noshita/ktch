@@ -50,6 +50,9 @@ numpydoc_show_class_members = False
 
 # bibtex file
 bibtex_bibfiles = ["references.bib"]
+bibtex_encoding = "utf-8-sig"
+bibtex_reference_style = "author_year"
+bibtex_default_style = "plain"
 
 # pngmath / imgmath compatibility layer for different sphinx versions
 import sphinx
