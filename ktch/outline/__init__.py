@@ -16,8 +16,9 @@ The :mod:`katatch.outline` module implements outline-based morphometrics.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._polar_Fourier_analysis import PFA
-from ._elliptic_Fourier_analysis import EFA
-from ._wavelet_analysis import WaveletAnalysis
+# from ._polar_Fourier_analysis import PFA
+from ._elliptic_Fourier_analysis import EllipticFourierAnalysis
+# from ._wavelet_analysis import WaveletAnalysis
 
-__all__ = ['PFA', 'EFA', 'WaveletAnalysis']
+# __all__ = ['PFA', 'EllipticFourierAnalysis', 'WaveletAnalysis']
+__all__ = ['EllipticFourierAnalysis']
