@@ -8,7 +8,7 @@ This is the class and function reference of ktch.
 
 
 :mod:`sklearn.base`: Base classes and utility functions
-=======================================================
+===================================================================
 
 .. automodule:: sklearn.base
     :no-members:
@@ -52,7 +52,8 @@ Functions
 .. _landmark_ref:
 
 :mod:`ktch.landmark`: landmark classes and utility functions
-=======================================================
+===================================================================
+
 
 .. automodule:: ktch.landmark
    :no-members:
@@ -62,9 +63,28 @@ Functions
 
 .. autosummary::
    :toctree: generated/
-   :template: function.rst
+   :template: class.rst
 
-   landmark.OPA
+   landmark.OrdinaryProcrustesAnalysis
+
+.. _outline_ref:
+
+:mod:`ktch.outline`: outline classes and utility functions
+===================================================================
+
+
+.. automodule:: ktch.outline
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: ktch
+
+.. autosummary::
+   :toctree: generated/
+   :template: class.rst
+
+   outline.EllipticFourierAnalysis
+
 
 
 .. _utils_ref:
