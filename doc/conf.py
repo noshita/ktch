@@ -12,7 +12,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
+import sys, datetime
 import os
 
 import sphinx_gallery
@@ -21,12 +21,12 @@ import sphinx_gallery
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#sys.path.insert(0, os.path.abspath('.'))
+# sys.path.insert(0, os.path.abspath('.'))
 
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
-#needs_sphinx = '1.0'
+needs_sphinx = '4.0'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -63,7 +63,14 @@ from distutils.version import LooseVersion
 #     extensions.append('sphinx.ext.imgmath')
 mathjax_path = "https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
 
-autodoc_default_flags = ['members', 'inherited-members']
+# autodoc_default_flags = ['members', 'inherited-members']
+
+# -- Options for autodoc ------------------------------------------------------
+
+autodoc_default_options = {
+    "members": True,
+    "inherited-members": True,
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -85,7 +92,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'ktch'
-copyright = u'2020, Koji Noshita'
+copyright = u'2020-{0}, Koji Noshita'.format(datetime.datetime.now().year)
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -234,7 +241,7 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'project-templatedoc'
+htmlhelp_basename = 'ktchdoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -254,8 +261,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'project-template.tex', u'project-template Documentation',
-   u'Vighnesh Birodkar', 'manual'),
+  ('index', 'ktch.tex', u'ktchDocumentation',
+   u'Koji Noshita', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -298,8 +305,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'project-template', u'project-template Documentation',
-   u'Vighnesh Birodkar', 'project-template', 'One line description of project.',
+  ('index', 'ktch', u'ktch Documentation',
+   u'Koji Noshita', 'ktch', 'One line description of project.',
    'Miscellaneous'),
 ]
 
