@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._template import TemplateEstimator
-from ._template import TemplateClassifier
-from ._template import TemplateTransformer
+import importlib
+import types
 
+from . import landmark
+from . import outline
 from ._version import __version__
 
-__all__ = ['TemplateEstimator', 'TemplateClassifier', 'TemplateTransformer',
-           '__version__']
+
+__all__ = [
+    "landmark",
+    "outline",
+    "__version__",
+]
