@@ -3,7 +3,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3.6.1
+      - image: cimg/python:3.7.11
     working_directory: ~/repo
     steps:
       - checkout
@@ -30,6 +30,32 @@ jobs:
     filters:
       branches:
         ignore: gh-pages
+
+  deploy:
+    working_directory: ~/noshita/ktch
+    environment:
+      TZ: /usr/share/zoneinfo/Asia/Tokyo
+      OUTPUTDIR: .
+      SSH_USER: noshita
+      SSH_HOST: webnotebooks.noshita.net
+      SSH_TARGET_DIR: webnotebook
+    docker:
+      - image: cimg/python:3.9.7
+    steps:
+      - attach_workspace:
+          at: .
+      - add_ssh_keys:
+          fingerprints:
+            - "9b:35:76:8a:8f:79:5c:de:0e:00:d1:41:d7:81:a0:fc"
+      - run:
+          name: Start ssh-keyscan  
+          command: ssh-keyscan ktch-doc.noshita.net >> ~/.ssh/known_hosts  
+      - run: 
+          name: Install rsync
+          command: sudo apt-get update && sudo apt-get install rsync
+      - run: 
+          name: Deploy to private server
+          command: rsync -e "ssh" -P -rvzc --delete $OUTPUTDIR/ $SSH_USER@$SSH_HOST:$SSH_TARGET_DIR --cvs-exclude
 
 workflows:
   version: 2
