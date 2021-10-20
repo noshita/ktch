@@ -54,7 +54,7 @@ jobs:
             - "9b:35:76:8a:8f:79:5c:de:0e:00:d1:41:d7:81:a0:fc"
       - run:
           name: Start ssh-keyscan  
-          command: ssh-keyscan ktch.noshita.net >> ~/.ssh/known_hosts  
+          command: ssh-keyscan docs.noshita.net >> ~/.ssh/known_hosts  
       - run: 
           name: Install rsync
           command: sudo apt-get update && sudo apt-get install rsync
