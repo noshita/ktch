@@ -17,11 +17,13 @@ import types
 
 from . import landmark
 from . import outline
+from ._template import TemplateEstimator, TemplateTransformer, TemplateClassifier
 from ._version import __version__
 
 
 __all__ = [
     "landmark",
     "outline",
+    "TemplateEstimator", "TemplateTransformer", "TemplateClassifier",
     "__version__",
 ]
