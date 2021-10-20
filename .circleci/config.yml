@@ -20,7 +20,7 @@ jobs:
           command: poetry install --no-root
       - run: 
           name: Build pages
-          command: cd doc && poetry run make
+          command: cd doc && poetry run make html
       # Save test results
       - store_test_results:
           path: /tmp/circleci-test-results
