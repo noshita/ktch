@@ -30,7 +30,7 @@ jobs:
       - store_artifacts:
           path: /tmp/circleci-test-results
       - persist_to_workspace:
-            root: ~/noshita/ktch/ktch/doc/_build/html
+            root: ~/noshita/ktch/doc/_build/html
             paths:
               - . 
   deploy:
