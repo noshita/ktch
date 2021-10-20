@@ -1,38 +1,69 @@
 version: 2
-
 jobs:
   build:
+    working_directory: ~/noshita/ktch
+    parallelism: 1
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+      TZ: /usr/share/zoneinfo/Asia/Tokyo
     docker:
-      - image: circleci/python:3.6.1
-    working_directory: ~/repo
+    - image: cimg/python:3.9.7
     steps:
       - checkout
+      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
       - run:
-          name: install dependencies
-          command: |
-            wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-            chmod +x miniconda.sh && ./miniconda.sh -b -p ~/miniconda
-            export PATH="~/miniconda/bin:$PATH"
-            conda update --yes --quiet conda
-            conda create -n testenv --yes --quiet python=3
-            source activate testenv
-            conda install --yes pip numpy scipy scikit-learn matplotlib sphinx sphinx_rtd_theme numpydoc pillow
-            pip install sphinx-gallery
-            pip install .
-            cd doc
-            make html
+          name: Submodule pull
+          command: git submodule update --init
+      - run:
+          name: create virtualenv
+          command: poetry install --no-root
+      - run: 
+          name: Build pages
+          command: cd doc && poetry run make
+      # Save test results
+      - store_test_results:
+          path: /tmp/circleci-test-results
+      # Save artifacts
       - store_artifacts:
-          path: doc/_build/html/
-          destination: doc
+          path: /tmp/circleci-artifacts
       - store_artifacts:
-          path: ~/log.txt
-      - run: ls -ltrh doc/_build/html
-    filters:
-      branches:
-        ignore: gh-pages
+          path: /tmp/circleci-test-results
+      - persist_to_workspace:
+            root: ~/noshita/ktch/ktch/doc/_build/html
+            paths:
+              - . 
+  deploy:
+    working_directory: ~/noshita/ktch
+    environment:
+      TZ: /usr/share/zoneinfo/Asia/Tokyo
+      OUTPUTDIR: .
+      SSH_USER: noshita
+      SSH_HOST: docs.noshita.net
+      SSH_TARGET_DIR: private-docs/ktch-doc
+    docker:
+      - image: cimg/python:3.9.7
+    steps:
+      - attach_workspace:
+          at: .
+      - add_ssh_keys:
+          fingerprints:
+            - "9b:35:76:8a:8f:79:5c:de:0e:00:d1:41:d7:81:a0:fc"
+      - run:
+          name: Start ssh-keyscan  
+          command: ssh-keyscan ktch.noshita.net >> ~/.ssh/known_hosts  
+      - run: 
+          name: Install rsync
+          command: sudo apt-get update && sudo apt-get install rsync
+      - run: 
+          name: Deploy to private server
+          command: rsync -e "ssh" -P -rvzc --delete $OUTPUTDIR/ $SSH_USER@$SSH_HOST:$SSH_TARGET_DIR --cvs-exclude
 
 workflows:
   version: 2
-  workflow:
+  build-deploy:
     jobs:
       - build
+      - deploy:
+          requires:
+            - build
