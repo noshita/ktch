@@ -17,7 +17,7 @@ jobs:
           command: git submodule update --init
       - run:
           name: create virtualenv
-          command: poetry install --no-root
+          command: poetry install
       - run: 
           name: Build pages
           command: cd doc && poetry run make html
