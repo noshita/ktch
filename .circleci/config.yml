@@ -8,7 +8,7 @@ jobs:
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
       TZ: /usr/share/zoneinfo/Asia/Tokyo
     docker:
-    - image: cimg/python:3.9.7
+      - image: cimg/python:3.9.7
     steps:
       - checkout
       - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
