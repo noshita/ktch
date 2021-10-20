@@ -13,20 +13,22 @@ Git repoをリセットするタイミングで以下は削除 or Wiki，docな�
 
 * Circle CI
 * CodeCov
-* Travis CI
+* GitHub Actions
 
 は順次導入．
 それ以外はpublicにするタイミングで導入する．
 
-- [ ] Travis CI: free, due by 2021.03.01
+- [ ] ~~Travis CI: free~~
 	* is used to test the package in Linux. You need to activate Travis CI for your own repository. Refer to the Travis CI documentation.
-- [ ] AppVeyor: public repo, free
+- [ ] ~~AppVeyor: public repo, free~~ -> Change to GitHub Actions
 	* is used to test the package in Windows. You need to activate AppVeyor for your own repository. Refer to the AppVeyor documentation.
-- [ ] Circle CI: free, due by 2020.12.05
+- [ ] GitHub Actions due by 2021.12.31
+	* is used to test the package in Windows, macOS, and Linux.
+- [x] Circle CI: free, due by 2020.12.05 -> to build and deply the documentation.
 	* is used to check if the documentation is generated properly. You need to activate Circle CI for your own repository. Refer to the Circle CI documentation.
-- [ ] ReadTheDocs 
+- [ ] ~~ReadTheDocs~~
 	* is used to build and host the documentation. You need to activate ReadTheDocs for your own repository. Refer to the ReadTheDocs documentation.
-- [ ] CodeCov: free, due by 2020.12.31
+- [ ] CodeCov: free, due by 2022.3.1
 	* for tracking the code coverage of the package. You need to activate CodeCov for you own repository.
 - [ ] PEP8Speaks: public repo, free
 	* for automatically checking the PEP8 compliance of your project for each Pull Request.

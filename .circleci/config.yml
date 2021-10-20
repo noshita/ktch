@@ -17,10 +17,13 @@ jobs:
           command: git submodule update --init
       - run:
           name: create virtualenv
-          command: poetry install --no-root
+          command: poetry install
+      - run: 
+          name: Genrate APIs
+          command: poetry run sphinx-apidoc -o doc/modules/generated ktch
       - run: 
           name: Build pages
-          command: cd doc && poetry run make
+          command: cd doc && poetry run make html
       # Save test results
       - store_test_results:
           path: /tmp/circleci-test-results
@@ -30,7 +33,7 @@ jobs:
       - store_artifacts:
           path: /tmp/circleci-test-results
       - persist_to_workspace:
-            root: ~/noshita/ktch/ktch/doc/_build/html
+            root: ~/noshita/ktch/doc/_build/html
             paths:
               - . 
   deploy:
@@ -42,6 +45,35 @@ jobs:
       SSH_HOST: docs.noshita.net
       SSH_TARGET_DIR: private-docs/ktch-doc
     docker:
+      - image: cimg/python:3.7.12
+    steps:
+      - attach_workspace:
+          at: .
+      - add_ssh_keys:
+          fingerprints:
+            - "9b:35:76:8a:8f:79:5c:de:0e:00:d1:41:d7:81:a0:fc"
+      # - run:
+      #     name: Make .ssh
+      #     command: mkdir  ~/.ssh
+      - run:
+          name: Start ssh-keyscan  
+          command: ssh-keyscan $SSH_HOST >> ~/.ssh/known_hosts  
+      - run: 
+          name: Install rsync
+          command: sudo apt-get update && sudo apt-get install rsync
+      - run: 
+          name: Deploy to private server
+          command: rsync -e "ssh" -P -rvzc --delete $OUTPUTDIR/ $SSH_USER@$SSH_HOST:$SSH_TARGET_DIR --cvs-exclude
+
+  deploy:
+    working_directory: ~/noshita/ktch
+    environment:
+      TZ: /usr/share/zoneinfo/Asia/Tokyo
+      OUTPUTDIR: .
+      SSH_USER: noshita
+      SSH_HOST: webnotebooks.noshita.net
+      SSH_TARGET_DIR: webnotebook
+    docker:
       - image: cimg/python:3.9.7
     steps:
       - attach_workspace:
@@ -51,7 +83,7 @@ jobs:
             - "9b:35:76:8a:8f:79:5c:de:0e:00:d1:41:d7:81:a0:fc"
       - run:
           name: Start ssh-keyscan  
-          command: ssh-keyscan ktch.noshita.net >> ~/.ssh/known_hosts  
+          command: ssh-keyscan ktch-doc.noshita.net >> ~/.ssh/known_hosts  
       - run: 
           name: Install rsync
           command: sudo apt-get update && sudo apt-get install rsync
