@@ -8,7 +8,7 @@ jobs:
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
       TZ: /usr/share/zoneinfo/Asia/Tokyo
     docker:
-      - image: cimg/python:3.9.7
+      - image: cimg/python:3.7.12
     steps:
       - checkout
       - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
@@ -42,7 +42,7 @@ jobs:
       SSH_HOST: docs.noshita.net
       SSH_TARGET_DIR: private-docs/ktch-doc
     docker:
-      - image: cimg/python:3.9.7
+      - image: cimg/python:3.7.12
     steps:
       - attach_workspace:
           at: .
