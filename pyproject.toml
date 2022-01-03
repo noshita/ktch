@@ -25,7 +25,7 @@ classifiers = [
 python = ">= 3.7, < 3.10"
 numpy = "^1.21"
 scipy = "^1.7"
-scikit-learn = "^0.24"
+scikit-learn = "^1.0"
 
 [tool.poetry.extras]
 docs = ["sphinx", "sphinx-gallery", "sphinx_rtd_theme", "numpydoc", "matplotlib", "toml"]
