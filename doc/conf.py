@@ -334,6 +334,7 @@ intersphinx_mapping = {
     'sklearn': ('http://scikit-learn.org/stable', None),
     "pandas": ("http://pandas.pydata.org/pandas-docs/stable/", None),
     "seaborn": ("https://seaborn.pydata.org/", None),
+    "xarray": ("https://xarray.pydata.org/en/stable/", None)
 }
 
 # sphinx-gallery configuration
