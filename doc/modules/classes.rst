@@ -41,4 +41,5 @@ This is the class and function reference of ktch.
    :template: class.rst
 
    outline.EllipticFourierAnalysis
+   outline.SphericalHarmonicAnalysis
 
