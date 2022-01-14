@@ -16,6 +16,9 @@ This is the class and function reference of ktch.
    :no-members:
    :no-inherited-members:
 
+Classes
+---------
+
 .. currentmodule:: ktch
 
 .. autosummary::
@@ -34,6 +37,9 @@ This is the class and function reference of ktch.
    :no-members:
    :no-inherited-members:
 
+Classes
+---------
+
 .. currentmodule:: ktch
 
 .. autosummary::
@@ -41,4 +47,16 @@ This is the class and function reference of ktch.
    :template: class.rst
 
    outline.EllipticFourierAnalysis
+   outline.SphericalHarmonicAnalysis
 
+
+Plotting
+---------
+
+.. currentmodule:: ktch
+
+.. autosummary::
+   :toctree: generated/
+   :template: class.rst
+
+   outline.PCContribDisplay
