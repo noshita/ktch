@@ -18,9 +18,9 @@ jobs:
       - run:
           name: create virtualenv
           command: poetry install
-      - run: 
-          name: Genrate APIs
-          command: poetry run sphinx-apidoc -o doc/modules/generated ktch
+      # - run: 
+      #     name: Genrate APIs
+      #     command: poetry run sphinx-apidoc -o doc/modules/generated ktch
       - run: 
           name: Build pages
           command: cd doc && poetry run make html
