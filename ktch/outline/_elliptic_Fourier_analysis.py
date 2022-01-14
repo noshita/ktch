@@ -27,7 +27,7 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
     Notes
     ------------
 
-    :cite:`KUHL:1982bq` 
+    :cite:`EFA-KUHL:1982bq` 
 
     .. math:: 
 
@@ -37,23 +37,18 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         \end{align}
 
 
-    See the examples of implimentation :cite:`Claude2008,Bonhomme2013`.
+    See the examples of implimentation :cite:`EFA-Claude2008,EFA-Bonhomme2013`.
 
 
     References
     ------------
     .. bibliography::
+         :keyprefix: EFA-
 
 
     """
 
-    def __init__(
-            self,
-            n_harmonics=20,
-            reflect=False,
-            metric="",
-            impute=False
-    ):
+    def __init__(self, n_harmonics=20, reflect=False, metric="", impute=False):
         # self.dtype = dtype
         self.n_harmonics = n_harmonics
 
@@ -75,17 +70,25 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         """
 
         if t is None:
-            t = [np.array([0] + [sp.spatial.distance.euclidean(x[i], x[i+1])
-                          for i in range(len(x)-1)]) for x in X]
+            t = [
+                np.array(
+                    [0]
+                    + [
+                        sp.spatial.distance.euclidean(x[i], x[i + 1])
+                        for i in range(len(x) - 1)
+                    ]
+                )
+                for x in X
+            ]
 
         if len(t) != len(X):
-            raise ValueError(
-                "t must have a same length of X "
-            )
+            raise ValueError("t must have a same length of X ")
 
         T = np.array([np.sum(t_) for t_ in t])
 
-        X_transformed = np.array([self._fit_transform_single(X[i], t[i]) for i in range(len(X))])
+        X_transformed = np.array(
+            [self._fit_transform_single(X[i], t[i]) for i in range(len(X))]
+        )
 
         return X_transformed
 
@@ -115,8 +118,9 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         n_harmonics = self.n_harmonics
 
         if t is None:
-            dt = np.array([distance.euclidean(x[i], x[i+1])
-                         for i in range(len(x)-1)])
+            dt = np.array(
+                [distance.euclidean(x[i], x[i + 1]) for i in range(len(x) - 1)]
+            )
         else:
             dt = np.append(0, t[1:] - t[:-1])
 
@@ -126,22 +130,60 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         dy = np.append(X_arr[0, 1] - X_arr[-1, 1], X_arr[1:, 1] - X_arr[:-1, 1])
 
         if len(t) != len(X_arr):
-            raise ValueError(
-                "t must have a same length of X "
-                )
+            raise ValueError("t must have a same length of X ")
 
         T = np.sum(t)
 
-        a0 = 2/T*np.sum(X_arr[:,0]*t)
-        c0 = 2/T*np.sum(X_arr[:,1]*t)
+        a0 = 2 / T * np.sum(X_arr[:, 0] * t)
+        c0 = 2 / T * np.sum(X_arr[:, 1] * t)
 
         print(a0, c0)
         print(dx[1:], dt[1:])
 
-        an = [(T/(2*(np.pi**2)*(n**2)))*np.sum((dx[1:]/dt[1:])*(np.cos(2*np.pi*n*tp[1:]/T)-np.cos(2*np.pi*n*tp[:-1]/T))) for n in range(1, n_harmonics+1,1)]
-        bn = [(T/(2*(np.pi**2)*(n**2)))*np.sum((dx[1:]/dt[1:])*(np.sin(2*np.pi*n*tp[1:]/T)-np.sin(2*np.pi*n*tp[:-1]/T))) for n in range(1, n_harmonics+1,1)]
-        cn = [(T/(2*(np.pi**2)*(n**2)))*np.sum((dy[1:]/dt[1:])*(np.cos(2*np.pi*n*tp[1:]/T)-np.cos(2*np.pi*n*tp[:-1]/T))) for n in range(1, n_harmonics+1,1)]
-        dn = [(T/(2*(np.pi**2)*(n**2)))*np.sum((dy[1:]/dt[1:])*(np.sin(2*np.pi*n*tp[1:]/T)-np.sin(2*np.pi*n*tp[:-1]/T))) for n in range(1, n_harmonics+1,1)]
+        an = [
+            (T / (2 * (np.pi ** 2) * (n ** 2)))
+            * np.sum(
+                (dx[1:] / dt[1:])
+                * (
+                    np.cos(2 * np.pi * n * tp[1:] / T)
+                    - np.cos(2 * np.pi * n * tp[:-1] / T)
+                )
+            )
+            for n in range(1, n_harmonics + 1, 1)
+        ]
+        bn = [
+            (T / (2 * (np.pi ** 2) * (n ** 2)))
+            * np.sum(
+                (dx[1:] / dt[1:])
+                * (
+                    np.sin(2 * np.pi * n * tp[1:] / T)
+                    - np.sin(2 * np.pi * n * tp[:-1] / T)
+                )
+            )
+            for n in range(1, n_harmonics + 1, 1)
+        ]
+        cn = [
+            (T / (2 * (np.pi ** 2) * (n ** 2)))
+            * np.sum(
+                (dy[1:] / dt[1:])
+                * (
+                    np.cos(2 * np.pi * n * tp[1:] / T)
+                    - np.cos(2 * np.pi * n * tp[:-1] / T)
+                )
+            )
+            for n in range(1, n_harmonics + 1, 1)
+        ]
+        dn = [
+            (T / (2 * (np.pi ** 2) * (n ** 2)))
+            * np.sum(
+                (dy[1:] / dt[1:])
+                * (
+                    np.sin(2 * np.pi * n * tp[1:] / T)
+                    - np.sin(2 * np.pi * n * tp[:-1] / T)
+                )
+            )
+            for n in range(1, n_harmonics + 1, 1)
+        ]
 
         X_transformed = [a0, c0, an, bn, cn, dn]
         return X_transformed
