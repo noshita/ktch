@@ -141,7 +141,7 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         print(dx[1:], dt[1:])
 
         an = [
-            (T / (2 * (np.pi ** 2) * (n ** 2)))
+            (T / (2 * (np.pi**2) * (n**2)))
             * np.sum(
                 (dx[1:] / dt[1:])
                 * (
@@ -152,7 +152,7 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
             for n in range(1, n_harmonics + 1, 1)
         ]
         bn = [
-            (T / (2 * (np.pi ** 2) * (n ** 2)))
+            (T / (2 * (np.pi**2) * (n**2)))
             * np.sum(
                 (dx[1:] / dt[1:])
                 * (
@@ -163,7 +163,7 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
             for n in range(1, n_harmonics + 1, 1)
         ]
         cn = [
-            (T / (2 * (np.pi ** 2) * (n ** 2)))
+            (T / (2 * (np.pi**2) * (n**2)))
             * np.sum(
                 (dy[1:] / dt[1:])
                 * (
@@ -174,7 +174,7 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
             for n in range(1, n_harmonics + 1, 1)
         ]
         dn = [
-            (T / (2 * (np.pi ** 2) * (n ** 2)))
+            (T / (2 * (np.pi**2) * (n**2)))
             * np.sum(
                 (dy[1:] / dt[1:])
                 * (
