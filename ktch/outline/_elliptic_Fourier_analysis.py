@@ -244,19 +244,25 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
             for n in range(1, n_harmonics + 1, 1)
         ]
 
-        if norm:
-            pass
+        an = [a0] + an
+        bn = [0] + bn
+        cn = [c0] + cn
+        dn = [0] + dn
 
-        X_transformed = np.concatenate([[a0], [c0], an, bn, cn, dn])
+        if norm:
+            an, bn, cn, dn = self._normalize(an, bn, cn, dn)
+
         if as_frame:
             harmonics = pd.Series([i for i in range(n_harmonics + 1)])
-            df_a = pd.DataFrame([a0] + an, index=harmonics)
-            df_b = pd.DataFrame([0] + bn, index=harmonics)
-            df_c = pd.DataFrame([c0] + cn, index=harmonics)
-            df_d = pd.DataFrame([0] + dn, index=harmonics)
+            df_a = pd.DataFrame(an, index=harmonics)
+            df_b = pd.DataFrame(bn, index=harmonics)
+            df_c = pd.DataFrame(cn, index=harmonics)
+            df_d = pd.DataFrame(dn, index=harmonics)
             X_transformed = pd.concat([df_a, df_b, df_c, df_d], axis=1)
             X_transformed.columns = ["an", "bn", "cn", "dn"]
             X_transformed.index.name = "harmonics"
+        else:
+            X_transformed = np.stack([an, bn, cn, dn], axis=1)
 
         return X_transformed
 
@@ -267,21 +273,42 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
     # def fit_transform(self, X):
     #     pass
 
-    def _normalize(self):
-        a1 = an[0]
-        b1 = bn[0]
-        c1 = cn[0]
-        d1 = dn[0]
-        phi = np.mod(
-            (1 / 2)
-            * np.arctan(
-                2 * (a1 * b1 + c1 * d1) / (a1**2 + c1**2 - b1**2 - d1**2)
-            ),
-            np.pi,
-        )
-        a_sq = a1 * np.cos(phi) + b1 * np.sin(phi)
-        c_sq = c1 * np.cos(phi) + d1 * np.sin(phi)
-        scale = np.sqrt(a_sq + c_sq)
-        theta = np.arctan(np.sqrt(c_sq) / np.sqrt(a_sq))
+    def _normalize(self, an, bn, cn, dn):
+        a1 = an[1]
+        b1 = bn[1]
+        c1 = cn[1]
+        d1 = dn[1]
 
-        return None
+        theta = (1 / 2) * np.arctan2(
+            2 * (a1 * b1 + c1 * d1), (a1**2 + c1**2 - b1**2 - d1**2)
+        )
+        if theta < 0:
+            theta = theta + np.pi
+
+        a_s = a1 * np.cos(theta) + b1 * np.sin(theta)
+        c_s = c1 * np.cos(theta) + d1 * np.sin(theta)
+        scale = np.sqrt(a_s**2 + c_s**2)
+        psi = np.arctan2(c_s, a_s)
+
+        coef_norm_list = []
+        r_psi = rotaion_matrix_2d(-psi)
+        for n in range(1, len(an)):
+            r_ntheta = rotaion_matrix_2d(n * theta)
+            coef_orig = np.array([[an[n], bn[n]], [cn[n], dn[n]]])
+            coef_norm_tmp = (1 / scale) * np.dot(np.dot(r_psi, coef_orig), r_ntheta)
+            coef_norm_list.append(coef_norm_tmp.reshape(-1))
+
+        coef_norm = np.stack(coef_norm_list)
+        An = np.append(an[0], coef_norm[:, 0])
+        Bn = np.append(bn[0], coef_norm[:, 1])
+        Cn = np.append(cn[0], coef_norm[:, 2])
+        Dn = np.append(dn[0], coef_norm[:, 3])
+
+        return An, Bn, Cn, Dn
+
+
+def rotaion_matrix_2d(theta):
+    rot_mat = np.array(
+        [[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]
+    )
+    return rot_mat
