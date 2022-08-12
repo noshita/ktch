@@ -289,6 +289,8 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         c_s = c1 * np.cos(theta) + d1 * np.sin(theta)
         scale = np.sqrt(a_s**2 + c_s**2)
         psi = np.arctan2(c_s, a_s)
+        if psi < 0:
+            psi = 2 * np.pi + psi
 
         coef_norm_list = []
         r_psi = rotaion_matrix_2d(-psi)
