@@ -161,7 +161,6 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
 
         if t is None:
             dt = np.sqrt(dx**2 + dy**2)
-            # dt[dt < 10**-10] = 10**-10
             tp = np.append(0, np.cumsum(dt))
             T = np.sum(dt)
         else:
@@ -307,6 +306,48 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         Dn = np.append(dn[0], coef_norm[:, 3])
 
         return An, Bn, Cn, Dn
+
+    def _inverse_transform_single(
+        self,
+        X_transformed,
+        t_num=100,
+        norm=True,
+        as_frame=True,
+    ):
+        coef = X_transformed
+        # 配列対応もする
+        an = coef["an"][1:]
+        bn = coef["bn"][1:]
+        cn = coef["cn"][1:]
+        dn = coef["dn"][1:]
+
+        n_max = len(an)
+
+        theta = np.linspace(0, 2 * np.pi, t_num)
+
+        cos = np.cos(np.tensordot(np.arange(1, n_max + 1, 1), theta, 0))
+        sin = np.sin(np.tensordot(np.arange(1, n_max + 1, 1), theta, 0))
+
+        x = np.dot(an, cos) + np.dot(bn, sin)
+        y = np.dot(cn, cos) + np.dot(dn, sin)
+
+        X_coords = np.stack([x, y], 1)
+
+        return X_coords
+
+    def inverse_transform(self, X_transformed, t_num=100, as_frame=True):
+        sp_num = X_transformed.index.levshape[0]
+        X_list = []
+        for i in range(sp_num):
+            coef = X_transformed.loc[i]
+            X = self._inverse_transform_single(coef)
+            df_X = pd.DataFrame(X, columns=["x", "y"])
+            df_X["coord_id"] = [coord_id for coord_id in range(len(X))]
+            df_X["specimen_id"] = i
+            X_list.append(df_X)
+        X_coords = pd.concat(X_list)
+        X_coords = X_coords.set_index(["specimen_id", "coord_id"])
+        return X_coords
 
 
 def rotaion_matrix_2d(theta):
