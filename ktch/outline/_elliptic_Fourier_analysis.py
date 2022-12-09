@@ -61,7 +61,7 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         # self.dtype = dtype
         self.n_harmonics = n_harmonics
 
-    def fit_transform(self, X, t=None, as_frame=True):
+    def fit_transform(self, X, t=None, as_frame=False):
         """Fit the model with X.
 
         Parameters
@@ -122,7 +122,7 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         t=None,
         norm=True,
         duplicated_points="infinitesimal",
-        as_frame=True,
+        as_frame=False,
     ):
         """Fit the model with a signle outline.
 
@@ -312,14 +312,20 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         X_transformed,
         t_num=100,
         norm=True,
-        as_frame=True,
+        as_frame=False,
     ):
         coef = X_transformed
-        # 配列対応もする
-        an = coef["an"][1:]
-        bn = coef["bn"][1:]
-        cn = coef["cn"][1:]
-        dn = coef["dn"][1:]
+        if as_frame:
+            an = coef["an"][1:]
+            bn = coef["bn"][1:]
+            cn = coef["cn"][1:]
+            dn = coef["dn"][1:]
+        else:
+            an, bn, cn, dn = coef.reshape([4, -1])
+            an = an[1:]
+            bn = bn[1:]
+            cn = cn[1:]
+            dn = dn[1:]
 
         n_max = len(an)
 
@@ -335,20 +341,36 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
 
         return X_coords
 
-    def inverse_transform(self, X_transformed, t_num=100, as_frame=True):
+    def inverse_transform(self, X_transformed, t_num=100, as_frame=False):
         X_list = []
         sp_num = X_transformed.index.levshape[0]
 
         for i in range(sp_num):
             coef = X_transformed.loc[i]
-            X = self._inverse_transform_single(coef)
-            df_X = pd.DataFrame(X, columns=["x", "y"])
-            df_X["coord_id"] = [coord_id for coord_id in range(len(X))]
-            df_X["specimen_id"] = i
-            X_list.append(df_X)
-        X_coords = pd.concat(X_list)
-        X_coords = X_coords.set_index(["specimen_id", "coord_id"])
+            if as_frame:
+                X = self._inverse_transform_single(coef, as_frame=as_frame)
+                df_X = pd.DataFrame(X, columns=["x", "y"])
+                df_X["coord_id"] = [coord_id for coord_id in range(len(X))]
+                df_X["specimen_id"] = i
+                X_list.append(df_X)
+            else:
+                X = self._inverse_transform_single(coef, as_frame=as_frame)
+                X_list.append(X)
+
+        if as_frame:
+            X_coords = pd.concat(X_list)
+            X_coords = X_coords.set_index(["specimen_id", "coord_id"])
+        else:
+            X_coords = X_list
+
         return X_coords
+
+    def get_feature_names_out(self):
+        an = ["a_" + str(i) for i in range(self.n_harmonics + 1)]
+        bn = ["b_" + str(i) for i in range(self.n_harmonics + 1)]
+        cn = ["c_" + str(i) for i in range(self.n_harmonics + 1)]
+        dn = ["d_" + str(i) for i in range(self.n_harmonics + 1)]
+        return np.array(an + bn + cn + dn)
 
 
 def rotaion_matrix_2d(theta):
