@@ -211,6 +211,52 @@ class PCContribDisplay:
     def __init__(self):
         pass
 
+    def plot(
+        self,
+        *,
+        include_values=True,
+        cmap="viridis",
+        xticks_rotation="horizontal",
+        values_format=None,
+        ax=None,
+        colorbar=True,
+    ):
+
+        """Plot visualization.
+        Parameters
+        ----------
+        include_values : bool, default=True
+            Includes values in confusion matrix.
+        cmap : str or matplotlib Colormap, default='viridis'
+            Colormap recognized by matplotlib.
+        xticks_rotation : {'vertical', 'horizontal'} or float, \
+                         default='horizontal'
+            Rotation of xtick labels.
+        values_format : str, default=None
+            Format specification for values in confusion matrix. If `None`,
+            the format specification is 'd' or '.2g' whichever is shorter.
+        ax : matplotlib axes, default=None
+            Axes object to plot on. If `None`, a new figure and axes is
+            created.
+        colorbar : bool, default=True
+            Whether or not to add a colorbar to the plot.
+        Returns
+        -------
+        display : :class:`~ktch.outline.PCContribDisplay`
+        """
+
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            fig, ax = plt.subplots()
+        else:
+            fig = ax.figure
+
+        self.figure_ = fig
+        self.ax_ = ax
+
+        return self
+
     @classmethod
     def from_estimator(self):
         """Create a"""

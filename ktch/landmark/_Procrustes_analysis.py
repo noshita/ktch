@@ -21,40 +21,31 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class OrdinaryProcrustesAnalysis(TransformerMixin, BaseEstimator):
-	"""Ordinary Procrustes Analysis
+    """Ordinary Procrustes Analysis"""
 
-	"""
-	def __init__(
-		self, dtype = np.float64,
-		scale = True,
-		reflect = False,
-		metric = "",
-		impute = False
-		):
-		self.dtype = dtype
+    def __init__(
+        self, dtype=np.float64, scale=True, reflect=False, metric="", impute=False
+    ):
+        self.dtype = dtype
 
-	def fit(self, X):
-		Gamma = 0
+    def fit(self, X):
+        Gamma = 0
 
+        return self
 
-		return self
+    def transform(self, X):
 
-	def transform(self, X):
+        return X_transformed
 
-		return X_transformed
+    def fit_transform(self, X):
+        pass
 
 
-	def fit_transform(self, X):
-		pass
+class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
+    def __init__(self):
+        pass
 
-		
-
-
-class GPA(TransformerMixin, BaseEstimator):
-	def __init__(self):
-		pass
-		
 
 class LandmarkImputer(TransformerMixin, BaseEstimator):
-	def __init__(self, missing_values=np.nan):
-		pass
+    def __init__(self, missing_values=np.nan):
+        pass
