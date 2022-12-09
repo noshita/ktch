@@ -16,6 +16,6 @@ The :mod:`katatch.landmark` module implements landmark-based morphometrics.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._Procrustes_analysis import OrdinaryProcrustesAnalysis, GPA
+from ._Procrustes_analysis import OrdinaryProcrustesAnalysis, GeneralizedProcrustesAnalysis
 
-__all__ = ['OrdinaryProcrustesAnalysis', 'GPA']
+__all__ = ['OrdinaryProcrustesAnalysis', 'GeneralizedProcrustesAnalysis']

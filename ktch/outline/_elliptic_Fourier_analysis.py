@@ -336,8 +336,9 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         return X_coords
 
     def inverse_transform(self, X_transformed, t_num=100, as_frame=True):
-        sp_num = X_transformed.index.levshape[0]
         X_list = []
+        sp_num = X_transformed.index.levshape[0]
+
         for i in range(sp_num):
             coef = X_transformed.loc[i]
             X = self._inverse_transform_single(coef)
