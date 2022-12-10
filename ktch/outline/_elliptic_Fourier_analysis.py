@@ -21,6 +21,7 @@ from scipy.spatial.transform import Rotation as R
 import pandas as pd
 
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.base import ClassNamePrefixFeaturesOutMixin
 
 
 class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
@@ -60,6 +61,12 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
     def __init__(self, n_harmonics=20, reflect=False, metric="", impute=False):
         # self.dtype = dtype
         self.n_harmonics = n_harmonics
+        self.reflect = reflect
+        self.metric = metric
+        self.impute = impute
+
+    def transform(self, X, t=None):
+        return self.fit_transform(X, t)
 
     def fit_transform(self, X, t=None, as_frame=False):
         """Fit the model with X.
@@ -261,16 +268,10 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
             X_transformed.columns = ["an", "bn", "cn", "dn"]
             X_transformed.index.name = "harmonics"
         else:
-            X_transformed = np.stack([an, bn, cn, dn], axis=1)
+            # X_transformed = np.stack([an, bn, cn, dn], axis=1)
+            X_transformed = np.concatenate([an, bn, cn, dn]).reshape(-1)
 
         return X_transformed
-
-    # def transform(self, X):
-
-    #     return X_transformed
-
-    # def fit_transform(self, X):
-    #     pass
 
     def _normalize(self, an, bn, cn, dn):
         a1 = an[1]
@@ -370,7 +371,12 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         bn = ["b_" + str(i) for i in range(self.n_harmonics + 1)]
         cn = ["c_" + str(i) for i in range(self.n_harmonics + 1)]
         dn = ["d_" + str(i) for i in range(self.n_harmonics + 1)]
-        return np.array(an + bn + cn + dn)
+        return np.asarray(an + bn + cn + dn, dtype=object)
+
+    @property
+    def _n_features_out(self):
+        """Number of transformed output features."""
+        return (self.n_harmonics + 1) * 4
 
 
 def rotaion_matrix_2d(theta):
