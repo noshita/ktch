@@ -114,9 +114,14 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
                 ["specimen_id", "harmonics"]
             )
         else:
+            if isinstance(X, pd.DataFrame):
+                X_ = [x[0] for x in X.to_numpy()]
+            else:
+                X_ = X
+
             X_transformed = np.stack(
                 [
-                    self._fit_transform_single(X[i], t_[i], as_frame=False)
+                    self._fit_transform_single(np.array(X_[i]), t_[i], as_frame=False)
                     for i in range(len(X))
                 ]
             )
