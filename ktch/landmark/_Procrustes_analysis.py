@@ -21,6 +21,16 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
+    """
+    Generalized Procrustes Analysis (GPA)
+
+    Notes
+    ------------
+
+    test
+
+    """
+
     def __init__(self, tol=10 ^ -10):
         self.tol = tol
 

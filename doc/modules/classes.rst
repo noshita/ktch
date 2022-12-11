@@ -25,7 +25,7 @@ Classes
    :toctree: generated/
    :template: class.rst
 
-   landmark.OrdinaryProcrustesAnalysis
+   landmark.GeneralizedProcrustesAnalysis
 
 .. _outline_ref:
 
@@ -49,6 +49,22 @@ Classes
    outline.EllipticFourierAnalysis
    outline.SphericalHarmonicAnalysis
 
+:mod:`ktch.datasets`: datasets utility functions
+===================================================================
+
+Functions
+---------
+
+.. currentmodule:: ktch
+
+.. autosummary::
+   :toctree: generated/
+   :template: function.rst
+
+   datasets.load_landmark_mosquito_wings
+   datasets.load_outline_bottles
+   datasets.load_outline_mosquito_wings
+   datasets.load_coefficient_bottles
 
 Plotting
 ---------

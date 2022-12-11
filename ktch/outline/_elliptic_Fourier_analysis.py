@@ -25,8 +25,23 @@ from sklearn.base import ClassNamePrefixFeaturesOutMixin
 
 
 class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
-    r"""Elliptic Fourier Analysis (EFA)
+    """
 
+    Elliptic Fourier Analysis (EFA)
+
+    Parameters
+    ------------
+    n_harmonics: int, default=20
+        harmonics
+
+    reflect: bool, default=False
+        reflect
+
+    metric: str
+        metric
+
+    impute: bool, False
+        impute
 
     Notes
     ------------
@@ -69,7 +84,9 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         return self.fit_transform(X, t)
 
     def fit_transform(self, X, t=None, as_frame=False):
-        """Fit the model with X.
+        """
+
+        Fit the model with X.
 
         Parameters
         ------------
@@ -89,6 +106,7 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         ------------
         X_transformed: array-like of shape (n_samples, (1+2*n_harmonics)*n_dim)
             Returns the array-like of coefficients.
+
         """
 
         n_harmonics = self.n_harmonics
