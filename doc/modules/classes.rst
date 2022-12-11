@@ -49,6 +49,9 @@ Classes
    outline.EllipticFourierAnalysis
    outline.SphericalHarmonicAnalysis
 
+:mod:`ktch.datasets`: datasets utility functions
+===================================================================
+
 Functions
 ---------
 
