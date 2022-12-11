@@ -20,13 +20,9 @@ import scipy as sp
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
-class OrdinaryProcrustesAnalysis(TransformerMixin, BaseEstimator):
-    """Ordinary Procrustes Analysis"""
-
-    def __init__(
-        self, dtype=np.float64, scale=True, reflect=False, metric="", impute=False
-    ):
-        self.dtype = dtype
+class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
+    def __init__(self, tol=10 ^ -10):
+        self.tol = tol
 
     def fit(self, X):
         Gamma = 0
@@ -34,16 +30,32 @@ class OrdinaryProcrustesAnalysis(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X):
+        X_ = X
+        X_ = self._translate(X_)
+        X_ = self._scale(X_)
+        mu = np.sum(X_, axis=0) / len(X_)
 
-        return X_transformed
+        d_Procrustes_dist = 10 * self.tol
+        while d_Procrustes_dist < self.tol:
+            results = [sp.spatial.procrustes(mu, x) for x in X]
+            X_ = np.array([result[1] for result in results])
+            d_Procrustes_dist = np.sum(np.array([result[2] for result in results]))
+            mu = np.sum(X_, axis=0) / len(X_)
+
+        return X_
 
     def fit_transform(self, X):
-        pass
+        return self.transform(X)
 
+    def _translate(self, X):
+        X_translated = np.array([x - np.mean(x, axis=0) for x in X])
+        return X_translated
 
-class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
-    def __init__(self):
-        pass
+    def _scale(self, X):
+        X_scaled = np.array(
+            [x / np.sqrt(np.trace(np.dot(x, x.transpose()))) for x in X]
+        )
+        return X_scaled
 
 
 class LandmarkImputer(TransformerMixin, BaseEstimator):
