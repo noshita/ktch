@@ -25,6 +25,7 @@ from ._version import __version__
 __all__ = [
     "landmark",
     "outline",
+    "datasets",
     "TemplateEstimator",
     "TemplateTransformer",
     "TemplateClassifier",
