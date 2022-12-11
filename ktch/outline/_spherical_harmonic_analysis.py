@@ -21,7 +21,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
-    r"""Spherical Harmonic (SPHARM) Analysis
+    """Spherical Harmonic (SPHARM) Analysis
 
 
     Notes

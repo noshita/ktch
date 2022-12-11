@@ -25,12 +25,12 @@ def load_landmark_mosquito_wings(*, as_frame=True):
     """Load and return the mosquito wing landmark dataset
     (landmark-based morphometrics).
 
-    =================   ==============
+    ========================   ============
     Specimens                      127
     Landmarks per specimen          18
     Landmark dimensionality          2
     Features                      real
-    =================   ==============
+    ========================   ============
 
     Parameters
     ----------
@@ -88,12 +88,12 @@ def load_outline_mosquito_wings(*, as_frame=True):
     """Load and return the mosquito wing outline dataset
     (outline-based morphometrics).
 
-    =================   ==============
+    ========================   ===========
     Specimens                      126
     Landmarks per specimen         100
     Landmark dimensionality          2
     Features                      real
-    =================   ==============
+    ========================   ===========
 
     Parameters
     ----------
