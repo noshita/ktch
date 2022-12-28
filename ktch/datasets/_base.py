@@ -42,7 +42,7 @@ def load_landmark_mosquito_wings(*, as_frame=True):
         DataFrames or Series as described below.
 
     Returns
-    -------
+    ----------
     data : :class:`~sklearn.utils.Bunch`
         Dictionary-like object, with the following attributes.
         coords : {ndarray, dataframe} of shape (150, 4)
@@ -105,7 +105,7 @@ def load_outline_mosquito_wings(*, as_frame=True):
         DataFrames or Series as described below.
 
     Returns
-    -------
+    ----------
     data : :class:`~sklearn.utils.Bunch`
         Dictionary-like object, with the following attributes.
         coords : {ndarray, dataframe} of shape (150, 4)
@@ -120,13 +120,16 @@ def load_outline_mosquito_wings(*, as_frame=True):
     """
     data_module = "ktch.datasets.data"
     data_file_name = "data_outline_mosquito_wings.csv"
+    metadata_file_name = "meta_outline_mosquito_wings.csv"
     descr_module = "ktch.datasets.descr"
     descr_file_name = "data_outline_mosquito_wings.rst"
 
     coords = pd.read_csv(
         resources.open_text(data_module, data_file_name), index_col=[0, 1]
     )
-    meta = None
+    meta = pd.read_csv(
+        resources.open_text(data_module, metadata_file_name), index_col=[0]
+    )
     fdescr = load_descr(
         descr_module=descr_module,
         descr_file_name=descr_file_name,
