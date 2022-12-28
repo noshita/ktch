@@ -17,8 +17,8 @@ jobs:
           command: git submodule update --init
       - run:
           name: create virtualenv
-          command: poetry install
-      - run: 
+          command: poetry install -q -n
+      - run:
           name: Build pages
           command: cd doc && poetry run make html
       # Save test results
@@ -30,9 +30,9 @@ jobs:
       - store_artifacts:
           path: /tmp/circleci-test-results
       - persist_to_workspace:
-            root: ~/noshita/ktch/doc/_build/html
-            paths:
-              - . 
+          root: ~/noshita/ktch/doc/_build/html
+          paths:
+            - .
   deploy:
     working_directory: ~/noshita/ktch
     environment:
@@ -53,12 +53,12 @@ jobs:
       #     name: Make .ssh
       #     command: mkdir  ~/.ssh
       - run:
-          name: Start ssh-keyscan  
-          command: ssh-keyscan $SSH_HOST >> ~/.ssh/known_hosts  
-      - run: 
+          name: Start ssh-keyscan
+          command: ssh-keyscan $SSH_HOST >> ~/.ssh/known_hosts
+      - run:
           name: Install rsync
           command: sudo apt-get update && sudo apt-get install rsync
-      - run: 
+      - run:
           name: Deploy to private server
           command: rsync -e "ssh" -P -rvzc --delete $OUTPUTDIR/ $SSH_USER@$SSH_HOST:$SSH_TARGET_DIR --cvs-exclude
 
