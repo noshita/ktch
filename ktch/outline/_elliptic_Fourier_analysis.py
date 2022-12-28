@@ -26,7 +26,6 @@ from sklearn.base import ClassNamePrefixFeaturesOutMixin
 
 class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
     """
-
     Elliptic Fourier Analysis (EFA)
 
     Parameters
@@ -45,11 +44,9 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
 
     Notes
     ------------
-
     :cite:`EFA-KUHL:1982bq`
 
     .. math::
-
         \begin{align}
             x(l) &=
             \frac{a_0}{2} + \sum_{i=1}^{n}
@@ -367,17 +364,19 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
 
     def inverse_transform(self, X_transformed, t_num=100, as_frame=False):
         X_list = []
-        sp_num = X_transformed.index.levshape[0]
+        sp_num = X_transformed.shape[0]
 
         for i in range(sp_num):
-            coef = X_transformed.loc[i]
+
             if as_frame:
+                coef = X_transformed.loc[i]
                 X = self._inverse_transform_single(coef, as_frame=as_frame)
                 df_X = pd.DataFrame(X, columns=["x", "y"])
                 df_X["coord_id"] = [coord_id for coord_id in range(len(X))]
                 df_X["specimen_id"] = i
                 X_list.append(df_X)
             else:
+                coef = X_transformed[i]
                 X = self._inverse_transform_single(coef, as_frame=as_frame)
                 X_list.append(X)
 
