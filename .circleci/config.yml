@@ -48,7 +48,7 @@ jobs:
           at: .
       - add_ssh_keys:
           fingerprints:
-            - "9b:35:76:8a:8f:79:5c:de:0e:00:d1:41:d7:81:a0:fc"
+            - "86:b6:ad:5e:63:68:6e:87:83:cb:25:92:f7:a2:74:06"
       # - run:
       #     name: Make .ssh
       #     command: mkdir  ~/.ssh
