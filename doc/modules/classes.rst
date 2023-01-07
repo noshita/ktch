@@ -62,9 +62,9 @@ Functions
    :template: function.rst
 
    datasets.load_landmark_mosquito_wings
-   datasets.load_outline_bottles
    datasets.load_outline_mosquito_wings
-   datasets.load_coefficient_bottles
+   .. datasets.load_outline_bottles
+   .. datasets.load_coefficient_bottles
 
 Plotting
 ---------

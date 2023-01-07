@@ -25,12 +25,10 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
 
 
     Notes
-    ------------
-
-    :cite:`SPHARM-Ritchie1999,SPHARM-Shen2009`
+    ------------------------
+    [Ritche_Kemp_1999]_, [Shen_etal_2009]_
 
     .. math::
-
         \begin{align}
             \mathbf{p}(\theta, \phi) = \sum_{l=0}^{l_\mathrm{max}} \sum_{m=-l}^l
             \left(
@@ -41,7 +39,6 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
     , where :math:`Y_l^m(\theta, \phi)` are spherical harmonics:
 
     .. math::
-
         \begin{align}
             Y_l^m(\theta, \phi) = \sqrt{\frac{2l+1}{4\pi}\frac{(l-m)!}{(l+m)!}} P_l^m(\cos(\theta)) e^{im\phi}
         \end{align}
@@ -57,14 +54,15 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
     , where :math:`P_n(x)` are Legendre polynomials, which are solutions of Legendre’s differential equation;
 
     .. math::
-
         (1-x^2)\frac{d^2 y}{dx^2} -2x \frac{dy}{dx} + n(n+1)y = 0.
 
 
     References
-    ------------
-    .. bibliography::
-         :keyprefix: SPHARM-
+    ------------------------
+
+    .. [Ritche_Kemp_1999] Ritchie, D.W., Kemp, G.J.L. (1999) Fast computation, rotation, and comparison of low resolution spherical harmonic molecular surfaces. J. Comput. Chem. 20: 383–395.
+    .. [Shen_etal_2009] Shen, L., Farid, H., McPeek, M.A. (2009) Modeling three-dimensional morphological structures using spherical harmonics. Evolution (N. Y). 63: 1003–1016.
+
 
 
     """
@@ -77,7 +75,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
         """Fit the model with X.
 
         Parameters
-        ------------
+        ------------------------
         X: list of array-like
                 Coordinate values of n_samples. The i-th array-like whose shape (n_coords_i, 2) represents 2D coordinate values of the i-th sample .
 
@@ -85,7 +83,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
                 Parameters indicating the position on the outline of n_samples. The i-th ndarray whose shape (n_coords_i, ) corresponds to each coordinate value in the i-th element of X. If `t=None`, then t is calculated based on the coordinate values with the linear interpolation.
 
         Returns
-        ------------
+        ------------------------
         spharm_coef: array-like of shape (n_samples, (1+2*n_harmonics)*n_dim)
             Returns the array-like of coefficients.
         """
@@ -107,12 +105,12 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
                 If `t=None`, then t is calculated based on the coordinate values with the linear interpolation.
 
         Returns
-        -------
+        ------------------------
         spharm_coef: list of coeffients
             Returns the coefficients of Fourier series.
 
         ToDo
-        -------
+        ------------------------
         * EHN: 3D outline
         """
 
@@ -128,7 +126,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
         """SPHARM
 
         Parameters
-        ----------
+        ------------------------
         lmax: int
             Degree of SPHARM to use how far
         coef_list: list
@@ -139,7 +137,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
 
 
         Returns
-        ----------
+        ------------------------
         x, y, z: tuple of array_like
             Coordinate values of SPHARM.
 
@@ -168,11 +166,11 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
 
 
 class PCContribDisplay:
-    r"""Shape variation visualization along PC axes.
+    """Shape variation visualization along PC axes.
 
 
     Parameters
-    ----------
+    ------------------------
     pca:
 
     n_PCs:
@@ -197,7 +195,7 @@ class PCContribDisplay:
 
 
     Attributes
-    ----------
+    ------------------------
     XXX : matplotlib Artist
         .
     ax_ : matplotlib Axes
@@ -224,7 +222,7 @@ class PCContribDisplay:
 
         """Plot visualization.
         Parameters
-        ----------
+        ------------------------
         include_values : bool, default=True
             Includes values in confusion matrix.
         cmap : str or matplotlib Colormap, default='viridis'
@@ -241,7 +239,7 @@ class PCContribDisplay:
         colorbar : bool, default=True
             Whether or not to add a colorbar to the plot.
         Returns
-        -------
+        ------------------------
         display : :class:`~ktch.outline.PCContribDisplay`
         """
 

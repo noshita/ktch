@@ -6,6 +6,8 @@
 poetry run make html
 ```
 
+
+
 ## dev notes
 
 Git repoをリセットするタイミングで以下は削除 or Wiki，docなどへ移行

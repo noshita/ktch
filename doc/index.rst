@@ -41,7 +41,7 @@ Information regarding this template and how to modify it for your own project.
 An example of narrative documentation.
 
 
-`API Documentation <modules/classes.html>`_
+`API <modules/classes.html>`_
 -------------------------------------------------
 
 An example of API documentation.

@@ -1,5 +1,5 @@
 #####################################
-Quick Start with the project-template
+Quick Start
 #####################################
 
 This package serves as a skeleton package aiding at developing compatible
