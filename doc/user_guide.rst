@@ -3,7 +3,7 @@
 .. _user_guide:
 
 ==================================================
-User guide: create your own scikit-learn estimator
+User guide
 ==================================================
 
 Estimator

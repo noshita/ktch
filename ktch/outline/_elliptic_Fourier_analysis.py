@@ -25,8 +25,8 @@ from sklearn.base import ClassNamePrefixFeaturesOutMixin
 
 
 class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
-    """
-    Elliptic Fourier Analysis (EFA)
+    r"""
+    Elliptic Fourier Analysis (EFA) 
 
     Parameters
     ------------
@@ -46,6 +46,8 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
     ------------
     :cite:`EFA-KUHL:1982bq`
 
+    [Kuhl_Giardina_1982]_
+
     .. math::
         \begin{align}
             x(l) &=
@@ -58,14 +60,9 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
             + d_i \sin\left(\frac{2\pi i t}{T}\right) \right]\\
         \end{align}
 
-
-    See the examples of implimentation :cite:`EFA-Claude2008,EFA-Bonhomme2013`.
-
-
     References
     ------------
-    .. bibliography::
-         :keyprefix: EFA-
+    .. [Kuhl_Giardina_1982] Kuhl, F.P., Giardina, C.R. (1982) Elliptic Fourier features of a closed contour. Comput. Graph. Image Process. 18: 236–258.
 
 
     """
