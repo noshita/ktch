@@ -44,9 +44,7 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
 
     Notes
     ------------
-    :cite:`EFA-KUHL:1982bq`
-
-    [Kuhl_Giardina_1982]_
+    EFA is widely applied for two-dimensional outline analysis [Kuhl_Giardina_1982]_.
 
     .. math::
         \begin{align}
@@ -364,7 +362,6 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         sp_num = X_transformed.shape[0]
 
         for i in range(sp_num):
-
             if as_frame:
                 coef = X_transformed.loc[i]
                 X = self._inverse_transform_single(coef, as_frame=as_frame)

@@ -1,5 +1,8 @@
 """
 The :mod:`katatch.outline` module implements outline-based morphometrics.
+
+The outline, which are boundary lines or boundary surfaces separating
+the target object from others, are modeled as closed functions.
 """
 
 # Copyright 2020 Koji Noshita

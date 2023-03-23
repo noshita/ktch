@@ -21,13 +21,22 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
-    """
+    r"""
     Generalized Procrustes Analysis (GPA)
+
+    Parameters
+    ------------
+    tol: float, default=10 ^ -10
+        Torelance for convergence of Procrustes analysis.
 
     Notes
     ------------
+    GPA involves translating, rotating, and scaling  the configurations to each other to minimize the sum of the squared distances with respect to positional, rotational, and size parameters, subject to a size constraint [Gower_1975]_, [Goodall_1991]_.
 
-    test
+    References
+    ------------
+    .. [Gower_1975] Gower, J.C., 1975. Generalized procrustes analysis. Psychometrika 40, 33–51.
+    .. [Goodall_1991] Goodall, C., 1991. Procrustes Methods in the Statistical Analysis of Shape. J Royal Statistical Soc Ser B Methodol 53, 285–321.
 
     """
 
