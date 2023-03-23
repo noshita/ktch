@@ -26,8 +26,13 @@ class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
 
     Parameters
     ------------
-    tol: float, default=10 ^ -10
+    tol: float, default=10**-7
         Torelance for convergence of Procrustes analysis.
+
+    Attributes
+    ------------
+    mu_: ndarray, shape (n_landmarks, 2)
+        The mean shape of the aligned shapes.
 
     Notes
     ------------
@@ -40,8 +45,10 @@ class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
 
     """
 
-    def __init__(self, tol=10 ^ -10):
+    def __init__(self, tol=10**-7, debug=False):
         self.tol = tol
+        self.debug = debug
+        self.mu_ = None
 
     def fit(self, X):
         Gamma = 0
@@ -49,34 +56,59 @@ class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X):
-        X_ = X
-        X_ = self._translate(X_)
-        X_ = self._scale(X_)
-        mu = np.sum(X_, axis=0) / len(X_)
+        """GPA for shapes
 
-        d_Procrustes_dist = 10 * self.tol
-        while d_Procrustes_dist < self.tol:
+        Parameters
+        ----------
+        X : array-like, shape (n_shapes, n_landmarks, n_dim)
+            The configurations to be aligned.
+
+        Returns
+        -------
+        X_ : ndarray, shape (n_shapes, n_landmarks, n_dim)
+            shapes (aligned configurations)
+        """
+        X_ = np.array(X, dtype=np.double, copy=True)
+        X_ = self._center(X_)
+        mu = np.sum(X_, axis=0) / len(X_)
+        mu = mu / centroid_size(mu)
+
+        diff_disp = np.inf
+        total_disp_prev = np.inf
+        while diff_disp > self.tol:
             results = [sp.spatial.procrustes(mu, x) for x in X]
-            X_ = np.array([result[1] for result in results])
-            d_Procrustes_dist = np.sum(np.array([result[2] for result in results]))
+            X_ = np.array([x_aligned for _, x_aligned, _ in results])
+            total_disp = np.sum(np.array([disp for _, _, disp in results]))
+            diff_disp = np.abs(total_disp_prev - total_disp)
+            total_disp_prev = total_disp
             mu = np.sum(X_, axis=0) / len(X_)
+            mu = mu / centroid_size(mu)
+            if self.debug:
+                print("total_disp: ", total_disp, "diff_disp: ", diff_disp)
+
+        self.mu_ = mu
 
         return X_
 
     def fit_transform(self, X):
         return self.transform(X)
 
-    def _translate(self, X):
-        X_translated = np.array([x - np.mean(x, axis=0) for x in X])
-        return X_translated
+    def _center(self, X):
+        X_centered = np.array([x - np.mean(x, axis=0) for x in X])
+        return X_centered
 
     def _scale(self, X):
-        X_scaled = np.array(
-            [x / np.sqrt(np.trace(np.dot(x, x.transpose()))) for x in X]
-        )
+        X_scaled = np.array([x / centroid_size(x) for x in X])
         return X_scaled
 
 
 class LandmarkImputer(TransformerMixin, BaseEstimator):
     def __init__(self, missing_values=np.nan):
         pass
+
+
+def centroid_size(x):
+    x = np.array(x)
+    x_c = x - np.mean(x, axis=0)
+    centroid_size = np.sqrt(np.trace(np.dot(x_c, x_c.T)))
+    return centroid_size
