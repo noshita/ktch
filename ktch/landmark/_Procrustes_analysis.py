@@ -26,7 +26,7 @@ class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
 
     Parameters
     ------------
-    tol: float, default=10 ^ -10
+    tol: float, default=10**-10
         Torelance for convergence of Procrustes analysis.
 
     Notes
@@ -40,7 +40,7 @@ class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
 
     """
 
-    def __init__(self, tol=10 ^ -10):
+    def __init__(self, tol=10**-10):
         self.tol = tol
 
     def fit(self, X):
@@ -54,11 +54,14 @@ class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
         X_ = self._scale(X_)
         mu = np.sum(X_, axis=0) / len(X_)
 
-        d_Procrustes_dist = 10 * self.tol
-        while d_Procrustes_dist < self.tol:
+        diff_Procrustes_dist = 10 * self.tol
+        total_Procrustes_dist_prev = 10**10
+        while diff_Procrustes_dist > self.tol:
             results = [sp.spatial.procrustes(mu, x) for x in X]
             X_ = np.array([result[1] for result in results])
-            d_Procrustes_dist = np.sum(np.array([result[2] for result in results]))
+            total_Procrustes_dist = np.sum(np.array([result[2] for result in results]))
+            diff_Procrustes_dist = total_Procrustes_dist_prev - total_Procrustes_dist
+            total_Procrustes_dist_prev = total_Procrustes_dist
             mu = np.sum(X_, axis=0) / len(X_)
 
         return X_

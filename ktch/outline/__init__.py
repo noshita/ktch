@@ -21,9 +21,14 @@ the target object from others, are modeled as closed functions.
 
 # from ._polar_Fourier_analysis import PFA
 from ._elliptic_Fourier_analysis import EllipticFourierAnalysis
-from ._spherical_harmonic_analysis import SphericalHarmonicAnalysis, PCContribDisplay
+
+# from ._spherical_harmonic_analysis import SphericalHarmonicAnalysis, PCContribDisplay
 
 # from ._wavelet_analysis import WaveletAnalysis
 
 # __all__ = ['PFA', 'EllipticFourierAnalysis', 'WaveletAnalysis']
-__all__ = ["EllipticFourierAnalysis", "SphericalHarmonicAnalysis", "PCContribDisplay"]
+__all__ = [
+    "EllipticFourierAnalysis",
+    # "SphericalHarmonicAnalysis",
+    # "PCContribDisplay",
+]
