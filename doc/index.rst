@@ -1,8 +1,3 @@
-.. project-template documentation master file, created by
-   sphinx-quickstart on Mon Jan 18 14:44:12 2016.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 ktch
 ============================================
 
@@ -13,14 +8,14 @@ ktch is a python package for model-based morphometrics.
    :hidden:
    :caption: Getting Started
 
-   quick_start
+   getting_started
 
 .. toctree::
    :maxdepth: 2
    :hidden:
    :caption: Documentation
 
-   user_guide
+   user_guide/index
    modules/classes
 
 .. toctree::
@@ -30,24 +25,22 @@ ktch is a python package for model-based morphometrics.
 
    auto_examples/index
 
-`Getting started <quick_start.html>`_
+`Getting Started <getting_started.html>`_
 -------------------------------------------------
 
-Information regarding this template and how to modify it for your own project.
+New to ktch? This is the place to start.
 
-`User Guide <user_guide.html>`_
+`User Guide <user_guide/index.html>`_
 -------------------------------------------------
 
-An example of narrative documentation.
-
+User Guide is an overview and explains the key concepts and the important features.
 
 `API <modules/classes.html>`_
 -------------------------------------------------
 
-An example of API documentation.
-
+API documentation details classes, functions, modules, and other objects included in ktch.
 
 `Examples <auto_examples/index.html>`_
 -------------------------------------------------
 
-A set of examples. It complements the `User Guide <user_guide.html>`_.
+A set of examples. It complements the `User Guide <user_guide/index.html>`_.

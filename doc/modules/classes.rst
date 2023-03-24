@@ -27,6 +27,18 @@ Classes
 
    landmark.GeneralizedProcrustesAnalysis
 
+Functions
+---------
+
+.. currentmodule:: ktch
+
+.. autosummary::
+   :toctree: generated/
+   :template: function.rst
+
+   landmark.centroid_size
+
+
 .. _outline_ref:
 
 :mod:`ktch.outline`: outline classes and utility functions
