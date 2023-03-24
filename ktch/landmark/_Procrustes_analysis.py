@@ -31,7 +31,7 @@ class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
 
     Attributes
     ------------
-    mu_: ndarray, shape (n_landmarks, 2)
+    mu_: ndarray, shape (n_landmarks, n_dim)
         The mean shape of the aligned shapes.
 
     Notes
@@ -61,12 +61,12 @@ class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
         Parameters
         ----------
         X : array-like, shape (n_shapes, n_landmarks, n_dim)
-            The configurations to be aligned.
+            Configurations to be aligned.
 
         Returns
         -------
         X_ : ndarray, shape (n_shapes, n_landmarks, n_dim)
-            shapes (aligned configurations)
+            Shapes (aligned configurations)
         """
         X_ = np.array(X, dtype=np.double, copy=True)
         X_ = self._center(X_)
@@ -108,6 +108,18 @@ class LandmarkImputer(TransformerMixin, BaseEstimator):
 
 
 def centroid_size(x):
+    """Calculate the centroid size.
+
+    Parameters
+    ----------
+    x : array-like, shape (n_landmarks, n_dim)
+        Configuration, pre-shape, shape, etc.
+
+    Returns
+    -------
+    centroid_size : float
+        Centroid size of the input.
+    """
     x = np.array(x)
     x_c = x - np.mean(x, axis=0)
     centroid_size = np.sqrt(np.trace(np.dot(x_c, x_c.T)))
