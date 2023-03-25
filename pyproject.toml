@@ -14,12 +14,13 @@ classifiers = [
   'Programming Language :: Python :: 3.8',
 ]
 description = "**ktch** is a python package for model-based morphometrics."
+homepage = "https://doc.ktch.dev/index.html"
 keywords = ["morphometrics", "theoretical morphology"]
 license = "Apache-2.0"
 name = "ktch"
 readme = "README.md"
 repository = "https://github.com/noshita/ktch"
-version = "0.1.0a8"
+version = "0.1.0"
 
 [tool.poetry.dependencies]
 numpy = "^1.22"
@@ -58,9 +59,9 @@ llvmlite = "^0.39.1"
 numba = "^0.56.4"
 opencv-python = "^4.7.0.68"
 setuptools = "<60.0"
+sphinx-notfound-page = "^0.8.3"
 tqdm = "^4.64.1"
 tslearn = "^0.5.3.2"
-sphinx-notfound-page = "^0.8.3"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"
