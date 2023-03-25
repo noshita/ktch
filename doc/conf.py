@@ -45,6 +45,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "numpydoc",
     "sphinx_gallery.gen_gallery",
+    "notfound.extension",
 ]
 
 # this is needed for some reason...

@@ -60,6 +60,7 @@ opencv-python = "^4.7.0.68"
 setuptools = "<60.0"
 tqdm = "^4.64.1"
 tslearn = "^0.5.3.2"
+sphinx-notfound-page = "^0.8.3"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"
