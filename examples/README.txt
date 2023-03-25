@@ -1,6 +1,6 @@
-.. _general_examples:
+.. _examples:
 
-General examples
-================
+Examples (TBD)
+=========================
 
-Introductory examples.
+**TBD**

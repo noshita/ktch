@@ -312,7 +312,7 @@ texinfo_documents = [
         "ktch Documentation",
         "Koji Noshita",
         "ktch",
-        "One line description of project.",
+        "ktch is a python package for model-based morphometrics.",
         "Miscellaneous",
     ),
 ]

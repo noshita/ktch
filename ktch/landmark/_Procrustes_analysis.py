@@ -26,7 +26,7 @@ class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
 
     Parameters
     ------------
-    tol: float, default=10**-7
+    tol: float, default=10^-7
         Torelance for convergence of Procrustes analysis.
 
     Attributes
@@ -51,8 +51,6 @@ class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
         self.mu_ = None
 
     def fit(self, X):
-        Gamma = 0
-
         return self
 
     def transform(self, X):
