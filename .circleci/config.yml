@@ -39,28 +39,22 @@ jobs:
       TZ: /usr/share/zoneinfo/Asia/Tokyo
       OUTPUTDIR: .
       SSH_USER: noshita
-      SSH_HOST: docs.noshita.net
-      SSH_TARGET_DIR: private-docs/ktch-doc
     docker:
       - image: cimg/python:3.10
     steps:
       - attach_workspace:
           at: .
-      - add_ssh_keys:
-          fingerprints:
-            - "86:b6:ad:5e:63:68:6e:87:83:cb:25:92:f7:a2:74:06"
-      # - run:
-      #     name: Make .ssh
-      #     command: mkdir  ~/.ssh
       - run:
-          name: Start ssh-keyscan
-          command: ssh-keyscan $SSH_HOST >> ~/.ssh/known_hosts
+          name: Install awscli
+          command: pip install awscli
+      - run: aws configure set region us-west-2
+      - run: aws configure set preview.cloudfront true
       - run:
-          name: Install rsync
-          command: sudo apt-get update && sudo apt-get install rsync
+          name: Deploy to S3
+          command: aws s3 sync $OUTPUTDIR/ s3://doc.ktch.dev/ --delete
       - run:
-          name: Deploy to private server
-          command: rsync -e "ssh" -P -rvzc --delete $OUTPUTDIR/ $SSH_USER@$SSH_HOST:$SSH_TARGET_DIR --cvs-exclude
+          name: Deploy to CloundFront
+          command: aws cloudfront create-invalidation --distribution-id $AWS_CLOUDFRONT_ID --paths '/*'
 
   deploy:
     working_directory: ~/noshita/ktch
