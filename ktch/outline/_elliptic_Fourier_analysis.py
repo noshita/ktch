@@ -14,17 +14,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABCMeta, abstractmethod
+from typing import Literal
+
 from operator import index
 import numpy as np
+import numpy.typing as npt
 import scipy as sp
 from scipy.spatial.transform import Rotation as R
 import pandas as pd
 
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.base import ClassNamePrefixFeaturesOutMixin
+from sklearn.base import (
+    BaseEstimator,
+    TransformerMixin,
+    ClassNamePrefixFeaturesOutMixin,
+)
 
 
-class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
+class EllipticFourierAnalysis(
+    ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator, metaclass=ABCMeta
+):
     r"""
     Elliptic Fourier Analysis (EFA) 
 
@@ -75,7 +84,7 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
     def transform(self, X, t=None):
         return self.fit_transform(X, t)
 
-    def fit_transform(self, X, t=None, as_frame=False):
+    def fit_transform(self, X, t=None, norm=True, as_frame=False):
         """
 
         Fit the model with X.
@@ -93,6 +102,12 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
             each coordinate value in the i-th element of X.
             If `t=None`, then t is calculated based on
             the coordinate values with the linear interpolation.
+
+        norm: bool, default=True
+            Normalize the elliptic Fourier coefficients by the major axis of the 1st ellipse.
+
+        as_frame: bool, default=False
+            Return the result as a pandas DataFrame.
 
         Returns
         ------------
@@ -112,7 +127,7 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         if as_frame:
             X_transformed = pd.concat(
                 [
-                    self._fit_transform_single(X[i], t=t_[i], as_frame=True)
+                    self._fit_transform_single(X[i], t=t_[i], norm=norm, as_frame=True)
                     for i in range(len(X))
                 ],
                 axis=0,
@@ -131,7 +146,9 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
 
             X_transformed = np.stack(
                 [
-                    self._fit_transform_single(np.array(X_[i]), t_[i], as_frame=False)
+                    self._fit_transform_single(
+                        np.array(X_[i]), t_[i], norm=norm, as_frame=False
+                    )
                     for i in range(len(X))
                 ]
             )
@@ -184,12 +201,12 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         if t is None:
             dt = np.sqrt(dx**2 + dy**2)
             tp = np.append(0, np.cumsum(dt))
-            T = np.sum(dt)
+            # T = np.sum(dt)
         else:
             # TODO: add test
             dt = t[1:] - t[:-1]
             tp = t
-            T = t[-1]
+            # T = t[-1]
 
         if duplicated_points == "infinitesimal":
             dt[dt < 10**-10] = 10**-10
@@ -217,58 +234,10 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
                 + str(len(X_arr))
             )
 
-        a0 = 2 / T * np.sum(X_arr[:, 0] * dt)
-        c0 = 2 / T * np.sum(X_arr[:, 1] * dt)
-
-        an = [
-            (T / (2 * (np.pi**2) * (n**2)))
-            * np.sum(
-                (dx / dt)
-                * (
-                    np.cos(2 * np.pi * n * tp[1:] / T)
-                    - np.cos(2 * np.pi * n * tp[:-1] / T)
-                )
-            )
-            for n in range(1, n_harmonics + 1, 1)
-        ]
-        bn = [
-            (T / (2 * (np.pi**2) * (n**2)))
-            * np.sum(
-                (dx / dt)
-                * (
-                    np.sin(2 * np.pi * n * tp[1:] / T)
-                    - np.sin(2 * np.pi * n * tp[:-1] / T)
-                )
-            )
-            for n in range(1, n_harmonics + 1, 1)
-        ]
-        cn = [
-            (T / (2 * (np.pi**2) * (n**2)))
-            * np.sum(
-                (dy / dt)
-                * (
-                    np.cos(2 * np.pi * n * tp[1:] / T)
-                    - np.cos(2 * np.pi * n * tp[:-1] / T)
-                )
-            )
-            for n in range(1, n_harmonics + 1, 1)
-        ]
-        dn = [
-            (T / (2 * (np.pi**2) * (n**2)))
-            * np.sum(
-                (dy / dt)
-                * (
-                    np.sin(2 * np.pi * n * tp[1:] / T)
-                    - np.sin(2 * np.pi * n * tp[:-1] / T)
-                )
-            )
-            for n in range(1, n_harmonics + 1, 1)
-        ]
-
-        an = [a0] + an
-        bn = [0] + bn
-        cn = [c0] + cn
-        dn = [0] + dn
+        an = _cse(dx, dt, n_harmonics)
+        bn = _sse(dx, dt, n_harmonics)
+        cn = _cse(dy, dt, n_harmonics)
+        dn = _sse(dy, dt, n_harmonics)
 
         if norm:
             an, bn, cn, dn = self._normalize(an, bn, cn, dn)
@@ -283,8 +252,7 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
             X_transformed.columns = ["an", "bn", "cn", "dn"]
             X_transformed.index.name = "harmonics"
         else:
-            # X_transformed = np.stack([an, bn, cn, dn], axis=1)
-            X_transformed = np.concatenate([an, bn, cn, dn]).reshape(-1)
+            X_transformed = np.concatenate([an, bn, cn, dn])
 
         return X_transformed
 
@@ -298,19 +266,19 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
             2 * (a1 * b1 + c1 * d1), (a1**2 + c1**2 - b1**2 - d1**2)
         )
         if theta < 0:
-            theta = theta + np.pi
+            theta = theta + 2 * np.pi
 
         a_s = a1 * np.cos(theta) + b1 * np.sin(theta)
         c_s = c1 * np.cos(theta) + d1 * np.sin(theta)
         scale = np.sqrt(a_s**2 + c_s**2)
         psi = np.arctan2(c_s, a_s)
         if psi < 0:
-            psi = 2 * np.pi + psi
+            psi = psi + 2 * np.pi
 
         coef_norm_list = []
-        r_psi = rotaion_matrix_2d(-psi)
+        r_psi = _rotation_matrix_2d(-psi)
         for n in range(1, len(an)):
-            r_ntheta = rotaion_matrix_2d(n * theta)
+            r_ntheta = _rotation_matrix_2d(n * theta)
             coef_orig = np.array([[an[n], bn[n]], [cn[n], dn[n]]])
             coef_norm_tmp = (1 / scale) * np.dot(np.dot(r_psi, coef_orig), r_ntheta)
             coef_norm_list.append(coef_norm_tmp.reshape(-1))
@@ -358,6 +326,24 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
         return X_coords
 
     def inverse_transform(self, X_transformed, t_num=100, as_frame=False):
+        """Inverse analysis of elliptic Fourier analysis.
+
+
+        Parameters
+        ----------
+        X_transformed : array-like of shape (n_samples, n_features)
+            Elliptic Fourier coefficients.
+        t_num : int, default = 100
+            Number of coordinate values.
+        as_frame : bool, default = False
+            If True, return pd.DataFrame.
+
+        Returns
+        -------
+        X_coords : array-like of shape (n_samples, t_num, 2) or pd.DataFrame
+            Coordinate values reconstructed from the elliptic Fourier coefficients.
+
+        """
         X_list = []
         sp_num = X_transformed.shape[0]
 
@@ -382,21 +368,105 @@ class EllipticFourierAnalysis(TransformerMixin, BaseEstimator):
 
         return X_coords
 
-    def get_feature_names_out(self):
+    def get_feature_names_out(
+        self, input_features: None | npt.ArrayLike = None
+    ) -> np.ndarray:
+        """Get output feature names.
+
+        Parameters
+        ----------
+        input_features : None | npt.ArrayLike, optional
+            Input feature names, by default None
+
+        Returns
+        -------
+        feature_names_out : ndarray of str objects
+            Transformed feature names.
+
+        """
         an = ["a_" + str(i) for i in range(self.n_harmonics + 1)]
         bn = ["b_" + str(i) for i in range(self.n_harmonics + 1)]
         cn = ["c_" + str(i) for i in range(self.n_harmonics + 1)]
         dn = ["d_" + str(i) for i in range(self.n_harmonics + 1)]
-        return np.asarray(an + bn + cn + dn, dtype=object)
+        feature_names_out = np.asarray(an + bn + cn + dn, dtype=str)
+        return feature_names_out
 
     @property
     def _n_features_out(self):
         """Number of transformed output features."""
         return (self.n_harmonics + 1) * 4
 
+    def set_output(
+        self, *, transform: None | Literal["default", "pandas"] = None
+    ) -> BaseEstimator:
+        return super().set_output(transform=transform)
 
-def rotaion_matrix_2d(theta):
+
+###########################################################
+#
+#   utility functions
+#
+###########################################################
+
+
+def _rotation_matrix_2d(theta):
     rot_mat = np.array(
         [[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]
     )
     return rot_mat
+
+
+def _cse(dx, dt, n_harmonics):
+    """Cos series expansion
+
+    Parameters
+    ----------
+    dx : np.ndarray
+        differences of coordinates
+    dt : np.ndarray
+        differences of parameter
+    n_harmonics : int
+        number of harmonics
+
+    Return
+    ----------
+    coef : np.ndarray
+        coefficients of cos series expansion
+    """
+
+    t = np.concatenate([[0], np.cumsum(dt)])
+    T = t[-1]
+
+    c0 = 2 / T * np.sum(np.cumsum(dx) * dt)
+    cn = [
+        (T / (2 * (np.pi**2) * (n**2)))
+        * np.sum(
+            (dx / dt)
+            * (np.cos(2 * np.pi * n * t[1:] / T) - np.cos(2 * np.pi * n * t[:-1] / T))
+        )
+        for n in range(1, n_harmonics + 1, 1)
+    ]
+
+    coef = np.array([c0] + cn)
+
+    return coef
+
+
+def _sse(dx, dt, n_harmonics):
+    """Sin series expansion"""
+    t = np.concatenate([[0], np.cumsum(dt)])
+    T = t[-1]
+
+    c0 = 0
+    cn = [
+        (T / (2 * (np.pi**2) * (n**2)))
+        * np.sum(
+            (dx / dt)
+            * (np.sin(2 * np.pi * n * t[1:] / T) - np.sin(2 * np.pi * n * t[:-1] / T))
+        )
+        for n in range(1, n_harmonics + 1, 1)
+    ]
+
+    coef = np.array([c0] + cn)
+
+    return coef

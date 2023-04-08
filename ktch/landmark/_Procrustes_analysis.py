@@ -14,13 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABCMeta, abstractmethod
+
 import numpy as np
 import scipy as sp
 
-from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.base import (
+    BaseEstimator,
+    TransformerMixin,
+    ClassNamePrefixFeaturesOutMixin,
+)
 
 
-class GeneralizedProcrustesAnalysis(TransformerMixin, BaseEstimator):
+class GeneralizedProcrustesAnalysis(
+    ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator, metaclass=ABCMeta
+):
     r"""
     Generalized Procrustes Analysis (GPA)
 

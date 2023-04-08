@@ -21,9 +21,10 @@ from sklearn.utils import Bunch
 from sklearn.datasets._base import load_descr
 
 
-def load_landmark_mosquito_wings(*, as_frame=True):
-    """Load and return the mosquito wing landmark dataset
-    (landmark-based morphometrics).
+def load_landmark_mosquito_wings(*, as_frame=False):
+    """Load and return the mosquito wing landmark dataset used in [Rohlf_and_Slice_1990]_.
+
+    The original of this dataset is available at `SB Morphometrics <https://www.sbmorphometrics.org/data/RohlfSlice1990Mosq.nts>`_.
 
     ========================   ============
     Specimens                      127
@@ -33,7 +34,7 @@ def load_landmark_mosquito_wings(*, as_frame=True):
     ========================   ============
 
     Parameters
-    ----------
+    --------------------
     as_frame : bool, default=False
         If True, the data is a pandas DataFrame including columns with
         appropriate dtypes (numeric). The target is
@@ -42,7 +43,7 @@ def load_landmark_mosquito_wings(*, as_frame=True):
         DataFrames or Series as described below.
 
     Returns
-    ----------
+    --------------------
     data : :class:`~sklearn.utils.Bunch`
         Dictionary-like object, with the following attributes.
         coords : {ndarray, dataframe} of shape (150, 4)
@@ -53,6 +54,10 @@ def load_landmark_mosquito_wings(*, as_frame=True):
             The full description of the dataset.
         filename: str
             The path to the location of the data.
+
+    References
+    --------------------
+    .. [Rohlf_and_Slice_1990] Rohlf, F.J., Slice, D., 1990. Extensions of the Procrustes Method for the Optimal Superimposition of Landmarks. Systematic Zoology 39, 40. https://doi.org/10.2307/2992207
 
     """
     data_module = "ktch.datasets.data"
@@ -84,9 +89,10 @@ def load_landmark_mosquito_wings(*, as_frame=True):
     )
 
 
-def load_outline_mosquito_wings(*, as_frame=True):
-    """Load and return the mosquito wing outline dataset
-    (outline-based morphometrics).
+def load_outline_mosquito_wings(*, as_frame=False):
+    """Load and return the mosquito wing outline dataset used in [Rohlf_and_Archie_1984]_, however includes only 126 of 127 specimens because of missing in the original NTS file.
+
+    The original NTS file of this data is available at `SB Morphometrics <https://www.sbmorphometrics.org/data/RohlfArchieWingOutlines.nts>`_.
 
     ========================   ===========
     Specimens                      126
@@ -116,6 +122,10 @@ def load_outline_mosquito_wings(*, as_frame=True):
             The full description of the dataset.
         filename: str
             The path to the location of the data.
+
+    References
+    --------------------
+    .. [Rohlf_and_Archie_1984] Rohlf, F.J., Archie, J.W., 1984. A Comparison of Fourier Methods for the Description of Wing Shape in Mosquitoes (Diptera: Culicidae). Syst Zool 33, 302. https://doi.org/10.2307/2413076
 
     """
     data_module = "ktch.datasets.data"
@@ -147,7 +157,7 @@ def load_outline_mosquito_wings(*, as_frame=True):
     )
 
 
-def load_outline_bottles(*, as_frame=True):
+def load_outline_bottles(*, as_frame=False):
     """Load and return the Momocs bottle outline dataset
     (outline-based morphometrics).
 
@@ -196,7 +206,10 @@ def load_outline_bottles(*, as_frame=True):
     )
 
     if not as_frame:
-        coords = coords.to_numpy()
+        coords = [
+            coords.loc[specimen_id].to_numpy().reshape(-1, 2)
+            for specimen_id in coords.index.get_level_values(0).unique()
+        ]
         meta = meta.to_dict()
 
     return Bunch(
@@ -207,9 +220,9 @@ def load_outline_bottles(*, as_frame=True):
     )
 
 
-def load_coefficient_bottles(*, as_frame=True, norm=True):
+def load_coefficient_bottles(*, as_frame=False, norm=True):
     """Load and return the coefficients of  Momocs bottle outline datasets
-    for testing the EFA
+    for testing the EFA.
 
     Parameters
     ----------
@@ -255,7 +268,14 @@ def load_coefficient_bottles(*, as_frame=True, norm=True):
     )
 
     if not as_frame:
-        coef = coef.to_numpy()
+        coef = [
+            coef.loc[i]
+            .to_numpy()
+            .T.reshape(
+                -1,
+            )
+            for i in coef.index.get_level_values(0).unique()
+        ]
         meta = meta.to_dict()
 
     return Bunch(
