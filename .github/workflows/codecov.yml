@@ -2,6 +2,9 @@ name: Codecov
 on: [push]
 jobs:
   run:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Upload coverage reports to Codecov
