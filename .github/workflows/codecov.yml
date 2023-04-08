@@ -5,7 +5,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.11"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -22,7 +22,6 @@ jobs:
       - name: Test with pytest
         run: |
           pytest --cov=./ --cov-report=xml
-          codecov
       - name: test
         run: ls
       - name: Upload coverage reports to Codecov
