@@ -9,7 +9,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: test
-        run: ls | echo
+        run: ls
       - name: install pytest
         run: |
           python -m pip install flake8 pytest pytest-cov
