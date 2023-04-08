@@ -27,3 +27,9 @@ jobs:
         run: ls
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ./coverage/reports/
+          env_vars: OS,PYTHON
+          files: /home/runner/work/ktch/ktch/coverage.xml
+          flags: tests
