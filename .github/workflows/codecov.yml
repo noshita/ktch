@@ -4,7 +4,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, apple-silicon]
         python-version: ["3.9", "3.11"]
     runs-on: ${{ matrix.os }}
     steps:
