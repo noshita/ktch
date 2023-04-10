@@ -4,13 +4,11 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, [self-hosted, apple-silicon]]
-        python-version: ["3.9", "3.11", "3.11-dev"]
+        os: [ubuntu-latest, [self-hosted, macOS]]
+        python-version: ["3.9", "3.11"]
         exclude:
-          - os: apple-silicon
-            python-version: ["3.9", "3.11"]
-          - os: ubuntu-latest
-            python-version: "3.11-dev"
+          - os: [self-hosted, macOS]
+            python-version: "3.9"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
