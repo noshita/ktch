@@ -5,10 +5,10 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, [self-hosted, macOS]]
-        python-version: ["3.9", "3.11"]
+        python-version: ["3.10", "3.11"]
         exclude:
           - os: [self-hosted, macOS]
-            python-version: "3.9"
+            python-version: "3.10"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3

@@ -12,22 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import importlib
 import types
+import toml
+from pathlib import Path
 
 from . import landmark
 from . import outline
 
-from ._template import TemplateEstimator, TemplateTransformer, TemplateClassifier
-from ._version import __version__
 
+def get_version():
+    path = Path(__file__).parents[1] / "pyproject.toml"
+    with open(path, "r") as f:
+        pyproject = toml.load(f)
+    return pyproject["tool"]["poetry"]["version"]
+
+
+__version__ = get_version()
 
 __all__ = [
     "landmark",
     "outline",
     "datasets",
-    "TemplateEstimator",
-    "TemplateTransformer",
-    "TemplateClassifier",
     "__version__",
 ]
