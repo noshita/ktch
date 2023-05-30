@@ -51,6 +51,7 @@ clean:
 	-rm -rf auto_examples/
 	-rm -rf generated/*
 	-rm -rf modules/generated/*
+	-rm -rf notebooks/*
 
 html:
 	# These two lines make the build a bit more lengthy, and the

@@ -76,13 +76,44 @@ class EllipticFourierAnalysis(
 
     """
 
-    def __init__(self, n_harmonics=20, dim=2, reflect=False, metric="", impute=False):
+    def __init__(
+        self,
+        n_harmonics=20,
+        dim=2,
+        reflect=False,
+        metric="",
+        impute=False,
+        # exclude_pos=True,
+    ):
+        """_summary_
+
+        Parameters
+        ----------
+        n_harmonics : int, optional
+            Number of harmonics, by default 20
+
+        dim : int, optional
+            Dimension of coordinates, by default 2
+
+        reflect : bool, optional
+            Allow reflection, by default False
+
+        metric : str, optional
+
+        impute : bool, optional
+            Impute missing coordinate values, by default False
+
+        ToDo
+        -------
+        * EHN: excluding position from the output
+        """
         # self.dtype = dtype
         self.n_harmonics = n_harmonics
         self.dim = dim
         self.reflect = reflect
         self.metric = metric
         self.impute = impute
+        # self.exclude_pos = exclude_pos
 
     def fit_transform(self, X, t=None, norm=True):
         return self.transform(X, t, norm=norm)
@@ -109,57 +140,26 @@ class EllipticFourierAnalysis(
         norm: bool, default=True
             Normalize the elliptic Fourier coefficients by the major axis of the 1st ellipse.
 
-        as_frame: bool, default=False
-            Return the result as a pandas DataFrame.
-
         Returns
         ------------
         X_transformed: array-like of shape (n_samples, (1+2*n_harmonics)*n_dim)
             Returns the array-like of coefficients.
-            (a_0, a_1, ..., a_n, b_0, b_1, ..., b_n, , c_0, c_1, ..., c_n, , d_0, d_1, ..., d_n)
+            If `self.exclude_pos` is True,
+            (a_1, ..., a_n, b_1, ..., b_n, , c_1, ..., c_n, d_1, ..., d_n)
+            If `self.exclude_pos` is False,
+            (a_0, a_1, ..., a_n, b_0, b_1, ..., b_n, , c_0, c_1, ..., c_n, d_0, d_1, ..., d_n)
+            b_0, d_0 are always 0.
 
         """
         dim = self.dim
+        n_harmonics = self.n_harmonics
+        exclude_pos = self.exclude_pos
 
         if t is None:
             t_ = [None for i in range(len(X))]
 
         if len(t_) != len(X):
             raise ValueError("t must have a same length of X ")
-
-        # if as_frame:
-        #     X_transformed = pd.concat(
-        #         [
-        #             self._fit_transform_single(X[i], t=t_[i], norm=norm, as_frame=True)
-        #             for i in range(len(X))
-        #         ],
-        #         axis=0,
-        #     )
-        #     X_transformed["specimen_id"] = [
-        #         i for i in range(len(X)) for j in range(n_harmonics + 1)
-        #     ]
-        #     X_transformed = X_transformed.reset_index().set_index(
-        #         ["specimen_id", "harmonics"]
-        #     )
-        # else:
-        #     if isinstance(X, pd.DataFrame):
-        #         X_ = [x[0] for x in X.to_numpy()]
-        #     else:
-        #         X_ = X
-
-        #     X_transformed = np.stack(
-        #         [
-        #             self._fit_transform_single(
-        #                 np.array(X_[i]), t_[i], norm=norm, as_frame=False
-        #             )
-        #             for i in range(len(X))
-        #         ]
-        #     )
-
-        # if isinstance(X, pd.DataFrame):
-        #     X_ = [x[0] for x in X.to_numpy()]
-        # else:
-        #     X_ = X
 
         if isinstance(X, pd.DataFrame):
             X_ = [row.dropna().to_numpy().reshape(-1, dim) for idx, row in X.iterrows()]
@@ -172,6 +172,11 @@ class EllipticFourierAnalysis(
                 for i in range(len(X_))
             ]
         )
+
+        if exclude_pos:
+            X_transformed = X_transformed.reshape(-1, n_harmonics + 1, dim)[
+                :, 1:, :
+            ].reshape(-1, n_harmonics, dim)
 
         return X_transformed
 

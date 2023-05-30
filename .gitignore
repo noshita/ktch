@@ -369,6 +369,7 @@ playground/*
 
 ## Autodoc
 doc/generated/
+doc/notebooks/
 
 
 

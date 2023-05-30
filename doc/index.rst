@@ -23,7 +23,7 @@ ktch is a python package for model-based morphometrics.
    :hidden:
    :caption: Tutorial - Examples
 
-   auto_examples/index
+   notebooks/index
 
 `Getting Started <getting_started.html>`_
 -------------------------------------------------
@@ -40,7 +40,7 @@ User Guide is an overview and explains the key concepts and the important featur
 
 API documentation details classes, functions, modules, and other objects included in ktch.
 
-`Examples <auto_examples/index.html>`_
+`Example notebooks <notebooks/index.html>`_
 -------------------------------------------------
 
-A set of examples. It complements the `User Guide <user_guide/index.html>`_.
+A set of example notebooks. It complements the `User Guide <user_guide/index.html>`_.
