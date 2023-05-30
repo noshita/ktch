@@ -1,6 +1,6 @@
 .. _examples:
 
-Example notebooks (TBD)
+Example notebooks
 =========================
 
 .. toctree::

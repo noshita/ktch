@@ -40,7 +40,7 @@ User Guide is an overview and explains the key concepts and the important featur
 
 API documentation details classes, functions, modules, and other objects included in ktch.
 
-`Examples <notebooks/index.html>`_
+`Example notebooks <notebooks/index.html>`_
 -------------------------------------------------
 
-A set of examples. It complements the `User Guide <user_guide/index.html>`_.
+A set of example notebooks. It complements the `User Guide <user_guide/index.html>`_.
