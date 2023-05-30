@@ -44,7 +44,9 @@ class GeneralizedProcrustesAnalysis(
 
     Notes
     ------------
-    GPA involves translating, rotating, and scaling  the configurations to each other to minimize the sum of the squared distances with respect to positional, rotational, and size parameters, subject to a size constraint [Gower_1975]_, [Goodall_1991]_.
+    GPA for shape involves translating, rotating, and scaling  the configurations to each other to minimize the sum of the squared distances with respect to positional, rotational, and size parameters, subject to a size constraint [Gower_1975]_, [Goodall_1991]_.
+
+    GPA for size-and-shape
 
     References
     ------------
@@ -53,8 +55,9 @@ class GeneralizedProcrustesAnalysis(
 
     """
 
-    def __init__(self, tol=10**-7, debug=False):
+    def __init__(self, tol=10**-7, scaling=True, debug=False):
         self.tol = tol
+        self.scaling = scaling
         self.debug = debug
         self.mu_ = None
 
@@ -62,18 +65,33 @@ class GeneralizedProcrustesAnalysis(
         return self
 
     def transform(self, X):
-        """GPA for shapes
+        """GPA for shapes/size-and-shapes.
 
         Parameters
         ----------
         X : array-like, shape (n_shapes, n_landmarks, n_dim)
             Configurations to be aligned.
 
+        scaling: bool, default=True
+            If True, the configurations are aligned by translation, rotation, and scaling.
+            If False, the configurations are aligned by translation and rotation.
+
         Returns
         -------
         X_ : ndarray, shape (n_shapes, n_landmarks, n_dim)
-            Shapes (aligned configurations)
+            Shapes/Size-and-Shape (aligned configurations)
         """
+
+        scaling = self.scaling
+
+        if scaling:
+            X_ = self._transform_shape(X)
+        else:
+            X_ = self._transform_size_and_shape(X)
+
+        return X_
+
+    def _transform_shape(self, X):
         X_ = np.array(X, dtype=np.double, copy=True)
         X_ = self._center(X_)
         mu = np.sum(X_, axis=0) / len(X_)
@@ -89,6 +107,34 @@ class GeneralizedProcrustesAnalysis(
             total_disp_prev = total_disp
             mu = np.sum(X_, axis=0) / len(X_)
             mu = mu / centroid_size(mu)
+            if self.debug:
+                print("total_disp: ", total_disp, "diff_disp: ", diff_disp)
+
+        self.mu_ = mu
+
+        return X_
+
+    def _transform_size_and_shape(self, X):
+        X_ = np.array(X, dtype=np.double, copy=True)
+        X_ = self._center(X_)
+        mu = np.sum(X_, axis=0) / len(X_)
+
+        diff_disp = np.inf
+        total_disp_prev = np.inf
+        while diff_disp > self.tol:
+            total_disp = 0
+            X_new = np.zeros(X_.shape)
+            for i, x in enumerate(X):
+                R, scale = sp.linalg.orthogonal_procrustes(x, mu)
+                x_ = x @ R
+                total_disp += np.sum((x_ - mu) ** 2)
+                X_new[i] = x_
+            X_ = X_new
+
+            diff_disp = np.abs(total_disp_prev - total_disp)
+            total_disp_prev = total_disp
+            mu = np.sum(X_, axis=0) / len(X_)
+
             if self.debug:
                 print("total_disp: ", total_disp, "diff_disp: ", diff_disp)
 
