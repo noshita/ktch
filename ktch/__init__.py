@@ -19,8 +19,6 @@ from pathlib import Path
 from . import landmark
 from . import outline
 
-from ._template import TemplateEstimator, TemplateTransformer, TemplateClassifier
-
 
 def get_version():
     path = Path(__file__).parents[1] / "pyproject.toml"
@@ -35,8 +33,5 @@ __all__ = [
     "landmark",
     "outline",
     "datasets",
-    "TemplateEstimator",
-    "TemplateTransformer",
-    "TemplateClassifier",
     "__version__",
 ]
