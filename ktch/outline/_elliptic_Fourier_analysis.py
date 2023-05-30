@@ -76,17 +76,18 @@ class EllipticFourierAnalysis(
 
     """
 
-    def __init__(self, n_harmonics=20, reflect=False, metric="", impute=False):
+    def __init__(self, n_harmonics=20, dim=2, reflect=False, metric="", impute=False):
         # self.dtype = dtype
         self.n_harmonics = n_harmonics
+        self.dim = dim
         self.reflect = reflect
         self.metric = metric
         self.impute = impute
 
-    def transform(self, X, t=None):
-        return self.fit_transform(X, t)
+    def fit_transform(self, X, t=None, norm=True):
+        return self.transform(X, t, norm=norm)
 
-    def fit_transform(self, X, t=None, norm=True, as_frame=False):
+    def transform(self, X, t=None, norm=True):
         """
 
         Fit the model with X.
@@ -115,10 +116,10 @@ class EllipticFourierAnalysis(
         ------------
         X_transformed: array-like of shape (n_samples, (1+2*n_harmonics)*n_dim)
             Returns the array-like of coefficients.
+            (a_0, a_1, ..., a_n, b_0, b_1, ..., b_n, , c_0, c_1, ..., c_n, , d_0, d_1, ..., d_n)
 
         """
-
-        n_harmonics = self.n_harmonics
+        dim = self.dim
 
         if t is None:
             t_ = [None for i in range(len(X))]
@@ -126,44 +127,60 @@ class EllipticFourierAnalysis(
         if len(t_) != len(X):
             raise ValueError("t must have a same length of X ")
 
-        if as_frame:
-            X_transformed = pd.concat(
-                [
-                    self._fit_transform_single(X[i], t=t_[i], norm=norm, as_frame=True)
-                    for i in range(len(X))
-                ],
-                axis=0,
-            )
-            X_transformed["specimen_id"] = [
-                i for i in range(len(X)) for j in range(n_harmonics + 1)
-            ]
-            X_transformed = X_transformed.reset_index().set_index(
-                ["specimen_id", "harmonics"]
-            )
-        else:
-            if isinstance(X, pd.DataFrame):
-                X_ = [x[0] for x in X.to_numpy()]
-            else:
-                X_ = X
+        # if as_frame:
+        #     X_transformed = pd.concat(
+        #         [
+        #             self._fit_transform_single(X[i], t=t_[i], norm=norm, as_frame=True)
+        #             for i in range(len(X))
+        #         ],
+        #         axis=0,
+        #     )
+        #     X_transformed["specimen_id"] = [
+        #         i for i in range(len(X)) for j in range(n_harmonics + 1)
+        #     ]
+        #     X_transformed = X_transformed.reset_index().set_index(
+        #         ["specimen_id", "harmonics"]
+        #     )
+        # else:
+        #     if isinstance(X, pd.DataFrame):
+        #         X_ = [x[0] for x in X.to_numpy()]
+        #     else:
+        #         X_ = X
 
-            X_transformed = np.stack(
-                [
-                    self._fit_transform_single(
-                        np.array(X_[i]), t_[i], norm=norm, as_frame=False
-                    )
-                    for i in range(len(X))
-                ]
-            )
+        #     X_transformed = np.stack(
+        #         [
+        #             self._fit_transform_single(
+        #                 np.array(X_[i]), t_[i], norm=norm, as_frame=False
+        #             )
+        #             for i in range(len(X))
+        #         ]
+        #     )
+
+        # if isinstance(X, pd.DataFrame):
+        #     X_ = [x[0] for x in X.to_numpy()]
+        # else:
+        #     X_ = X
+
+        if isinstance(X, pd.DataFrame):
+            X_ = [row.dropna().to_numpy().reshape(-1, dim) for idx, row in X.iterrows()]
+        else:
+            X_ = [x.reshape(-1, dim) for x in X]
+
+        X_transformed = np.stack(
+            [
+                self._transform_single(np.array(X_[i]), t_[i], norm=norm)
+                for i in range(len(X_))
+            ]
+        )
 
         return X_transformed
 
-    def _fit_transform_single(
+    def _transform_single(
         self,
         X,
         t=None,
         norm=True,
         duplicated_points="infinitesimal",
-        as_frame=False,
     ):
         """Fit the model with a signle outline.
 
@@ -244,17 +261,19 @@ class EllipticFourierAnalysis(
         if norm:
             an, bn, cn, dn = self._normalize(an, bn, cn, dn)
 
-        if as_frame:
-            harmonics = pd.Series([i for i in range(n_harmonics + 1)])
-            df_a = pd.DataFrame(an, index=harmonics)
-            df_b = pd.DataFrame(bn, index=harmonics)
-            df_c = pd.DataFrame(cn, index=harmonics)
-            df_d = pd.DataFrame(dn, index=harmonics)
-            X_transformed = pd.concat([df_a, df_b, df_c, df_d], axis=1)
-            X_transformed.columns = ["an", "bn", "cn", "dn"]
-            X_transformed.index.name = "harmonics"
-        else:
-            X_transformed = np.concatenate([an, bn, cn, dn])
+        # if as_frame:
+        #     harmonics = pd.Series([i for i in range(n_harmonics + 1)])
+        #     df_a = pd.DataFrame(an, index=harmonics)
+        #     df_b = pd.DataFrame(bn, index=harmonics)
+        #     df_c = pd.DataFrame(cn, index=harmonics)
+        #     df_d = pd.DataFrame(dn, index=harmonics)
+        #     X_transformed = pd.concat([df_a, df_b, df_c, df_d], axis=1)
+        #     X_transformed.columns = ["an", "bn", "cn", "dn"]
+        #     X_transformed.index.name = "harmonics"
+        # else:
+        #     X_transformed = np.concatenate([an, bn, cn, dn])
+
+        X_transformed = np.hstack([an, bn, cn, dn])
 
         return X_transformed
 
@@ -398,10 +417,10 @@ class EllipticFourierAnalysis(
         """Number of transformed output features."""
         return (self.n_harmonics + 1) * 4
 
-    def set_output(
-        self, *, transform: None | Literal["default", "pandas"] = None
-    ) -> BaseEstimator:
-        return super().set_output(transform=transform)
+    # def set_output(
+    #     self, *, transform: None | Literal["default", "pandas"] = None
+    # ) -> BaseEstimator:
+    #     return super().set_output(transform=transform)
 
 
 ###########################################################

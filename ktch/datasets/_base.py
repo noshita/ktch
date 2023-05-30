@@ -284,3 +284,51 @@ def load_coefficient_bottles(*, as_frame=False, norm=True):
         DESCR=fdescr,
         filename=data_file_name,
     )
+
+
+###########################################################
+#
+#   utility functions
+#
+###########################################################
+
+
+def convert_coords_df_to_list(df_coords):
+    """Convert a dataframe of coordinates to a list of numpy arrays.
+
+    Parameters
+    ----------
+    df_coords: pandas.DataFrame of index (specimen_id, coord_id), columns (axis (x, y (, z)))
+        The dataframe of coordinates.
+
+    Returns
+    -------
+    list_coords: list
+        The list of numpy arrays.
+    """
+    dim = df_coords.shape[1]
+    coords_list = [
+        df_coords.loc[specimen_id].to_numpy().reshape(-1, dim)
+        for specimen_id in df_coords.index.get_level_values(0).unique()
+    ]
+    return coords_list
+
+
+def convert_coords_df_to_df_sklearn_transform(df_coords):
+    """Convert a dataframe of coordinates to a dataframe of coordinates
+    for sklearn transformers.
+
+    Parameters
+    ----------
+    df_coords: pandas.DataFrame of index (specimen_id, coord_id), columns (axis (x, y (, z)))
+        The dataframe of coordinates.
+
+    Returns
+    -------
+    df_coords_new: pandas.DataFrame of index (specimen_id), columns (coord_id, axis)
+        The dataframe of coordinates compatible with input of scikit-learn transformers.
+    """
+
+    df_coords_new = df_coords.unstack().swaplevel(axis=1).sort_index(axis=1)
+
+    return df_coords_new
