@@ -28,6 +28,7 @@ pandas = "^1.4"
 python = ">= 3.8, < 3.12"
 scikit-learn = "^1.2"
 scipy = "^1.8"
+toml = "^0.10"
 
 [tool.poetry.extras]
 docs = ["sphinx", "sphinx-gallery", "sphinx_rtd_theme", "numpydoc", "matplotlib", "toml"]
@@ -56,7 +57,6 @@ sphinx-autobuild = "^2021.3"
 sphinx-gallery = "^0.11"
 sphinx-notfound-page = "^0.8.3"
 sphinxcontrib-bibtex = "^2.5"
-toml = "^0.10"
 tqdm = "^4.64.1"
 tslearn = "^0.5.3.2"
 xarray = "^2022.6.0"
