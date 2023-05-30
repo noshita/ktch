@@ -14,6 +14,7 @@
 
 import sys, datetime
 import os
+import shutil
 from pathlib import Path
 
 sys.path.insert(0, os.path.abspath("sphinxext"))
@@ -44,8 +45,11 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.mathjax",
     "numpydoc",
-    "sphinx_gallery.gen_gallery",
+    # "sphinx_gallery.gen_gallery",
     "notfound.extension",
+    # "nbsphinx",
+    # "sphinx_gallery.load_style",
+    "myst_nb",
 ]
 
 # this is needed for some reason...
@@ -345,12 +349,30 @@ intersphinx_mapping = {
 }
 
 # sphinx-gallery configuration
-sphinx_gallery_conf = {
-    "doc_module": "ktch",
-    "backreferences_dir": os.path.join("generated"),
-    "reference_url": {"ktch": None},
-}
+# sphinx_gallery_conf = {
+#     "doc_module": "ktch",
+#     "examples_dirs": "../notebooks",
+#     "backreferences_dir": os.path.join("generated"),
+#     "reference_url": {"ktch": None},
+# }
 
 # def setup(app):
 #     # a copy button to copy snippet of code from the documentation
 #     app.add_javascript('js/copybutton.js')
+
+
+print("Copy example notebooks into doc/notebooks")
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+shutil.rmtree(os.path.join(project_root, "doc/notebooks"), ignore_errors=True)
+shutil.copytree(
+    os.path.join(project_root, "notebooks"),
+    os.path.join(project_root, "doc/notebooks"),
+    ignore=shutil.ignore_patterns("*.ipynb_checkpoints"),
+)
+
+# for myst-nb
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".ipynb": "myst-nb",
+    ".myst": "myst-nb",
+}
