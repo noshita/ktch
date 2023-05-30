@@ -3,7 +3,11 @@ import numpy as np
 from numpy.testing import assert_array_almost_equal
 import pytest
 
-from ktch.datasets import load_outline_bottles, load_coefficient_bottles
+from ktch.datasets import (
+    load_outline_bottles,
+    load_coefficient_bottles,
+    convert_coords_df_to_list,
+)
 from ktch.outline import EllipticFourierAnalysis
 
 bottles = load_outline_bottles()
