@@ -31,7 +31,13 @@ scipy = "^1.8"
 toml = "^0.10"
 
 [tool.poetry.extras]
-docs = ["sphinx", "sphinx-gallery", "sphinx_rtd_theme", "numpydoc", "matplotlib", "toml"]
+docs = [
+  "sphinx",
+  "sphinx-gallery",
+  "sphinx_rtd_theme",
+  "numpydoc",
+  "matplotlib", # "toml"
+]
 
 [tool.poetry.group.dev.dependencies]
 autopep8 = "^1.6.0"
