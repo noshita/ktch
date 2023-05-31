@@ -125,7 +125,7 @@ class EllipticFourierAnalysis(
 
         Parameters
         ------------
-        X: {list of array-like, array-like} of shape (n_samples, n_coords, 2)
+        X: {list of array-like, array-like} of shape (n_samples, n_coords, dim)
             Coordinate values of n_samples.
             The i-th array-like of shape (n_coords_i, 2) represents
             2D coordinate values of the i-th sample.
@@ -162,15 +162,14 @@ class EllipticFourierAnalysis(
             raise ValueError("t must have a same length of X ")
 
         if isinstance(X, pd.DataFrame):
-            X_ = [row.dropna().to_numpy().reshape(-1, dim) for idx, row in X.iterrows()]
+            X_ = [
+                row.dropna().to_numpy().reshape(dim, -1).T for idx, row in X.iterrows()
+            ]
         else:
-            X_ = [x.reshape(-1, dim) for x in X]
+            X_ = X
 
         X_transformed = np.stack(
-            [
-                self._transform_single(np.array(X_[i]), t_[i], norm=norm)
-                for i in range(len(X_))
-            ]
+            [self._transform_single(X_[i], t_[i], norm=norm) for i in range(len(X_))]
         )
 
         if exclude_pos:
