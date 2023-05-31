@@ -13,21 +13,12 @@
 # limitations under the License.
 
 import types
-import toml
 from pathlib import Path
 
 from . import landmark
 from . import outline
 
-
-def get_version():
-    path = Path(__file__).parents[1] / "pyproject.toml"
-    with open(path, "r") as f:
-        pyproject = toml.load(f)
-    return pyproject["tool"]["poetry"]["version"]
-
-
-__version__ = get_version()
+__version__ = "0.1.2"
 
 __all__ = [
     "landmark",
