@@ -25,7 +25,7 @@ Git repoをリセットするタイミングで以下は削除 or Wiki，docな�
 	* is used to test the package in Linux. You need to activate Travis CI for your own repository. Refer to the Travis CI documentation.
 - [ ] ~~AppVeyor: public repo, free~~ -> Change to GitHub Actions
 	* is used to test the package in Windows. You need to activate AppVeyor for your own repository. Refer to the AppVeyor documentation.
-- [ ] GitHub Actions due by 2022.8.19
+- [x] GitHub Actions due by 2022.8.19
 	* is used to test the package in Windows, macOS, and Linux.
 - [x] Circle CI: free, due by 2020.12.05 -> to build and deply the documentation.
 	* is used to check if the documentation is generated properly. You need to activate Circle CI for your own repository. Refer to the Circle CI documentation.

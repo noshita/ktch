@@ -265,18 +265,6 @@ class EllipticFourierAnalysis(
         if norm:
             an, bn, cn, dn = self._normalize(an, bn, cn, dn)
 
-        # if as_frame:
-        #     harmonics = pd.Series([i for i in range(n_harmonics + 1)])
-        #     df_a = pd.DataFrame(an, index=harmonics)
-        #     df_b = pd.DataFrame(bn, index=harmonics)
-        #     df_c = pd.DataFrame(cn, index=harmonics)
-        #     df_d = pd.DataFrame(dn, index=harmonics)
-        #     X_transformed = pd.concat([df_a, df_b, df_c, df_d], axis=1)
-        #     X_transformed.columns = ["an", "bn", "cn", "dn"]
-        #     X_transformed.index.name = "harmonics"
-        # else:
-        #     X_transformed = np.concatenate([an, bn, cn, dn])
-
         X_transformed = np.hstack([an, bn, cn, dn])
 
         return X_transformed
@@ -420,11 +408,6 @@ class EllipticFourierAnalysis(
     def _n_features_out(self):
         """Number of transformed output features."""
         return (self.n_harmonics + 1) * 4
-
-    # def set_output(
-    #     self, *, transform: None | Literal["default", "pandas"] = None
-    # ) -> BaseEstimator:
-    #     return super().set_output(transform=transform)
 
 
 ###########################################################
