@@ -14,11 +14,13 @@
 
 import types
 from pathlib import Path
+from importlib.metadata import version
+
 
 from . import landmark
 from . import outline
 
-__version__ = "0.1.2"
+__version__ = version(__name__)
 
 __all__ = [
     "landmark",

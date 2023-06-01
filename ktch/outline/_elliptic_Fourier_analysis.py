@@ -127,40 +127,6 @@ class EllipticFourierAnalysis(
         if len(t_) != len(X):
             raise ValueError("t must have a same length of X ")
 
-        # if as_frame:
-        #     X_transformed = pd.concat(
-        #         [
-        #             self._fit_transform_single(X[i], t=t_[i], norm=norm, as_frame=True)
-        #             for i in range(len(X))
-        #         ],
-        #         axis=0,
-        #     )
-        #     X_transformed["specimen_id"] = [
-        #         i for i in range(len(X)) for j in range(n_harmonics + 1)
-        #     ]
-        #     X_transformed = X_transformed.reset_index().set_index(
-        #         ["specimen_id", "harmonics"]
-        #     )
-        # else:
-        #     if isinstance(X, pd.DataFrame):
-        #         X_ = [x[0] for x in X.to_numpy()]
-        #     else:
-        #         X_ = X
-
-        #     X_transformed = np.stack(
-        #         [
-        #             self._fit_transform_single(
-        #                 np.array(X_[i]), t_[i], norm=norm, as_frame=False
-        #             )
-        #             for i in range(len(X))
-        #         ]
-        #     )
-
-        # if isinstance(X, pd.DataFrame):
-        #     X_ = [x[0] for x in X.to_numpy()]
-        # else:
-        #     X_ = X
-
         if isinstance(X, pd.DataFrame):
             X_ = [
                 row.dropna().to_numpy().reshape(dim, -1).T for idx, row in X.iterrows()
@@ -259,18 +225,6 @@ class EllipticFourierAnalysis(
 
         if norm:
             an, bn, cn, dn = self._normalize(an, bn, cn, dn)
-
-        # if as_frame:
-        #     harmonics = pd.Series([i for i in range(n_harmonics + 1)])
-        #     df_a = pd.DataFrame(an, index=harmonics)
-        #     df_b = pd.DataFrame(bn, index=harmonics)
-        #     df_c = pd.DataFrame(cn, index=harmonics)
-        #     df_d = pd.DataFrame(dn, index=harmonics)
-        #     X_transformed = pd.concat([df_a, df_b, df_c, df_d], axis=1)
-        #     X_transformed.columns = ["an", "bn", "cn", "dn"]
-        #     X_transformed.index.name = "harmonics"
-        # else:
-        #     X_transformed = np.concatenate([an, bn, cn, dn])
 
         X_transformed = np.hstack([an, bn, cn, dn])
 
@@ -415,11 +369,6 @@ class EllipticFourierAnalysis(
     def _n_features_out(self):
         """Number of transformed output features."""
         return (self.n_harmonics + 1) * 4
-
-    # def set_output(
-    #     self, *, transform: None | Literal["default", "pandas"] = None
-    # ) -> BaseEstimator:
-    #     return super().set_output(transform=transform)
 
 
 ###########################################################

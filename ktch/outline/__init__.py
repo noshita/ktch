@@ -24,9 +24,6 @@ from ._elliptic_Fourier_analysis import EllipticFourierAnalysis
 
 # from ._spherical_harmonic_analysis import SphericalHarmonicAnalysis, PCContribDisplay
 
-# from ._wavelet_analysis import WaveletAnalysis
-
-# __all__ = ['PFA', 'EllipticFourierAnalysis', 'WaveletAnalysis']
 __all__ = [
     "EllipticFourierAnalysis",
     # "SphericalHarmonicAnalysis",
