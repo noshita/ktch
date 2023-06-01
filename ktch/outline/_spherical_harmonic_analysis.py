@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List
+import dataclasses
+
 import numpy as np
 import scipy as sp
 
@@ -30,7 +33,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
 
     .. math::
         \begin{align}
-            \mathbf{p}(\theta, \phi) = \sum_{l=0}^{l_\mathrm{max}} \sum_{m=-l}^l
+            \mathbf{p}(\theta, \phi) = \sum_{l=0}^{L} \sum_{m=-l}^l
             \left(
                 c_l^m Y_l^m(\theta, \phi)
             \right)
@@ -67,33 +70,19 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
 
     """
 
-    def __init__(self, n_harmonics=20, reflect=False, metric="", impute=False):
+    def __init__(self, n_harmonics=10, reflect=False, metric="", impute=False):
         # self.dtype = dtype
         self.n_harmonics = n_harmonics
 
-    def fit_transform(self, X, t=None):
-        """Fit the model with X.
-
-        Parameters
-        ------------------------
-        X: list of array-like
-                Coordinate values of n_samples. The i-th array-like whose shape (n_coords_i, 2) represents 2D coordinate values of the i-th sample .
-
-        t: list of array-like, optional
-                Parameters indicating the position on the outline of n_samples. The i-th ndarray whose shape (n_coords_i, ) corresponds to each coordinate value in the i-th element of X. If `t=None`, then t is calculated based on the coordinate values with the linear interpolation.
-
-        Returns
-        ------------------------
-        spharm_coef: array-like of shape (n_samples, (1+2*n_harmonics)*n_dim)
-            Returns the array-like of coefficients.
-        """
+    def fit_transform(self, X, theta=None, phi=None):
+        """SPHARM coefficients of outlines."""
 
         spharm_coef = None
 
         return spharm_coef
 
-    def _fit_transform_single(self, X, t=None):
-        """Fit the model with a signle outline.
+    def _transform_single(self, X, theta=None, phi=None):
+        """SPHARM coefficients of a single outline.
 
         Parameters
         ----------
@@ -118,9 +107,29 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
 
         return spharm_coef
 
-    # def transform(self, X):
+    def transform(self, X, theta=None, phi=None):
+        """Transform X to a SPHARM coefficients.
 
-    #     return X_transformed
+        Parameters
+        ------------------------
+        X: list of array-like
+                Coordinate values of n_samples. The i-th array-like whose shape (n_coords_i, 3) represents 3D coordinate values of the i-th sample .
+
+        theta: array-like of shape (n_coords, )
+            Array-like of theta values.
+
+        phi: array-like of shape (n_coords, )
+            Array-like of phi values.
+
+        Returns
+        ------------------------
+        X_transformed: array-like of shape (n_samples, n_coefficients)
+            Returns the array-like of SPHARM coefficients.
+        """
+
+        X_transformed = None
+
+        return X_transformed
 
     def _inverse_transform_single(self, lmax, coef_list, theta_range, phi_range):
         """SPHARM
@@ -219,7 +228,6 @@ class PCContribDisplay:
         ax=None,
         colorbar=True,
     ):
-
         """Plot visualization.
         Parameters
         ------------------------
@@ -259,3 +267,72 @@ class PCContribDisplay:
     def from_estimator(self):
         """Create a"""
         pass
+
+
+###########################################################
+#
+#   utility functions
+#
+###########################################################
+
+
+def spharm(
+    n_degree,
+    coefficients,
+    theta_range=np.linspace(0, 2 * np.pi, 90),
+    phi_range=np.linspace(0, np.pi, 180),
+):
+    """SPHARM
+
+    Parameters
+    ----------
+    n_degree: int
+        Degree (l) of SPHARM
+    coefficients: list (of length 3) of array-like of shape (, ) or SPHARMCoefficients
+        SPHARM coefficients
+        coef[l,m] corresponding to the coefficient of degree l and order m
+    theta_range: array_like
+    phi_range: array_like
+
+
+    Returns
+    ----------
+    x, y, z: tuple of array_like
+        Coordinate values of surface.
+
+    """
+    x = 0
+    y = 0
+    z = 0
+    coef_x, coef_y, coef_z = coefficients
+
+    for l in range(lmax + 1):
+        m, theta, phi = np.meshgrid(np.arange(-l, l + 1, 1), theta_range, phi_range)
+        coef = coef_list[l]
+        x = x + np.sum(
+            sp.special.sph_harm(m, l, theta, phi) * coef_x.reshape((-1, 1)), axis=1
+        )
+        y = y + np.sum(
+            sp.special.sph_harm(m, l, theta, phi) * coef_y.reshape((-1, 1)), axis=1
+        )
+        z = z + np.sum(
+            sp.special.sph_harm(m, l, theta, phi) * coef_z.reshape((-1, 1)), axis=1
+        )
+
+    return np.real(x), np.real(y), np.real(z)
+
+
+@dataclasses.dataclass
+class SPHARMCoefficients:
+    """SPHARM coefficients"""
+
+    coef: List[List[float]]
+
+    def __getitem__(self, l, m):
+        if l > len(self.coef):
+            raise ValueError(f"l must be less than {len(self.coef)}")
+
+        if abs(m) > l:
+            raise ValueError(f"abs(m) must be less than {l}")
+
+        return self.coef[l][m]

@@ -83,26 +83,8 @@ class EllipticFourierAnalysis(
         reflect=False,
         metric="",
         impute=False,
-        # exclude_pos=True,
     ):
-        """_summary_
-
-        Parameters
-        ----------
-        n_harmonics : int, optional
-            Number of harmonics, by default 20
-
-        dim : int, optional
-            Dimension of coordinates, by default 2
-
-        reflect : bool, optional
-            Allow reflection, by default False
-
-        metric : str, optional
-
-        impute : bool, optional
-            Impute missing coordinate values, by default False
-
+        """
         ToDo
         -------
         * EHN: excluding position from the output
@@ -113,15 +95,12 @@ class EllipticFourierAnalysis(
         self.reflect = reflect
         self.metric = metric
         self.impute = impute
-        # self.exclude_pos = exclude_pos
 
     def fit_transform(self, X, t=None, norm=True):
         return self.transform(X, t, norm=norm)
 
     def transform(self, X, t=None, norm=True):
-        """
-
-        Fit the model with X.
+        """EFA.
 
         Parameters
         ------------
@@ -144,16 +123,11 @@ class EllipticFourierAnalysis(
         ------------
         X_transformed: array-like of shape (n_samples, (1+2*n_harmonics)*n_dim)
             Returns the array-like of coefficients.
-            If `self.exclude_pos` is True,
-            (a_1, ..., a_n, b_1, ..., b_n, , c_1, ..., c_n, d_1, ..., d_n)
-            If `self.exclude_pos` is False,
             (a_0, a_1, ..., a_n, b_0, b_1, ..., b_n, , c_0, c_1, ..., c_n, d_0, d_1, ..., d_n)
-            b_0, d_0 are always 0.
 
         """
         dim = self.dim
         n_harmonics = self.n_harmonics
-        exclude_pos = self.exclude_pos
 
         if t is None:
             t_ = [None for i in range(len(X))]
@@ -171,11 +145,6 @@ class EllipticFourierAnalysis(
         X_transformed = np.stack(
             [self._transform_single(X_[i], t_[i], norm=norm) for i in range(len(X_))]
         )
-
-        if exclude_pos:
-            X_transformed = X_transformed.reshape(-1, n_harmonics + 1, dim)[
-                :, 1:, :
-            ].reshape(-1, n_harmonics, dim)
 
         return X_transformed
 
