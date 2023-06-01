@@ -13,7 +13,7 @@ classifiers = [
   'Operating System :: MacOS',
   'Programming Language :: Python :: 3.8',
 ]
-description = "**ktch** is a python package for model-based morphometrics."
+description = "ktch is a python package for model-based morphometrics."
 homepage = "https://doc.ktch.dev/index.html"
 keywords = ["morphometrics", "theoretical morphology"]
 license = "Apache-2.0"
