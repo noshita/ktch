@@ -20,6 +20,8 @@ import dataclasses
 import numpy as np
 import scipy as sp
 
+import numpy.typing as npt
+
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
@@ -308,9 +310,9 @@ def spharm(
 
     for l in range(lmax + 1):
         m, theta, phi = np.meshgrid(np.arange(-l, l + 1, 1), theta_range, phi_range)
-        coef = coef_list[l]
+
         x = x + np.sum(
-            sp.special.sph_harm(m, l, theta, phi) * coef_x.reshape((-1, 1)), axis=1
+            sp.special.sph_harm(m, l, theta, phi) * coef_x[l].reshape((-1, 1)), axis=1
         )
         y = y + np.sum(
             sp.special.sph_harm(m, l, theta, phi) * coef_y.reshape((-1, 1)), axis=1
@@ -326,13 +328,93 @@ def spharm(
 class SPHARMCoefficients:
     """SPHARM coefficients"""
 
-    coef: List[List[float]]
+    coef: npt.ArrayLike = None
+    n_degree: int = None
 
-    def __getitem__(self, l, m):
-        if l > len(self.coef):
-            raise ValueError(f"l must be less than {len(self.coef)}")
+    def from_list(self, coef_list: list):
+        pass
 
-        if abs(m) > l:
-            raise ValueError(f"abs(m) must be less than {l}")
+    def from_array(self, coef_arr: npt.NDArray):
+        if coef_arr.ndim != 2:
+            raise ValueError("coef_arr must be 2-dimensional")
 
-        return self.coef[l][m]
+        n_degree_, size_m_lmax = coef_arr.shape
+        n_degree = n_degree_ - 1
+
+        if size_m_lmax != 2 * n_degree + 1:
+            raise ValueError("coef_arr.shape must be (n_degree, 2*n_degree+1)")
+
+        for l in range(n_degree):
+            for m_ in range(2 * n_degree + 1):
+                m = m_ - n_degree
+                if abs(m) > l and coef_arr[l, m_] != 0:
+                    raise ValueError(
+                        "coef_arr[l, m_] when abs(m+n_degree) > l must be 0"
+                    )
+
+        self.coef = coef_arr
+        self.n_degree = n_degree
+
+    def as_list(self) -> list:
+        pass
+
+    def as_array(self) -> npt.NDArray:
+        pass
+
+    def __getitem__(self, lm):
+        if type(lm) is tuple:
+            if len(lm) > 2:
+                raise ValueError("Indices must be less than two")
+            else:
+                l, m = lm
+
+            if abs(m) > l:
+                raise ValueError("abs(m) must be less than l")
+
+            if type(m) is int:
+                m = m + l
+            elif type(m) is slice:
+                m = slice(m.start + l, m.stop + l, m.step)
+            else:
+                raise ValueError("m must be int or slice")
+
+            return self.coef[(l, m)]
+
+        elif type(lm) is int:
+            l = lm
+
+            return self.coef[l, (-l + self.n_degree) : (l + self.n_degree + 1)]
+
+        else:
+            raise ValueError("Indices must be int")
+
+    def __setitem__(self, lm, value):
+        if type(lm) is tuple:
+            if len(lm) > 2:
+                raise ValueError("Indices must be less than two")
+            else:
+                l, m = lm
+
+            if l > len(self.coef):
+                raise ValueError(f"l must be less than {len(self.coef)}")
+
+            if abs(m) > l:
+                raise ValueError(f"abs(m) must be less than {l}")
+
+            self.coef[l][l + m] = value
+
+        elif type(lm) is int:
+            l = lm
+
+            if len(value) != 2 * l + 1:
+                raise ValueError(f"len(value) must be {2*l+1}")
+
+            if l > len(self.coef):
+                raise ValueError(f"l must be less than {len(self.coef)}")
+
+            row = np.zeros(2 * self.n_degree + 1)
+            row[(-l + self.n_degree) : (l + self.n_degree + 1)] = value
+            self.coef[l] = row
+
+        else:
+            raise ValueError("Indices must be int or tuple of int")
