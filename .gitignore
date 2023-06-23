@@ -355,7 +355,7 @@ dkms.conf
 
 
 ####################################
-#                                      ktch                                #
+#             ktch                 #
 ####################################
 
 # scikit-learn specific
@@ -371,5 +371,6 @@ playground/*
 doc/generated/
 doc/notebooks/
 
-
-
+## Pytest
+pytest.xml
+pytest-coverage.txt
