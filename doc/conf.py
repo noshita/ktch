@@ -46,7 +46,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "numpydoc",
     # "sphinx_gallery.gen_gallery",
-    "notfound.extension",
+    # "notfound.extension",
     # "nbsphinx",
     # "sphinx_gallery.load_style",
     "myst_nb",
