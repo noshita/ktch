@@ -311,7 +311,7 @@ def _write_tps_single(file_path, tps_data, write_mode="w"):
     with open(file_path, write_mode) as f:
         f.write("LM=" + str(len(tps_data.landmarks)) + "\n")
         f.write(
-            "\n".join(["\t".join(map(str, row)) for row in tps_data.landmarks.tolist()])
+            "\n".join([" ".join(map(str, row)) for row in tps_data.landmarks.tolist()])
         )
         f.write("\n")
         if tps_data.image_path is not None:
@@ -326,10 +326,12 @@ def _write_tps_single(file_path, tps_data, write_mode="w"):
             f.write("CURVES=" + str(len(tps_data.curves)))
             for curve in tps_data.curves:
                 f.write("POINTS=" + str(len(curve)) + "\n")
-                f.writelines(["\t".join(map(str, row)) for row in curve.tolist()])
+                f.writelines([" ".join(map(str, row)) for row in curve.tolist()])
 
         if tps_data.comments is not None:
             f.write("COMMENTS=" + tps_data.comments + "\n")
+
+        f.write("\n")
 
 
 def _write_tps(file_path, tps_data):
