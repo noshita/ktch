@@ -306,19 +306,35 @@ def spharm(
     x = 0
     y = 0
     z = 0
-    coef_x, coef_y, coef_z = coefficients
+    coef_x = SPHARMCoefficients()
+    coef_y = SPHARMCoefficients()
+    coef_z = SPHARMCoefficients()
+    if type(coefficients[0]) is npt.NDArray:
+        coef_x.from_array(coefficients[0])
+        coef_y.from_array(coefficients[1])
+        coef_z.from_array(coefficients[2])
+    elif type(coefficients[0]) is list:
+        coef_x.from_list(coefficients[0])
+        coef_y.from_list(coefficients[1])
+        coef_z.from_list(coefficients[2])
+    elif type(coefficients[0]) is SPHARMCoefficients:
+        coef_x, coef_y, coef_z = coefficients
+    else:
+        raise TypeError(
+            "coefficients must be list of array, list, or SPHARMCoefficients"
+        )
 
-    for l in range(lmax + 1):
+    for l in range(n_degree + 1):
         m, theta, phi = np.meshgrid(np.arange(-l, l + 1, 1), theta_range, phi_range)
 
         x = x + np.sum(
             sp.special.sph_harm(m, l, theta, phi) * coef_x[l].reshape((-1, 1)), axis=1
         )
         y = y + np.sum(
-            sp.special.sph_harm(m, l, theta, phi) * coef_y.reshape((-1, 1)), axis=1
+            sp.special.sph_harm(m, l, theta, phi) * coef_y[l].reshape((-1, 1)), axis=1
         )
         z = z + np.sum(
-            sp.special.sph_harm(m, l, theta, phi) * coef_z.reshape((-1, 1)), axis=1
+            sp.special.sph_harm(m, l, theta, phi) * coef_z[l].reshape((-1, 1)), axis=1
         )
 
     return np.real(x), np.real(y), np.real(z)
@@ -332,7 +348,24 @@ class SPHARMCoefficients:
     n_degree: int = None
 
     def from_list(self, coef_list: list):
-        pass
+        if len(coef_list) == 0:
+            raise ValueError("coef_list must be non-empty")
+
+        n_degree = len(coef_list) - 1
+        size_m_lmax = len(coef_list[-1])
+
+        for l, coef_l in enumerate(coef_list):
+            if len(coef_l) != 2 * l + 1:
+                raise ValueError("coef_list must be (n_degree, 2*n_degree+1)")
+
+        coef_arr = np.zeros([n_degree + 1, size_m_lmax], dtype=np.complex128)
+        # print(coef_arr.shape)
+        for l, coef_l in enumerate(coef_list):
+            # print(coef_l, coef_arr[l])
+            coef_arr[l, (-l + n_degree) : (l + n_degree + 1)] = coef_l
+
+        self.coef = coef_arr
+        self.n_degree = n_degree
 
     def from_array(self, coef_arr: npt.NDArray):
         if coef_arr.ndim != 2:
@@ -356,10 +389,14 @@ class SPHARMCoefficients:
         self.n_degree = n_degree
 
     def as_list(self) -> list:
-        pass
+        coef_list = [
+            [row[m + self.n_degree] for m in range(-l, l + 1)]
+            for l, row in enumerate(self.coef)
+        ]
+        return coef_list
 
     def as_array(self) -> npt.NDArray:
-        pass
+        return self.coef
 
     def __getitem__(self, lm):
         if type(lm) is tuple:
