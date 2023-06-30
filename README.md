@@ -2,7 +2,13 @@
 
 [![codecov](https://codecov.io/gh/noshita/ktch/branch/main/graph/badge.svg?token=SJN66K7KJY)](https://codecov.io/gh/noshita/ktch)
 
-**ktch** is a python package for model-based morphometrics.
+ktch is a python package for model-based morphometrics.
+
+## Usage
+
+```sh
+pip install ktch
+```
 
 
 ## License

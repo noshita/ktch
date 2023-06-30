@@ -1,3 +1,7 @@
+"""
+The :mod:`katatch.io` module implements I/O interface for morphometrics file formats.
+"""
+
 # Copyright 2020 Koji Noshita
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,20 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import types
-from pathlib import Path
-from importlib.metadata import version
+from ._tps import read_tps, write_tps
 
-
-from . import landmark
-from . import outline
-
-__version__ = version(__name__)
-
-__all__ = [
-    "landmark",
-    "outline",
-    "io",
-    "datasets",
-    "__version__",
-]
+__all__ = ["read_tps", "write_tps"]
