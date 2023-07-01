@@ -8,7 +8,7 @@ Examples concerning the :mod:`ktch.outline` module.
 .. toctree::
     :maxdepth: 1
     :glob:
-
-   ./elliptic_Fourier_analysis
-   ./manipulating_coordinate_values
+    
+    ./elliptic_Fourier_analysis
+    ./manipulating_coordinate_values
 ```
