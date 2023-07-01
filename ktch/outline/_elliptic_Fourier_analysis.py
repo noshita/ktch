@@ -18,8 +18,10 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from typing import Literal
+from enum import IntEnum
 
 from operator import index
+
 import numpy as np
 import numpy.typing as npt
 import scipy as sp
@@ -43,6 +45,9 @@ class EllipticFourierAnalysis(
     ------------
     n_harmonics: int, default=20
         harmonics
+
+    n_dim: int, default=2
+        dimension
 
     reflect: bool, default=False
         reflect
@@ -79,7 +84,7 @@ class EllipticFourierAnalysis(
     def __init__(
         self,
         n_harmonics=20,
-        dim=2,
+        n_dim=2,
         reflect=False,
         metric="",
         impute=False,
@@ -91,7 +96,12 @@ class EllipticFourierAnalysis(
         """
         # self.dtype = dtype
         self.n_harmonics = n_harmonics
-        self.dim = dim
+        if n_dim not in (2, 3):
+            raise ValueError("n_dim must be 2 or 3")
+        elif n_dim == 3:
+            raise NotImplementedError("n_dim=3 is not implemented yet")
+        else:
+            self.n_dim = n_dim
         self.reflect = reflect
         self.metric = metric
         self.impute = impute
@@ -99,7 +109,12 @@ class EllipticFourierAnalysis(
     def fit_transform(self, X, t=None, norm=True):
         return self.transform(X, t, norm=norm)
 
-    def transform(self, X, t=None, norm=True):
+    def transform(
+        self,
+        X: list(npt.ArrayLike) | npt.ArrayLike,
+        t: npt.ArrayLike = None,
+        norm: bool = True,
+    ) -> npt.ArrayLike:
         """EFA.
 
         Parameters
@@ -126,7 +141,7 @@ class EllipticFourierAnalysis(
             (a_0, a_1, ..., a_n, b_0, b_1, ..., b_n, , c_0, c_1, ..., c_n, d_0, d_1, ..., d_n)
 
         """
-        dim = self.dim
+        n_dim = self.n_dim
         n_harmonics = self.n_harmonics
 
         if t is None:
@@ -137,7 +152,8 @@ class EllipticFourierAnalysis(
 
         if isinstance(X, pd.DataFrame):
             X_ = [
-                row.dropna().to_numpy().reshape(dim, -1).T for idx, row in X.iterrows()
+                row.dropna().to_numpy().reshape(n_dim, -1).T
+                for idx, row in X.iterrows()
             ]
         else:
             X_ = X
@@ -393,7 +409,7 @@ def _rotation_matrix_2d(theta):
     return rot_mat
 
 
-def _cse(dx, dt, n_harmonics):
+def _cse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
     """Cos series expansion
 
     Parameters
@@ -429,7 +445,7 @@ def _cse(dx, dt, n_harmonics):
     return coef
 
 
-def _sse(dx, dt, n_harmonics):
+def _sse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
     """Sin series expansion"""
     t = np.concatenate([[0], np.cumsum(dt)])
     T = t[-1]
