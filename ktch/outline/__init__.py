@@ -20,13 +20,14 @@ the target object from others, are modeled as closed functions.
 # limitations under the License.
 
 # from ._polar_Fourier_analysis import PFA
-from ._elliptic_Fourier_analysis import EllipticFourierAnalysis
+from ._elliptic_Fourier_analysis import EllipticFourierAnalysis, rotation_matrix_2d
 from ._spherical_harmonic_analysis import spharm, SPHARMCoefficients
 
 # from ._spherical_harmonic_analysis import SphericalHarmonicAnalysis, PCContribDisplay
 
 __all__ = [
     "EllipticFourierAnalysis",
+    "rotation_matrix_2d",
     # "SphericalHarmonicAnalysis",
     # "PCContribDisplay",
     "spharm",

@@ -274,9 +274,9 @@ class EllipticFourierAnalysis(
             psi = psi + 2 * np.pi
 
         coef_norm_list = []
-        r_psi = _rotation_matrix_2d(-psi)
+        r_psi = rotation_matrix_2d(-psi)
         for n in range(1, len(an)):
-            r_ntheta = _rotation_matrix_2d(n * theta)
+            r_ntheta = rotation_matrix_2d(n * theta)
             coef_orig = np.array([[an[n], bn[n]], [cn[n], dn[n]]])
             coef_norm_tmp = (1 / scale) * np.dot(np.dot(r_psi, coef_orig), r_ntheta)
             coef_norm_list.append(coef_norm_tmp.reshape(-1))
@@ -402,7 +402,7 @@ class EllipticFourierAnalysis(
 ###########################################################
 
 
-def _rotation_matrix_2d(theta):
+def rotation_matrix_2d(theta):
     rot_mat = np.array(
         [[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]
     )

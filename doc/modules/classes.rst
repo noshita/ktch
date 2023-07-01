@@ -59,7 +59,18 @@ Classes
    :template: class.rst
 
    outline.EllipticFourierAnalysis
-   outline.SphericalHarmonicAnalysis
+
+Functions
+---------
+
+.. currentmodule:: ktch
+
+.. autosummary::
+   :toctree: generated/
+   :template: function.rst
+
+   outline.spharm
+
 
 :mod:`ktch.datasets`: datasets utility functions
 ===================================================================

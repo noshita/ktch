@@ -9,5 +9,6 @@ Examples concerning the :mod:`ktch.outline` module.
     :maxdepth: 1
     :glob:
 
-   ./Elliptic_Fourier_Analysis
+   ./elliptic_Fourier_analysis
+   ./manipulating_coordinate_values
 ```

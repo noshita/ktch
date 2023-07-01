@@ -22,9 +22,11 @@ from sklearn.datasets._base import load_descr
 
 
 def load_landmark_mosquito_wings(*, as_frame=False):
-    """Load and return the mosquito wing landmark dataset used in [Rohlf_and_Slice_1990]_.
+    """Load and return the mosquito wing landmark dataset used in
+    [Rohlf_and_Slice_1990]_.
 
-    The original of this dataset is available at `SB Morphometrics <https://www.sbmorphometrics.org/data/RohlfSlice1990Mosq.nts>`_.
+    The original of this dataset is available at
+    `SB Morphometrics <https://www.sbmorphometrics.org/data/RohlfSlice1990Mosq.nts>`_.
 
     ========================   ============
     Specimens                      127
@@ -90,9 +92,12 @@ def load_landmark_mosquito_wings(*, as_frame=False):
 
 
 def load_outline_mosquito_wings(*, as_frame=False):
-    """Load and return the mosquito wing outline dataset used in [Rohlf_and_Archie_1984]_, however includes only 126 of 127 specimens because of missing in the original NTS file.
+    """Load and return the mosquito wing outline dataset used in
+    [Rohlf_and_Archie_1984]_, however includes only 126 of 127 specimens
+    because of missing in the original NTS file.
 
-    The original NTS file of this data is available at `SB Morphometrics <https://www.sbmorphometrics.org/data/RohlfArchieWingOutlines.nts>`_.
+    The original NTS file of this data is available at
+    `SB Morphometrics <https://www.sbmorphometrics.org/data/RohlfArchieWingOutlines.nts>`_.
 
     ========================   ===========
     Specimens                      126
