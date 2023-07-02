@@ -19,6 +19,8 @@ from importlib.metadata import version
 
 from . import landmark
 from . import outline
+from . import io
+from . import datasets
 
 __version__ = version(__name__)
 
