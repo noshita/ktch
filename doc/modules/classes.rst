@@ -71,6 +71,20 @@ Functions
 
    outline.spharm
 
+:mod:`ktch.io`: I/O utility functions
+===================================================================
+
+Functions
+---------
+
+.. currentmodule:: ktch
+
+.. autosummary::
+   :toctree: generated/
+   :template: function.rst
+
+   io.read_tps
+   io.write_tps
 
 :mod:`ktch.datasets`: datasets utility functions
 ===================================================================

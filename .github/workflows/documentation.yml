@@ -1,0 +1,53 @@
+name: Docs
+# on: [push, pull_request, workflow_dispatch]
+on:
+    # Runs on pushes targeting the default branch
+    push:
+      branches: ["main"]
+    # Allows you to run this workflow manually from the Actions tab
+    workflow_dispatch:
+permissions:
+    contents: read
+    pages: write
+    id-token: write
+concurrency:
+    group: "pages"
+    cancel-in-progress: false
+env:
+    PYTHON_VERSION: 3.11
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: |
+            python -m pip install --upgrade pip
+            pip install sphinx pydata-sphinx-theme sphinx-autobuild sphinx-gallery sphinxcontrib-bibtex myst-nb nbsphinx  numpydoc matplotlib seaborn
+            if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+            pip install -e .
+      - name: Sphinx build
+        run: |
+            cd doc
+            make html
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+            path: doc/_build/html
+  deploy:
+    needs: build
+    environment:
+        name: github-pages
+        url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+        - name: Checkout
+          uses: actions/checkout@v3
+        - name: Setup Pages
+          uses: actions/configure-pages@v3
+        - name: Deploy to GitHub Pages
+          id: deployment
+          uses: actions/deploy-pages@v2
