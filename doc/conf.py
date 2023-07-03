@@ -45,11 +45,8 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.mathjax",
     "numpydoc",
-    # "sphinx_gallery.gen_gallery",
-    # "notfound.extension",
-    # "nbsphinx",
-    # "sphinx_gallery.load_style",
     "myst_nb",
+    "sphinx_sitemap",
 ]
 
 # this is needed for some reason...
@@ -179,6 +176,7 @@ html_theme_options = {
     # "external_links": [
     #     {"name": "Learn", "url": "https://numpy.org/numpy-tutorials/"}
     #     ],
+    "analytics": {"google_analytics_id": "G-6WZ5SLD7H7"},
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
@@ -255,6 +253,10 @@ html_static_path = ["_static"]
 # Output file base name for HTML help builder.
 htmlhelp_basename = "ktchdoc"
 
+# sphinx-sitemap
+html_baseurl = "https://doc.ktch.dev/"
+sitemap_locales = [None]
+sitemap_url_scheme = "{link}"
 
 # -- Options for LaTeX output ---------------------------------------------
 
