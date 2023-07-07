@@ -438,7 +438,7 @@ class SPHARMCoefficients:
             if abs(m) > l:
                 raise ValueError(f"abs(m) must be less than {l}")
 
-            self.coef[l][l + m] = value
+            self.coef[l][-l + self.n_degree + m] = value
 
         elif type(lm) is int:
             l = lm
