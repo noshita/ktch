@@ -7,7 +7,11 @@ ktch is a python package for model-based morphometrics.
 ## Usage
 
 ```sh
+# pip
 pip install ktch
+
+# conda
+conda install -c conda-forge ktch 
 ```
 
 
