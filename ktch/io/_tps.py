@@ -54,11 +54,34 @@ class TPSData:
             return self.landmarks, self.curves
 
     def to_dataframe(self):
-        if self.curves is None:
-            return pd.DataFrame(self.landmarks)
+        if self.landmarks.shape[1] == 2:
+            columns = ["x", "y"]
+        elif self.landmarks.shape[1] == 3:
+            columns = ["x", "y", "z"]
         else:
-            return pd.DataFrame(self.landmarks), [
-                pd.DataFrame(curve) for curve in self.curves
+            raise ValueError("n_dim must be 2 or 3.")
+
+        df_landmarks = pd.DataFrame(
+            self.landmarks,
+            columns=columns,
+            index=pd.MultiIndex.from_tuples(
+                [[self.idx, i] for i in range(len(self.landmarks))],
+                name=["specimen_id", "coord_id"],
+            ),
+        )
+        if self.curves is None:
+            return df_landmarks
+        else:
+            return df_landmarks, [
+                pd.DataFrame(
+                    curve,
+                    columns=columns,
+                    index=pd.MultiIndex.from_tuples(
+                        [[self.idx, i] for i in range(len(curve))],
+                        name=["specimen_id", "coord_id"],
+                    ),
+                )
+                for curve in self.curves
             ]
 
 
@@ -74,6 +97,8 @@ def read_tps(file_path, as_frame=False):
     ==========
     file_path : str
         Path to the TPS file.
+    as_frame : bool, default=False
+        If True, return pandas.DataFrame. Otherwise, return numpy.ndarray.
 
     Returns
     =======
@@ -108,6 +133,7 @@ def read_tps(file_path, as_frame=False):
         if as_frame:
             if semilandmark_flag == 0:
                 landmarks = [tps_datum.to_dataframe() for tps_datum in tps_data]
+                landmarks = pd.concat(landmarks)
                 return landmarks
             else:
                 landmarks = [tps_datum.to_dataframe()[0] for tps_datum in tps_data]

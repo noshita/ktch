@@ -18,16 +18,23 @@ from abc import ABCMeta, abstractmethod
 
 import numpy as np
 import scipy as sp
+import pandas as pd
+
+import numpy.typing as npt
+
 
 from sklearn.base import (
     BaseEstimator,
     TransformerMixin,
-    ClassNamePrefixFeaturesOutMixin,
+    OneToOneFeatureMixin,
 )
 
 
 class GeneralizedProcrustesAnalysis(
-    ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator, metaclass=ABCMeta
+    OneToOneFeatureMixin,
+    TransformerMixin,
+    BaseEstimator,
+    metaclass=ABCMeta,
 ):
     r"""
     Generalized Procrustes Analysis (GPA)
@@ -36,11 +43,15 @@ class GeneralizedProcrustesAnalysis(
     ------------
     tol: float, default=10^-7
         Torelance for convergence of Procrustes analysis.
+    n_dim: int, default=2
+        Dimensions of the configurations.
 
     Attributes
     ------------
     mu_: ndarray, shape (n_landmarks, n_dim)
         The mean shape of the aligned shapes.
+    n_dim_: int, 2 or 3
+        Dimensions of the configurations.
 
     Notes
     ------------
@@ -55,21 +66,52 @@ class GeneralizedProcrustesAnalysis(
 
     """
 
-    def __init__(self, tol=10**-7, scaling=True, debug=False):
+    def __init__(self, tol=10**-7, scaling=True, n_dim=2, debug=False):
         self.tol = tol
         self.scaling = scaling
         self.debug = debug
         self.mu_ = None
+        self.n_dim_ = n_dim
+
+    @property
+    def n_dim(self):
+        return self.n_dim_
+
+    @n_dim.setter
+    def n_dim(self, n_dim):
+        if n_dim not in [2, 3]:
+            raise ValueError("n_dim must be 2 or 3.")
+        self.n_dim_ = n_dim
 
     def fit(self, X):
+        """Fit GPA.
+
+        Parameters
+        ----------
+        X : array-like, shape (n_specimens, n_landmarks, n_dim)
+            /DataFrame, shape (n_specimens, n_landmarks * n_dim)
+            Configurations to be aligned.
+
+        Returns
+        -------
+        self : object
+            Returns the instance itself.
+        """
+        self.n_features_in_ = X.shape[1]
+        if hasattr(X, "columns"):
+            self.feature_names_in_ = X.columns
+
         return self
 
-    def transform(self, X):
+    def transform(
+        self,
+        X: npt.ArrayLike,
+    ) -> npt.ArrayLike:
         """GPA for shapes/size-and-shapes.
 
         Parameters
         ----------
-        X : array-like, shape (n_shapes, n_landmarks, n_dim)
+        X : array-like, shape (n_specimens, n_landmarks*n_dim)
             Configurations to be aligned.
 
         scaling: bool, default=True
@@ -78,18 +120,25 @@ class GeneralizedProcrustesAnalysis(
 
         Returns
         -------
-        X_ : ndarray, shape (n_shapes, n_landmarks, n_dim)
+        X_ : ndarray, shape (n_specimens, n_landmarks, n_dim)
             Shapes/Size-and-Shape (aligned configurations)
         """
 
+        X_ = np.array(X)
+        n_specimen = len(X_)
+        n_dim = self.n_dim_
+        if len(X_[0]) % n_dim != 0:
+            raise ValueError("X must be n_specimens x n_landmarks*n_dim.")
+        n_landmarks = int(len(X_[0]) / n_dim)
+        X_ = X_.reshape(n_specimen, n_landmarks, n_dim)
+
         scaling = self.scaling
-
         if scaling:
-            X_ = self._transform_shape(X)
+            X_ = self._transform_shape(X_)
         else:
-            X_ = self._transform_size_and_shape(X)
+            X_ = self._transform_size_and_shape(X_)
 
-        return X_
+        return X_.reshape(n_specimen, n_landmarks * n_dim)
 
     def _transform_shape(self, X):
         X_ = np.array(X, dtype=np.double, copy=True)
@@ -140,10 +189,26 @@ class GeneralizedProcrustesAnalysis(
 
         self.mu_ = mu
 
-        return X_
+        return X_.reshape(self.n_specimen_, self.n_landmarks_ * self.n_dim_)
 
     def fit_transform(self, X):
-        return self.transform(X)
+        """GPA for shapes/size-and-shapes.
+
+        Parameters
+        ----------
+        X : array-like, shape (n_specimens, n_landmarks * n_dim)
+            /DataFrame, shape (n_specimens, n_landmarks * n_dim)
+            Configurations to be aligned.
+
+        Returns
+        -------
+        X_ : ndarray, shape (n_specimens, n_landmarks, n_dim)
+            Shapes/Size-and-Shape (aligned configurations)
+
+        """
+        self.fit(X)
+        X_ = self.transform(X)
+        return X_
 
     def _center(self, X):
         X_centered = np.array([x - np.mean(x, axis=0) for x in X])
@@ -152,6 +217,11 @@ class GeneralizedProcrustesAnalysis(
     def _scale(self, X):
         X_scaled = np.array([x / centroid_size(x) for x in X])
         return X_scaled
+
+    # @property
+    # def _n_features_out(self):
+    #     """Number of transformed output features."""
+    #     return self.n_landmarks_ * self.n_dim_
 
 
 class LandmarkImputer(TransformerMixin, BaseEstimator):
