@@ -8,4 +8,5 @@
     :glob:
 
     outline/index
+    landmark/index
 ```
