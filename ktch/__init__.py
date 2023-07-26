@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import types
-from pathlib import Path
 from importlib.metadata import version
-
 
 from . import landmark
 from . import outline

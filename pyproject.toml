@@ -36,7 +36,8 @@ docs = [
   "sphinx-gallery",
   "sphinx_rtd_theme",
   "numpydoc",
-  "matplotlib", # "toml"
+  "matplotlib",
+  "plotly",
 ]
 
 [tool.poetry.group.dev.dependencies]
