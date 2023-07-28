@@ -17,6 +17,7 @@ import os
 import shutil
 from pathlib import Path
 
+
 sys.path.insert(0, os.path.abspath("sphinxext"))
 # import sphinx_gallery
 
@@ -78,6 +79,10 @@ mathjax_path = (
 autodoc_default_options = {
     "members": True,
     "inherited-members": True,
+}
+
+autodoc_type_aliases = {
+    "npt.ArrayLike": "npt.ArrayLike",
 }
 
 # Add any paths that contain templates here, relative to this directory.

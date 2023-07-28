@@ -7,12 +7,17 @@ ktch allows you to conduct model-based morphometrics via scikit-learn compatible
 Install
 ===================================================
 
-From PyPI
+From PyPI or conda-forge
 -------------------------------------
 
-ktch is currently available on PyPI. You can install it with pip::
+ktch is currently available on `PyPI <https://pypi.org/project/ktch/>`_ and `conda-forge <https://anaconda.org/conda-forge/ktch>`_.
+You can install it with pip::
 
     $ pip install ktch
+
+or with conda::
+
+    $ conda install -c conda-forge ktch
 
 
 Quick start

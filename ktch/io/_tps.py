@@ -1,6 +1,4 @@
-"""
-The :mod:`katatch.io` module implements I/O interface for morphometrics file formats.
-"""
+"""TPS file I/O functions."""
 
 # Copyright 2023 Koji Noshita
 #

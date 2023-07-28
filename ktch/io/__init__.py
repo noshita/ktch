@@ -17,5 +17,6 @@ The :mod:`katatch.io` module implements I/O interface for morphometrics file for
 # limitations under the License.
 
 from ._tps import read_tps, write_tps
+from ._SPHARM_PDM import read_coef_SPHARM_PDM
 
-__all__ = ["read_tps", "write_tps"]
+__all__ = ["read_tps", "write_tps", "read_coef_SPHARM_PDM"]

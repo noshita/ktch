@@ -1,6 +1,6 @@
 # ktch - A python package for model-based morphometrics
 
-[![codecov](https://codecov.io/gh/noshita/ktch/branch/main/graph/badge.svg?token=SJN66K7KJY)](https://codecov.io/gh/noshita/ktch)
+[![PyPI version](https://badge.fury.io/py/ktch.svg)](https://pypi.org/project/ktch/) [![Anaconda-Server Badge](https://anaconda.org/conda-forge/ktch/badges/version.svg)](https://anaconda.org/conda-forge/ktch) [![codecov](https://codecov.io/gh/noshita/ktch/branch/main/graph/badge.svg?token=SJN66K7KJY)](https://codecov.io/gh/noshita/ktch)
 
 ktch is a python package for model-based morphometrics.
 
