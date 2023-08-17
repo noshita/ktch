@@ -1,0 +1,21 @@
+on:
+    push:
+        branches: [main]
+
+permissions:
+    contents: write
+    pull-requests: write
+
+name: release-please
+
+jobs:
+    release-please:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: google-github-actions/release-please-action@v3
+              with:
+                release-type: python
+                package-name: ktch
+                bump-minor-pre-major: true
+                bump-patch-for-minor-pre-major: true
+                changelog-types: '[{"type":"✨ NEW","section":"Features","hidden":false},{"type":"🐛 FIX","section":"Bug Fixes","hidden":false},{"type":"📚 DOC","section":"Documents","hidden":false}]'
