@@ -26,6 +26,7 @@ import numpy as np
 import numpy.typing as npt
 import scipy as sp
 from scipy.spatial.transform import Rotation as R
+from scipy.interpolate import make_interp_spline
 import pandas as pd
 
 from sklearn.base import (
@@ -33,6 +34,8 @@ from sklearn.base import (
     TransformerMixin,
     ClassNamePrefixFeaturesOutMixin,
 )
+
+from sklearn.decomposition import PCA
 
 
 class EllipticFourierAnalysis(
@@ -60,7 +63,7 @@ class EllipticFourierAnalysis(
 
     Notes
     ------------
-    EFA is widely applied for two-dimensional outline analysis [Kuhl_Giardina_1982]_.
+    EFA is widely applied for outline shape analysis in two-dimensional space [Kuhl_Giardina_1982]_.
 
     .. math::
         \begin{align}
@@ -74,10 +77,15 @@ class EllipticFourierAnalysis(
             + d_i \sin\left(\frac{2\pi i t}{T}\right) \right]\\
         \end{align}
 
+
+    EFA is also applied for a closed curve in the three-dimensional space (e.g., [Lestrel_1997]_, [Lestrel_et_al_1997]_, and [Godefroy_et_al_2012]_).
+
     References
     ------------
-    .. [Kuhl_Giardina_1982] Kuhl, F.P., Giardina, C.R. (1982) Elliptic Fourier features of a closed contour. Comput. Graph. Image Process. 18: 236–258.
-
+    .. [Kuhl_Giardina_1982] Kuhl, F.P., Giardina, C.R. (1982) Elliptic Fourier features of a closed contour. Comput. Graph. Image Process. 18: 236–258. https://doi.org/10.1016/0146-664X(82)90034-X
+    .. [Lestrel_1997]  Lestrel, P.E., 1997. Introduction and overview of Fourier descriptors, in: Fourier Descriptors and Their Applications in Biology. Cambridge University Press, pp. 22–44. https://doi.org/10.1017/cbo9780511529870.003
+    .. [Lestrel_et_al_1997] Lestrel, P.E., Read, D.W., Wolfe, C., 1997. Size and shape of the rabbit orbit: 3-D Fourier descriptors, in: Lestrel, P.E. (Ed.), Fourier Descriptors and Their Applications in Biology. Cambridge University Press, pp. 359–378. https://doi.org/10.1017/cbo9780511529870.017
+    .. [Godefroy_et_al_2012] Godefroy, J.E., Bornert, F., Gros, C.I., Constantinesco, A., 2012. Elliptical Fourier descriptors for contours in three dimensions: A new tool for morphometrical analysis in biology. C. R. Biol. 335, 205–213. https://doi.org/10.1016/j.crvi.2011.12.004
 
     """
 
@@ -164,10 +172,52 @@ class EllipticFourierAnalysis(
 
         return X_transformed
 
+    def inverse_transform(self, X_transformed, t_num=100, as_frame=False):
+        """Inverse analysis of elliptic Fourier analysis.
+
+        Parameters
+        ----------
+        X_transformed : array-like of shape (n_samples, n_features)
+            Elliptic Fourier coefficients.
+        t_num : int, default = 100
+            Number of coordinate values.
+        as_frame : bool, default = False
+            If True, return pd.DataFrame.
+
+        Returns
+        -------
+        X_coords : array-like of shape (n_samples, t_num, 2) or pd.DataFrame
+            Coordinate values reconstructed from the elliptic Fourier coefficients.
+
+        """
+        X_list = []
+        sp_num = X_transformed.shape[0]
+
+        for i in range(sp_num):
+            if as_frame:
+                coef = X_transformed.loc[i]
+                X = self._inverse_transform_single(coef, as_frame=as_frame)
+                df_X = pd.DataFrame(X, columns=["x", "y"])
+                df_X["coord_id"] = [coord_id for coord_id in range(len(X))]
+                df_X["specimen_id"] = i
+                X_list.append(df_X)
+            else:
+                coef = X_transformed[i]
+                X = self._inverse_transform_single(coef, as_frame=as_frame)
+                X_list.append(X)
+
+        if as_frame:
+            X_coords = pd.concat(X_list)
+            X_coords = X_coords.set_index(["specimen_id", "coord_id"])
+        else:
+            X_coords = X_list
+
+        return X_coords
+
     def _transform_single(
         self,
-        X,
-        t=None,
+        X: np.ndarray,
+        t: np.ndarray | None = None,
         norm=True,
         duplicated_points="infinitesimal",
     ):
@@ -175,19 +225,19 @@ class EllipticFourierAnalysis(
 
         Parameters
         ----------
-        X: array-like of shape (n_coords, 2)
-                Coordinate values of an 2D outline.
+        X: ndarray of shape (n_coords, 2)
+            Coordinate values of an 2D outline.
 
-        t: array-like of shape (n_coords+1, ), optional
-                A parameter indicating the position on the outline.
-                Both t[0] and t[n_coords] corresponds to X[0].
-                If `t=None`, then t is calculated based on
-                the coordinate values with the linear interpolation.
+        t: ndarray of shape (n_coords+1, ), optional
+            A parameter indicating the position on the outline.
+            Both t[0] and t[n_coords] corresponds to X[0].
+            If `t=None`, then t is calculated based on
+            the coordinate values with the linear interpolation.
 
         Returns
         -------
-        X_transformed: list of coeffients
-            Returns the coefficients of Fourier series.
+        X_transformed: ndarray of shape (4*(n_harmonics+1), )
+            Coefficients of Fourier series.
 
         ToDo
         -------
@@ -196,6 +246,7 @@ class EllipticFourierAnalysis(
 
         X_arr = np.array(X)
         n_harmonics = self.n_harmonics
+        n_dim = self.n_dim
 
         dx = np.append(
             X_arr[0, 0] - X_arr[-1, 0],
@@ -205,9 +256,17 @@ class EllipticFourierAnalysis(
             X_arr[0, 1] - X_arr[-1, 1],
             X_arr[1:, 1] - X_arr[:-1, 1],
         )
+        if n_dim == 3:
+            dz = np.append(
+                X_arr[0, 2] - X_arr[-1, 2],
+                X_arr[1:, 2] - X_arr[:-1, 2],
+            )
 
         if t is None:
-            dt = np.sqrt(dx**2 + dy**2)
+            if n_dim == 2:
+                dt = np.sqrt(dx**2 + dy**2)
+            elif n_dim == 3:
+                dt = np.sqrt(dx**2 + dy**2 + dz**2)
             tp = np.append(0, np.cumsum(dt))
             # T = np.sum(dt)
         else:
@@ -223,6 +282,8 @@ class EllipticFourierAnalysis(
             if len(idx_duplicated_points) > 0:
                 dx = np.delete(dx, idx_duplicated_points)
                 dy = np.delete(dy, idx_duplicated_points)
+                if n_dim == 3:
+                    dz = np.delete(dz, idx_duplicated_points)
                 dt = np.delete(dt, idx_duplicated_points)
                 tp = np.delete(
                     tp,
@@ -242,19 +303,41 @@ class EllipticFourierAnalysis(
                 + str(len(X_arr))
             )
 
+        ###########################################################
+        # Fourier series expansion
+        ###########################################################
         an = _cse(dx, dt, n_harmonics)
         bn = _sse(dx, dt, n_harmonics)
         cn = _cse(dy, dt, n_harmonics)
         dn = _sse(dy, dt, n_harmonics)
+        if n_dim == 3:
+            en = _cse(dz, dt, n_harmonics)
+            fn = _sse(dz, dt, n_harmonics)
 
+        ###########################################################
+        # Normalize
+        ###########################################################
         if norm:
-            an, bn, cn, dn = self._normalize(an, bn, cn, dn)
+            if n_dim == 2:
+                an, bn, cn, dn = self._normalize(an, bn, cn, dn)
+            elif n_dim == 3:
+                an, bn, cn, dn, en, fn = self._normalize_3d(an, bn, cn, dn, en, fn)
 
-        X_transformed = np.hstack([an, bn, cn, dn])
+        if n_dim == 2:
+            X_transformed = np.hstack([an, bn, cn, dn])
+        elif n_dim == 3:
+            X_transformed = np.hstack([an, bn, cn, dn, en, fn])
 
         return X_transformed
 
     def _normalize(self, an, bn, cn, dn):
+        """Normalize Fourier coefficients.
+
+        Todo:
+            - [x] 1st ellipse, major axis
+            - [ ] 1st ellipse, area
+            - [ ] Procrustes alignment -> in coordinate values?
+        """
         a1 = an[1]
         b1 = bn[1]
         c1 = cn[1]
@@ -323,48 +406,14 @@ class EllipticFourierAnalysis(
 
         return X_coords
 
-    def inverse_transform(self, X_transformed, t_num=100, as_frame=False):
-        """Inverse analysis of elliptic Fourier analysis.
+    def _transform_single_3d(self):
+        pass
 
+    def _normalize_3d(self, an, bn, cn, dn, en, fn):
+        raise NotImplementedError("Not implemented yet")
 
-        Parameters
-        ----------
-        X_transformed : array-like of shape (n_samples, n_features)
-            Elliptic Fourier coefficients.
-        t_num : int, default = 100
-            Number of coordinate values.
-        as_frame : bool, default = False
-            If True, return pd.DataFrame.
-
-        Returns
-        -------
-        X_coords : array-like of shape (n_samples, t_num, 2) or pd.DataFrame
-            Coordinate values reconstructed from the elliptic Fourier coefficients.
-
-        """
-        X_list = []
-        sp_num = X_transformed.shape[0]
-
-        for i in range(sp_num):
-            if as_frame:
-                coef = X_transformed.loc[i]
-                X = self._inverse_transform_single(coef, as_frame=as_frame)
-                df_X = pd.DataFrame(X, columns=["x", "y"])
-                df_X["coord_id"] = [coord_id for coord_id in range(len(X))]
-                df_X["specimen_id"] = i
-                X_list.append(df_X)
-            else:
-                coef = X_transformed[i]
-                X = self._inverse_transform_single(coef, as_frame=as_frame)
-                X_list.append(X)
-
-        if as_frame:
-            X_coords = pd.concat(X_list)
-            X_coords = X_coords.set_index(["specimen_id", "coord_id"])
-        else:
-            X_coords = X_list
-
-        return X_coords
+    def _inverse_transform_single_3d(self):
+        pass
 
     def get_feature_names_out(
         self, input_features: None | npt.ArrayLike = None
@@ -386,7 +435,12 @@ class EllipticFourierAnalysis(
         bn = ["b_" + str(i) for i in range(self.n_harmonics + 1)]
         cn = ["c_" + str(i) for i in range(self.n_harmonics + 1)]
         dn = ["d_" + str(i) for i in range(self.n_harmonics + 1)]
-        feature_names_out = np.asarray(an + bn + cn + dn, dtype=str)
+        feature_names = an + bn + cn + dn
+        if self.n_dim == 3:
+            en = ["e_" + str(i) for i in range(self.n_harmonics + 1)]
+            fn = ["f_" + str(i) for i in range(self.n_harmonics + 1)]
+            feature_names = feature_names + en + fn
+        feature_names_out = np.asarray(feature_names, dtype=str)
         return feature_names_out
 
     @property
@@ -463,3 +517,103 @@ def _sse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
     coef = np.array([c0] + cn)
 
     return coef
+
+
+class PositionAligner(BaseEstimator, TransformerMixin):
+    """_summary_
+
+    Parameters
+    ----------
+    BaseEstimator : _type_
+        _description_
+    TransformerMixin : _type_
+        _description_
+    """
+
+    def __init__(self, approx="points", method="centroid"):
+        self.approx = approx
+        self.method = method
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        return align_position(X, method=self.method, origin=self.origin)
+
+    def fit_transform(self, X, y=None):
+        return align_position(X, method=self.method, origin=self.origin)
+
+    def _align_centroid(
+        self,
+    ):
+        pass
+
+
+class OrientationAligner(BaseEstimator, TransformerMixin):
+    def __init__(self, approx="points", method="pca"):
+        self.method = method
+
+
+class ScaleAligner(BaseEstimator, TransformerMixin):
+    def __init__(self, approx="points", method="area"):
+        self.method = method
+
+
+class ProcrustesAligner(BaseEstimator, TransformerMixin):
+    def __init__(self, scale=True):
+        self.method = method
+
+
+def _align_position(x, p0, method="centroid_points", origin=None):
+    """Align positions of outline coordinate values."""
+
+    if method == "centroid_points":
+        X_aligned = X - np.mean(X, axis=0)
+    elif method == "centroid_polygon":
+        raise NotImplementedError("Not implemented yet")
+    elif method == "centroid_closed_spline":
+        n_dim = X[0].shape[1]
+        for x in X:
+            dx = x[1:] - x[:-1]
+            dt = np.sqrt(dx * dx)
+            t = np.concatenate([[0], np.cumsum(dt)])
+            spl = make_interp_spline(t, np.c_[[x[:, i] for i in range(n_dim)]], k=3)
+
+        X_aligned = X - np.mean(X, axis=1)[:, None]
+    elif method == "centroid_minimal_surface":
+        raise NotImplementedError("Not implemented yet")
+    else:
+        raise ValueError("Unknown method: {}".format(method))
+
+    return X_aligned
+
+
+def _align_orientation(x1, R0, method="pca"):
+    """Align orientation of outline coordinate values."""
+
+    if method == "pca":
+        n_dim = X[0].shape[1]
+        pca = PCA(n_components=n_dim)
+        X_aligned = [pca.fit_transpose(x) for x in X]
+    else:
+        raise ValueError("Unknown method: {}".format(method))
+
+    return X_aligned
+
+
+def _align_scale(x, s, method="area"):
+    """Align scale of outline coordinate values.
+    Parameters
+    ----------
+    X : np.ndarray
+        outline coordinate values
+    method : str, optional
+        method to align scale, by default "area"
+    """
+
+    if method == "area":
+        X_aligned = [x / np.sqrt(np.sum(x**2)) for x in X]
+    else:
+        raise ValueError("Unknown method: {}".format(method))
+
+    return X_aligned
