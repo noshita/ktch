@@ -48,6 +48,7 @@ extensions = [
     "numpydoc",
     "myst_nb",
     "sphinx_sitemap",
+    "sphinx_favicon",
 ]
 
 # this is needed for some reason...
@@ -203,7 +204,15 @@ html_logo = "_static/img/logo.svg"
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = "_static/img/favicon_32.png"
+# html_favicon = "_static/img/favicon_32.png"
+favicons = [
+    {"href": "favicon.svg"},  # => use `_static/icon.svg`
+    {"href": "favicon_32.png"},
+    {
+        "rel": "apple-touch-icon",
+        "href": "https://doc.ktch.dev/apple-touch-icon.png",
+    },
+]
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: |
             python -m pip install --upgrade pip
-            pip install sphinx pydata-sphinx-theme sphinx-autobuild sphinx-gallery sphinxcontrib-bibtex myst-nb nbsphinx  numpydoc matplotlib seaborn sphinx-sitemap
+            pip install sphinx pydata-sphinx-theme sphinx-autobuild sphinx-gallery sphinxcontrib-bibtex myst-nb nbsphinx numpydoc matplotlib seaborn sphinx-sitemap sphinx-favicon
             if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
             pip install -e .
       - name: Sphinx build
