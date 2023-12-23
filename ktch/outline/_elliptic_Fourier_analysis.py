@@ -330,7 +330,7 @@ class EllipticFourierAnalysis(
 
         return X_transformed
 
-    def _normalize(self, an, bn, cn, dn):
+    def _normalize(self, an, bn, cn, dn, keep_start_point=False):
         """Normalize Fourier coefficients.
 
         Todo:
@@ -343,18 +343,29 @@ class EllipticFourierAnalysis(
         c1 = cn[1]
         d1 = dn[1]
 
-        theta = (1 / 2) * np.arctan2(
-            2 * (a1 * b1 + c1 * d1), (a1**2 + c1**2 - b1**2 - d1**2)
+        theta = (1 / 2) * np.arctan(
+            2 * (a1 * b1 + c1 * d1) / (a1**2 + c1**2 - b1**2 - d1**2)
         )
-        if theta < 0:
-            theta = theta + 2 * np.pi
+
+        [[a_s, b_s], [c_s, d_s]] = np.array([[a1, b1], [c1, d1]]).dot(
+            rotation_matrix_2d(theta)
+        )
+        s1 = a_s**2 + c_s**2
+        s2 = b_s**2 + d_s**2
+
+        if s1 < s2:
+            if theta < 0:
+                theta = theta + np.pi / 2
+            else:
+                theta = theta - np.pi / 2
 
         a_s = a1 * np.cos(theta) + b1 * np.sin(theta)
         c_s = c1 * np.cos(theta) + d1 * np.sin(theta)
         scale = np.sqrt(a_s**2 + c_s**2)
         psi = np.arctan2(c_s, a_s)
-        if psi < 0:
-            psi = psi + 2 * np.pi
+
+        if keep_start_point:
+            theta = 0
 
         coef_norm_list = []
         r_psi = rotation_matrix_2d(-psi)
