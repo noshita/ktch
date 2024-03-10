@@ -41,8 +41,6 @@ docs = [
 ]
 
 [tool.poetry.group.dev.dependencies]
-autopep8 = "^1.6.0"
-flake8 = "^5.0.4"
 invoke = "^1.4.1"
 jupyter = "^1.0.0"
 jupyterlab = "^3.4.4"
@@ -109,3 +107,22 @@ unauthorized_licenses = [
 
 [tool.liccheck.authorized_packages]
 uuid = "<=1.30"
+
+[tool.ruff]
+exclude = [
+  ".git",
+  "__pycache__",
+  "dist",
+  "doc/_build",
+  "doc/notebooks",
+  "doc/generated",
+]
+line-length = 88
+
+[tool.ruff.lint]
+# all rules can be found here: https://beta.ruff.rs/docs/rules/
+ignore = [
+  "E731", # do not assign a lambda expression, use a def
+  "E741", # do not use variables named 'l', 'O', or 'I'
+]
+select = ["E", "F", "W", "I"]
