@@ -37,6 +37,7 @@ Functions
    :template: function.rst
 
    landmark.centroid_size
+   landmark.tps_grid_2d_plot
 
 
 .. _outline_ref:
