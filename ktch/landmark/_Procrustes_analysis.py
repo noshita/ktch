@@ -248,3 +248,52 @@ def centroid_size(x):
     x_c = x - np.mean(x, axis=0)
     centroid_size = np.sqrt(np.trace(np.dot(x_c, x_c.T)))
     return centroid_size
+
+
+def thin_plate_spline_2d(x_reference, x_target):
+    """Thin-plate spline in 2D.
+
+    Parameters
+    ----------
+    x_reference : array-like, shape (n_landmarks, n_dim)
+        Reference configuration.
+    x_target : array-like, shape (n_landmarks, n_dim)
+        Target configuration.
+
+    Returns
+    -------
+    W : ndarray, shape (n_landmarks, n_dim)
+    c : ndarray, shape (n_dim)
+    A : ndarray, shape (n_dim, n_dim)
+    """
+
+    n_dim = 2
+
+    x_r = np.array(x_reference).reshape(-1, n_dim)
+    x_t = np.array(x_target).reshape(-1, n_dim)
+
+    n_landmarks = x_r.shape[0]
+
+    if not x_r.shape == x_t.shape:
+        raise ValueError("x_reference and x_target must have the same shape.")
+
+    r = sp.spatial.distance.cdist(x_r, x_r, "euclidean")
+
+    SMat = r**2 * np.log(r, out=np.zeros_like(r), where=(r != 0))
+    QMat = np.concatenate([np.ones(n_landmarks).reshape(-1, 1), x_r], 1)
+    zero_mat = np.zeros([n_dim + 1, n_dim + 1])
+
+    GammaMat = np.concatenate(
+        [
+            np.concatenate([SMat, QMat], 1),
+            np.concatenate([QMat.T, zero_mat], 1),
+        ]
+    )
+    GammaInvMat = np.linalg.inv(GammaMat)
+    sol = np.dot(GammaInvMat, np.concatenate([x_t, np.zeros([n_dim + 1, n_dim])], 0))
+
+    W = sol[0:n_landmarks, :]
+    c = sol[n_landmarks, :]
+    A = sol[n_landmarks + 1 :, :]
+
+    return W, c, A
