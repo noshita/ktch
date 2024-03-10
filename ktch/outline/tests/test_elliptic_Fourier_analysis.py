@@ -1,13 +1,8 @@
 import numpy as np
-
-from numpy.testing import assert_array_almost_equal
 import pytest
+from numpy.testing import assert_array_almost_equal
 
-from ktch.datasets import (
-    load_outline_bottles,
-    load_coefficient_bottles,
-    convert_coords_df_to_list,
-)
+from ktch.datasets import load_coefficient_bottles, load_outline_bottles
 from ktch.outline import EllipticFourierAnalysis
 
 bottles = load_outline_bottles()
@@ -29,6 +24,17 @@ def test_data_prep_align():
         x_frame = X_frame.iloc[i].dropna().to_numpy().reshape(2, -1).T
         x_list = np.array(X_list[i])
         assert_array_almost_equal(x_frame, x_list)
+
+
+@pytest.mark.parametrize("norm", [False, True])
+def test_efa_shape(norm):
+    n_harmonics = 6
+
+    X = bottles.coords
+    efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
+    X_transformed = efa.fit_transform(X, norm=norm)
+
+    assert X_transformed.shape == (len(X), 4 * (n_harmonics + 1))
 
 
 @pytest.mark.parametrize("norm", [False, True])
