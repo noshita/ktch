@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from .._Procrustes_analysis import _thin_plate_spline_2d, _tps_2d
@@ -45,6 +44,8 @@ def tps_grid_2d_plot(
     ax : :class:`matplotlib.axes.Axes`
         Matplotlib axes.
     """
+
+    import matplotlib.pyplot as plt
 
     W, c, A = _thin_plate_spline_2d(x_reference, x_target)
 
