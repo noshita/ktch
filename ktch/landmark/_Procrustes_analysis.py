@@ -16,20 +16,12 @@
 
 from __future__ import annotations
 
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 
 import numpy as np
-import scipy as sp
-import pandas as pd
-
 import numpy.typing as npt
-
-
-from sklearn.base import (
-    BaseEstimator,
-    TransformerMixin,
-    OneToOneFeatureMixin,
-)
+import scipy as sp
+from sklearn.base import BaseEstimator, OneToOneFeatureMixin, TransformerMixin
 
 
 class GeneralizedProcrustesAnalysis(
@@ -250,7 +242,7 @@ def centroid_size(x):
     return centroid_size
 
 
-def thin_plate_spline_2d(x_reference, x_target):
+def _thin_plate_spline_2d(x_reference, x_target):
     """Thin-plate spline in 2D.
 
     Parameters
@@ -297,3 +289,14 @@ def thin_plate_spline_2d(x_reference, x_target):
     A = sol[n_landmarks + 1 :, :]
 
     return W, c, A
+
+
+def _tps_2d(x, y, T, W, c, A):
+
+    t = np.array([x, y])
+
+    r = np.apply_along_axis(lambda v: np.sqrt(np.dot(v, v)), 1, t - T)
+
+    pred = c + np.dot(A, t) + np.dot(W.T, np.where(r == 0, 0, r**2 * np.log(r)))
+
+    return pred

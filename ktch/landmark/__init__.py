@@ -16,7 +16,7 @@ The :mod:`katatch.landmark` module implements landmark-based morphometrics.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._Procrustes_analysis import GeneralizedProcrustesAnalysis
-from ._Procrustes_analysis import centroid_size
+from ._plot._tps import tps_grid_2d_plot
+from ._Procrustes_analysis import GeneralizedProcrustesAnalysis, centroid_size
 
-__all__ = ["GeneralizedProcrustesAnalysis", "centroid_size"]
+__all__ = ["GeneralizedProcrustesAnalysis", "centroid_size", "tps_grid_2d_plot"]
