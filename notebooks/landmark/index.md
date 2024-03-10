@@ -11,4 +11,5 @@ Examples concerning the :mod:`ktch.landmark` module.
 
     ./generalized_Procrustes_analysis
     ./gpa_from_tps
+    ./thin_plate_spline
 ```
