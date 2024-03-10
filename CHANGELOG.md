@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.3](https://github.com/noshita/ktch/compare/v0.3.2...v0.3.3) (2024-03-10)
+
+
+### Features
+
+* ✨ add to doc ([25317da](https://github.com/noshita/ktch/commit/25317da0805b13316e767a563460c597da2066a9))
+* ✨ add tps transformation grid ([ae87df5](https://github.com/noshita/ktch/commit/ae87df55d6f9590ac11f1be94ab493c647f71980))
+* ✨ add tps transformation grid ([d295a4f](https://github.com/noshita/ktch/commit/d295a4fbc1629475b1fb4f85a569e4b178704f75))
+* ✨ thin-plate spline ([09f8c4a](https://github.com/noshita/ktch/commit/09f8c4a4c7cd6061e8a55939b9cb1801386267ca))
+
 ## [0.3.1](https://github.com/noshita/ktch/compare/v0.3.0...v0.3.1) (2024-02-08)
 
 
