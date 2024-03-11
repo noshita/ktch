@@ -27,3 +27,23 @@ poetry export > requirements.txt
 poetry run liccheck -s pyproject.toml  
 
 ```
+
+### Release Please
+
+#### prefix
+
+* fix: which represents bug fixes, and correlates to a SemVer patch.
+* feat: which represents a new feature, and correlates to a SemVer minor.
+* feat!:, or fix!:, refactor!:, etc., which represent a breaking change (indicated by the !) and will result in a SemVer major.
+
+
+#### バージョンの変更
+
+gitのcommit bodyに`Release-As: x.x.x`（`x.x.x`は指定したいバージョン）と記載することで，そのバージョンのPRが作成される．
+
+```sh
+git commit --allow-empty -m "chore: 🔧 release X.X.X" -m "Release-As: X.X.X"
+```
+`X.X.X`は指定したいバージョン番号．
+
+* [How do I change the version number?| Release Please](https://github.com/googleapis/release-please?tab=readme-ov-file#how-do-i-change-the-version-number)
