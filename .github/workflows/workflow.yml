@@ -1,16 +1,19 @@
 name: Codecov
 on: [push]
 jobs:
-  build:
+  run:
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
         python-version: ["3.10", "3.11"]
-    runs-on: ${{ matrix.os }}
+    env:
+      OS: ${{ matrix.os }}
+      PYTHON: ${{ matrix.python-version }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
@@ -24,12 +27,15 @@ jobs:
         run: |
           pytest --cov=./ --cov-report=xml
       - name: test
-        run: ls
+        run: | 
+          pwd
+          ls
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          directory: ./coverage/reports/
           env_vars: OS,PYTHON
-          files: /home/runner/work/ktch/ktch/coverage.xml
-          flags: tests
+          fail_ci_if_error: true
+          files: ./coverage.xml
+          flags: unittests
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
