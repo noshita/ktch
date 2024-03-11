@@ -42,8 +42,7 @@ poetry run liccheck -s pyproject.toml
 gitのcommit bodyに`Release-As: x.x.x`（`x.x.x`は指定したいバージョン）と記載することで，そのバージョンのPRが作成される．
 
 ```sh
-git commit --allow-empty -m "chore: 🔧 release X.X.X" -m "Release-As: X.X.X"
+git commit --allow-empty -m "chore: 🔧 release x.x.x" -m "Release-As: x.x.x"
 ```
-`X.X.X`は指定したいバージョン番号．
 
 * [How do I change the version number?| Release Please](https://github.com/googleapis/release-please?tab=readme-ov-file#how-do-i-change-the-version-number)
