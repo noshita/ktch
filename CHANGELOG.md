@@ -20,6 +20,26 @@
 
 * release 0.4.1 ([cc1c2a6](https://github.com/noshita/ktch/commit/cc1c2a62aeaebf444b14e05285378e6de8463860))
 
+## [0.4.1](https://github.com/noshita/ktch/compare/v0.4.1...v0.4.1) (2024-03-12)
+
+
+### Bug Fixes
+
+* 🐛  inefficient regular expression ([a2d04a2](https://github.com/noshita/ktch/commit/a2d04a2de7bbf204e289e2c2e4cdf75b0a59565f))
+* 🐛 install jupytext ([b938cb1](https://github.com/noshita/ktch/commit/b938cb1e52a77191069538942caeb71f46c07c1f))
+* 🐛 invalid escape sequence ([394464d](https://github.com/noshita/ktch/commit/394464d84c1ec0da8fd50c12bd4a93c80afbe31c))
+
+
+### Documentation
+
+* 📚 introduce jupytext and remove .ipynb files ([d8b38b9](https://github.com/noshita/ktch/commit/d8b38b9a11408da1fd464a0f2c7b268688c23350))
+* 📚 introduce jupytext and remove .ipynb files ([0d6dd70](https://github.com/noshita/ktch/commit/0d6dd705a53a52495e15e945612b4185ffd2b0a5))
+
+
+### Miscellaneous Chores
+
+* release 0.4.1 ([cc1c2a6](https://github.com/noshita/ktch/commit/cc1c2a62aeaebf444b14e05285378e6de8463860))
+
 ## [0.4.1](https://github.com/noshita/ktch/compare/v0.4.0...v0.4.1) (2024-03-12)
 
 
