@@ -24,7 +24,7 @@ version = "0.4.1"
 
 [tool.poetry.dependencies]
 numpy = ">=1.22"
-pandas = ">=1.5"
+pandas = {version = ">=1.5", extras = ["pyarrow"]}
 python = "^3.9"
 scikit-learn = ">=1.2"
 scipy = ">=1.8"
