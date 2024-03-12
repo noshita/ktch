@@ -224,11 +224,11 @@ PTN_LM = re.compile(
     flags=re.MULTILINE,
 )
 PTN_CURVES = re.compile(
-    r"^(?P<CURVES>CURVES\s*=\s*[0-9]+\s*(?P<POINTS>(POINTS\s*=\s*[0-9]+\s*[0-9\s\.-]+)+))$",
+    r"^(?P<CURVES>CURVES\s*=\s*[0-9]+\s+(?P<POINTS>(POINTS\s*=\s*[0-9]+\s+[0-9\s\.-]+)+))$",
     flags=re.MULTILINE,
 )
 PTN_POINTS = re.compile(
-    r"^(?P<POINTS>POINTS\s*=\s*[0-9]+\s*([\w\.-]+\s+[\w\.-]+\s*[\w\.-]*\s*)+)",
+    r"^(?P<POINTS>POINTS\s*=\s*[0-9]+\s+([\w\.-]+\s+[\w\.-]+\s*[\w\.-]*\s*)+)",
     flags=re.MULTILINE,
 )
 
