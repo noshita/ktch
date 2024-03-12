@@ -125,6 +125,7 @@ line-length = 88
 [tool.ruff.lint]
 # all rules can be found here: https://beta.ruff.rs/docs/rules/
 ignore = [
+  "E203", # space before : (needed for how black formats slicing)
   "E731", # do not assign a lambda expression, use a def
   "E741", # do not use variables named 'l', 'O', or 'I'
 ]
