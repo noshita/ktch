@@ -15,13 +15,12 @@
 # limitations under the License.
 
 import re
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import numpy.typing as npt
-
+import pandas as pd
 
 ####################################
 # TPS dataclass
@@ -234,7 +233,7 @@ PTN_POINTS = re.compile(
 )
 
 PTN_DICT = re.compile(r"^(?P<key>\w+)\s*=\s*(?P<value>.+)$")
-PTN_COORD = re.compile("^(?P<x>[0-9\-\.]*)\s(?P<y>[0-9\-\.]*)\s*(?P<z>[0-9\-\.]*)?$")
+PTN_COORD = re.compile(r"^(?P<x>[0-9-\.]*)\s(?P<y>[0-9-\.]*)\s*(?P<z>[0-9-\.]*)?$")
 
 ######################################
 # Helper functions                   #
