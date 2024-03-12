@@ -108,6 +108,9 @@ unauthorized_licenses = [
 [tool.liccheck.authorized_packages]
 uuid = "<=1.30"
 
+[tool.jupytext]
+formats = "ipynb,md:myst"
+
 [tool.ruff]
 exclude = [
   ".git",
