@@ -12,11 +12,13 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, datetime
+import datetime
+import glob
 import os
 import shutil
-from pathlib import Path
+import sys
 
+import jupytext
 
 sys.path.insert(0, os.path.abspath("sphinxext"))
 # import sphinx_gallery
@@ -62,8 +64,6 @@ bibtex_reference_style = "author_year"
 bibtex_default_style = "plain"
 
 # pngmath / imgmath compatibility layer for different sphinx versions
-import sphinx
-from distutils.version import LooseVersion
 
 # if LooseVersion(sphinx.__version__) < LooseVersion('1.4'):
 #     extensions.append('sphinx.ext.pngmath')
@@ -385,8 +385,22 @@ shutil.rmtree(os.path.join(project_root, "doc/notebooks"), ignore_errors=True)
 shutil.copytree(
     os.path.join(project_root, "notebooks"),
     os.path.join(project_root, "doc/notebooks"),
-    ignore=shutil.ignore_patterns("*.ipynb_checkpoints"),
+    ignore=shutil.ignore_patterns("*.ipynb_checkpoints", "*.ipynb"),
 )
+paths_notebooks = [
+    path
+    for path in glob.glob(
+        os.path.join(project_root, "doc/notebooks", "**/*.md"), recursive=True
+    )
+    if os.path.basename(path) != "index.md"
+]
+for path in paths_notebooks:
+    nb = jupytext.read(path)
+    dirpath, filename = os.path.split(path)
+    filename, _ = os.path.splitext(filename)
+    dest_path = os.path.join(dirpath, filename + ".ipynb")
+    jupytext.write(nb, dest_path)
+    os.remove(path)
 
 # for myst-nb
 source_suffix = {
