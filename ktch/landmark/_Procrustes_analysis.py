@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from abc import ABCMeta
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -39,6 +40,8 @@ class GeneralizedProcrustesAnalysis(
         Torelance for convergence of Procrustes analysis.
     n_dim: int, default=2
         Dimensions of the configurations.
+    n_jobs: int, default=None
+        The number of parallel jobs to run for Procrustes analysis.
 
     Attributes
     ------------
@@ -60,12 +63,20 @@ class GeneralizedProcrustesAnalysis(
 
     """
 
-    def __init__(self, tol=10**-7, scaling=True, n_dim=2, debug=False):
+    def __init__(
+        self,
+        tol=10**-7,
+        scaling=True,
+        n_dim=2,
+        n_jobs: Optional[int] = None,
+        debug=False,
+    ):
         self.tol = tol
         self.scaling = scaling
         self.debug = debug
         self.mu_ = None
         self.n_dim_ = n_dim
+        self.n_jobs = n_jobs
 
     @property
     def n_dim(self):
@@ -166,13 +177,8 @@ class GeneralizedProcrustesAnalysis(
         total_disp_prev = np.inf
         while diff_disp > self.tol:
             total_disp = 0
-            X_new = np.zeros(X_.shape)
-            for i, x in enumerate(X):
-                R, scale = sp.linalg.orthogonal_procrustes(x, mu)
-                x_ = x @ R
-                total_disp += np.sum((x_ - mu) ** 2)
-                X_new[i] = x_
-            X_ = X_new
+            X_ = np.array([x @ sp.linalg.orthogonal_procrustes(x, mu)[0] for x in X])
+            total_disp = np.sum([(x_ - mu) ** 2 for x_ in X_])
 
             diff_disp = np.abs(total_disp_prev - total_disp)
             total_disp_prev = total_disp
@@ -292,7 +298,6 @@ def _thin_plate_spline_2d(x_reference, x_target):
 
 
 def _tps_2d(x, y, T, W, c, A):
-
     t = np.array([x, y])
 
     r = np.apply_along_axis(lambda v: np.sqrt(np.dot(v, v)), 1, t - T)
