@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.3](https://github.com/noshita/ktch/compare/v0.4.2...v0.4.3) (2024-06-09)
+
+
+### Bug Fixes
+
+* 🐛 actions/setup-python ([d06a63e](https://github.com/noshita/ktch/commit/d06a63e8fc558f66d3dcce14393bddbe32b7372e))
+
+
+### Miscellaneous Chores
+
+* 🔧  v0.4.3 ([7e07f19](https://github.com/noshita/ktch/commit/7e07f199dfad803844867e6e06def27efbd2a795))
+* 🔧 update requirements.txt ([a43ec5f](https://github.com/noshita/ktch/commit/a43ec5f7ec020c338cb04bf87c8f22020c081f60))
+
 ## [0.4.2](https://github.com/noshita/ktch/compare/v0.4.1...v0.4.2) (2024-06-09)
 
 
