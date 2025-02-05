@@ -1,7 +1,7 @@
 name: Codecov
 on:
   push:
-    paths: ["ktch/"]
+    paths: ["ktch/", .github/workflows/documentation.yml]
 jobs:
   run:
     runs-on: ${{ matrix.os }}
