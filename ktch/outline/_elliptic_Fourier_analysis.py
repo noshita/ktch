@@ -16,25 +16,17 @@
 
 from __future__ import annotations
 
-from abc import ABCMeta, abstractmethod
-from typing import Literal
-from enum import IntEnum
-
-from operator import index
+from abc import ABCMeta
 
 import numpy as np
 import numpy.typing as npt
-import scipy as sp
-from scipy.spatial.transform import Rotation as R
-from scipy.interpolate import make_interp_spline
 import pandas as pd
-
+from scipy.interpolate import make_interp_spline
 from sklearn.base import (
     BaseEstimator,
-    TransformerMixin,
     ClassNamePrefixFeaturesOutMixin,
+    TransformerMixin,
 )
-
 from sklearn.decomposition import PCA
 
 
@@ -42,7 +34,7 @@ class EllipticFourierAnalysis(
     ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator, metaclass=ABCMeta
 ):
     r"""
-    Elliptic Fourier Analysis (EFA) 
+    Elliptic Fourier Analysis (EFA)
 
     Parameters
     ------------
@@ -63,7 +55,8 @@ class EllipticFourierAnalysis(
 
     Notes
     ------------
-    EFA is widely applied for outline shape analysis in two-dimensional space [Kuhl_Giardina_1982]_.
+    EFA is widely applied for outline shape analysis
+    in two-dimensional space [Kuhl_Giardina_1982]_.
 
     .. math::
         \begin{align}
@@ -78,7 +71,8 @@ class EllipticFourierAnalysis(
         \end{align}
 
 
-    EFA is also applied for a closed curve in the three-dimensional space (e.g., [Lestrel_1997]_, [Lestrel_et_al_1997]_, and [Godefroy_et_al_2012]_).
+    EFA is also applied for a closed curve in the three-dimensional space
+    (e.g., [Lestrel_1997]_, [Lestrel_et_al_1997]_, and [Godefroy_et_al_2012]_).
 
     References
     ------------
@@ -91,11 +85,11 @@ class EllipticFourierAnalysis(
 
     def __init__(
         self,
-        n_harmonics=20,
-        n_dim=2,
-        reflect=False,
-        metric="",
-        impute=False,
+        n_harmonics: int = 20,
+        n_dim: int = 2,
+        reflect: bool = False,
+        metric: str = "",
+        impute: bool = False,
     ):
         """
         ToDo
@@ -106,8 +100,6 @@ class EllipticFourierAnalysis(
         self.n_harmonics = n_harmonics
         if n_dim not in (2, 3):
             raise ValueError("n_dim must be 2 or 3")
-        elif n_dim == 3:
-            raise NotImplementedError("n_dim=3 is not implemented yet")
         else:
             self.n_dim = n_dim
         self.reflect = reflect
@@ -140,23 +132,30 @@ class EllipticFourierAnalysis(
             the coordinate values with the linear interpolation.
 
         norm: bool, default=True
-            Normalize the elliptic Fourier coefficients by the major axis of the 1st ellipse.
+            Normalize the elliptic Fourier coefficients
+            by the major axis of the 1st ellipse.
 
         Returns
         ------------
         X_transformed: array-like of shape (n_samples, (1+2*n_harmonics)*n_dim)
             Returns the array-like of coefficients.
-            (a_0, a_1, ..., a_n, b_0, b_1, ..., b_n, , c_0, c_1, ..., c_n, d_0, d_1, ..., d_n)
+            (a_0, a_1, ..., a_n, b_0, b_1, ..., b_n, ,
+            c_0, c_1, ..., c_n, d_0, d_1, ..., d_n)
 
         """
         n_dim = self.n_dim
-        n_harmonics = self.n_harmonics
 
         if t is None:
             t_ = [None for i in range(len(X))]
+        else:
+            t_ = t
 
         if len(t_) != len(X):
-            raise ValueError("t must have a same length of X ")
+            raise ValueError(
+                "t ({t_len}) must have a same length of X ({X_len})".format(
+                    t_len=len(t_), X_len=len(X)
+                )
+            )
 
         if isinstance(X, pd.DataFrame):
             X_ = [
@@ -166,13 +165,24 @@ class EllipticFourierAnalysis(
         else:
             X_ = X
 
-        X_transformed = np.stack(
-            [self._transform_single(X_[i], t_[i], norm=norm) for i in range(len(X_))]
-        )
+        if n_dim == 2:
+            X_transformed = np.stack(
+                [
+                    self._transform_single_2d(X_[i], t_[i], norm=norm)
+                    for i in range(len(X_))
+                ]
+            )
+        elif n_dim == 3:
+            X_transformed = np.stack(
+                [
+                    self._transform_single_3d(X_[i], t_[i], norm=norm)
+                    for i in range(len(X_))
+                ]
+            )
 
         return X_transformed
 
-    def inverse_transform(self, X_transformed, t_num=100, as_frame=False):
+    def inverse_transform(self, X_transformed, t_num=100, norm=True, as_frame=False):
         """Inverse analysis of elliptic Fourier analysis.
 
         Parameters
@@ -196,14 +206,29 @@ class EllipticFourierAnalysis(
         for i in range(sp_num):
             if as_frame:
                 coef = X_transformed.loc[i]
-                X = self._inverse_transform_single(coef, as_frame=as_frame)
-                df_X = pd.DataFrame(X, columns=["x", "y"])
+                if self.n_dim == 2:
+                    X = self._inverse_transform_single_2d(
+                        coef, as_frame=as_frame, t_num=t_num, norm=norm
+                    )
+                    df_X = pd.DataFrame(X, columns=["x", "y"])
+                elif self.n_dim == 3:
+                    X = self._inverse_transform_single_3d(
+                        coef, as_frame=as_frame, t_num=t_num, norm=norm
+                    )
+                    df_X = pd.DataFrame(X, columns=["x", "y", "z"])
                 df_X["coord_id"] = [coord_id for coord_id in range(len(X))]
                 df_X["specimen_id"] = i
                 X_list.append(df_X)
             else:
                 coef = X_transformed[i]
-                X = self._inverse_transform_single(coef, as_frame=as_frame)
+                if self.n_dim == 2:
+                    X = self._inverse_transform_single_2d(
+                        coef, as_frame=as_frame, t_num=t_num, norm=norm
+                    )
+                elif self.n_dim == 3:
+                    X = self._inverse_transform_single_3d(
+                        coef, as_frame=as_frame, t_num=t_num, norm=norm
+                    )
                 X_list.append(X)
 
         if as_frame:
@@ -214,7 +239,13 @@ class EllipticFourierAnalysis(
 
         return X_coords
 
-    def _transform_single(
+    ###########################################################
+    #
+    #   2D
+    #
+    ###########################################################
+
+    def _transform_single_2d(
         self,
         X: np.ndarray,
         t: np.ndarray | None = None,
@@ -228,9 +259,8 @@ class EllipticFourierAnalysis(
         X: ndarray of shape (n_coords, 2)
             Coordinate values of an 2D outline.
 
-        t: ndarray of shape (n_coords+1, ), optional
+        t: ndarray of shape  (n_coords, ), optional
             A parameter indicating the position on the outline.
-            Both t[0] and t[n_coords] corresponds to X[0].
             If `t=None`, then t is calculated based on
             the coordinate values with the linear interpolation.
 
@@ -239,41 +269,23 @@ class EllipticFourierAnalysis(
         X_transformed: ndarray of shape (4*(n_harmonics+1), )
             Coefficients of Fourier series.
 
-        ToDo
-        -------
-        * EHN: 3D outline
         """
 
-        X_arr = np.array(X)
         n_harmonics = self.n_harmonics
-        n_dim = self.n_dim
 
-        dx = np.append(
-            X_arr[0, 0] - X_arr[-1, 0],
-            X_arr[1:, 0] - X_arr[:-1, 0],
-        )
-        dy = np.append(
-            X_arr[0, 1] - X_arr[-1, 1],
-            X_arr[1:, 1] - X_arr[:-1, 1],
-        )
-        if n_dim == 3:
-            dz = np.append(
-                X_arr[0, 2] - X_arr[-1, 2],
-                X_arr[1:, 2] - X_arr[:-1, 2],
-            )
+        X_arr = np.append(
+            X[-1].reshape(1, self.n_dim), np.array(X), axis=0
+        )  # 1 <= i <= k
+        dx = X_arr[1:, 0] - X_arr[:-1, 0]  # 1 <= i <= k
+        dy = X_arr[1:, 1] - X_arr[:-1, 1]  # 1 <= i <= k
 
         if t is None:
-            if n_dim == 2:
-                dt = np.sqrt(dx**2 + dy**2)
-            elif n_dim == 3:
-                dt = np.sqrt(dx**2 + dy**2 + dz**2)
-            tp = np.append(0, np.cumsum(dt))
-            # T = np.sum(dt)
+            dt = np.sqrt(dx**2 + dy**2)
+            tp = np.cumsum(dt)
         else:
-            # TODO: add test
-            dt = t[1:] - t[:-1]
-            tp = t
-            # T = t[-1]
+            t_ = np.append(0, t)
+            dt = t_[1:] - t_[:-1]  # 1 <= i <= k
+            tp = np.cumsum(dt)
 
         if duplicated_points == "infinitesimal":
             dt[dt < 10**-10] = 10**-10
@@ -282,8 +294,7 @@ class EllipticFourierAnalysis(
             if len(idx_duplicated_points) > 0:
                 dx = np.delete(dx, idx_duplicated_points)
                 dy = np.delete(dy, idx_duplicated_points)
-                if n_dim == 3:
-                    dz = np.delete(dz, idx_duplicated_points)
+
                 dt = np.delete(dt, idx_duplicated_points)
                 tp = np.delete(
                     tp,
@@ -295,42 +306,32 @@ class EllipticFourierAnalysis(
                 "'duplicated_points' must be 'infinitesimal' or 'deletion'"
             )
 
-        if len(tp) != len(X_arr) + 1:
+        if len(tp) != len(X):
             raise ValueError(
-                "len(t) must have a same len(X) + 1), len(t): "
+                "len(t) must have a same len(X), len(t): "
                 + str(len(tp))
-                + ", len(X)+1: "
-                + str(len(X_arr))
+                + ", len(X): "
+                + str(len(X))
             )
 
-        ###########################################################
         # Fourier series expansion
-        ###########################################################
-        an = _cse(dx, dt, n_harmonics)
-        bn = _sse(dx, dt, n_harmonics)
-        cn = _cse(dy, dt, n_harmonics)
-        dn = _sse(dy, dt, n_harmonics)
-        if n_dim == 3:
-            en = _cse(dz, dt, n_harmonics)
-            fn = _sse(dz, dt, n_harmonics)
+        T = tp[-1]
+        a0 = 2 / T * np.sum(X_arr[1:, 0])
+        c0 = 2 / T * np.sum(X_arr[1:, 1])
+        an = np.append(a0, _cse(dx, dt, n_harmonics))
+        bn = np.append(0, _sse(dx, dt, n_harmonics))
+        cn = np.append(c0, _cse(dy, dt, n_harmonics))
+        dn = np.append(0, _sse(dy, dt, n_harmonics))
 
-        ###########################################################
         # Normalize
-        ###########################################################
         if norm:
-            if n_dim == 2:
-                an, bn, cn, dn = self._normalize(an, bn, cn, dn)
-            elif n_dim == 3:
-                an, bn, cn, dn, en, fn = self._normalize_3d(an, bn, cn, dn, en, fn)
+            an, bn, cn, dn = self._normalize_2d(an, bn, cn, dn)
 
-        if n_dim == 2:
-            X_transformed = np.hstack([an, bn, cn, dn])
-        elif n_dim == 3:
-            X_transformed = np.hstack([an, bn, cn, dn, en, fn])
+        X_transformed = np.hstack([an, bn, cn, dn])
 
         return X_transformed
 
-    def _normalize(self, an, bn, cn, dn, keep_start_point=False):
+    def _normalize_2d(self, an, bn, cn, dn, keep_start_point=False):
         """Normalize Fourier coefficients.
 
         Todo:
@@ -383,7 +384,7 @@ class EllipticFourierAnalysis(
 
         return An, Bn, Cn, Dn
 
-    def _inverse_transform_single(
+    def _inverse_transform_single_2d(
         self,
         X_transformed,
         t_num=100,
@@ -392,39 +393,202 @@ class EllipticFourierAnalysis(
     ):
         coef = X_transformed
         if as_frame:
+            a0 = coef["an"][0]
+            c0 = coef["cn"][0]
             an = coef["an"][1:]
             bn = coef["bn"][1:]
             cn = coef["cn"][1:]
             dn = coef["dn"][1:]
         else:
-            an, bn, cn, dn = coef.reshape([4, -1])
+            an, bn, cn, dn = coef.reshape([2 * self.n_dim, -1])
+            a0 = an[0]
+            c0 = cn[0]
             an = an[1:]
             bn = bn[1:]
             cn = cn[1:]
             dn = dn[1:]
 
+        if norm:
+            a0 = 0
+            c0 = 0
+
         n_max = len(an)
 
-        theta = np.linspace(0, 2 * np.pi, t_num)
+        theta = np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
 
         cos = np.cos(np.tensordot(np.arange(1, n_max + 1, 1), theta, 0))
         sin = np.sin(np.tensordot(np.arange(1, n_max + 1, 1), theta, 0))
 
-        x = np.dot(an, cos) + np.dot(bn, sin)
-        y = np.dot(cn, cos) + np.dot(dn, sin)
+        x = a0 / 2 + np.dot(an, cos) + np.dot(bn, sin)
+        y = c0 / 2 + np.dot(cn, cos) + np.dot(dn, sin)
 
         X_coords = np.stack([x, y], 1)
 
         return X_coords
 
-    def _transform_single_3d(self):
-        pass
+    ###########################################################
+    #
+    #   3D
+    #
+    ###########################################################
+
+    def _transform_single_3d(
+        self,
+        X: np.ndarray,
+        t: np.ndarray | None = None,
+        norm: bool = False,
+        duplicated_points: str = "infinitesimal",
+    ):
+        """Fit the model with a signle outline.
+
+        Parameters
+        ----------
+        X: ndarray of shape (n_coords, 3)
+            Coordinate values of an 3D outline.
+
+        t: ndarray of shape (n_coords+1, ), optional
+            A parameter indicating the position on the outline.
+            Both t[0] and t[n_coords] corresponds to X[0].
+            If `t=None`, then t is calculated based on
+            the coordinate values with the linear interpolation.
+
+        norm: bool, default=True
+            Normalize the elliptic Fourier coefficients
+            Note: Not implemented yet.
+
+        Returns
+        -------
+        X_transformed: ndarray of shape (6*(n_harmonics+1), )
+            Coefficients of Fourier series.
+
+        ToDo
+        -------
+        * EHN: Normalize 3D Fourier coefficients
+        """
+
+        n_harmonics = self.n_harmonics
+
+        X_arr = np.append(
+            X[-1].reshape(1, self.n_dim), np.array(X), axis=0
+        )  # 1 <= i <= k
+        dx = X_arr[1:, 0] - X_arr[:-1, 0]  # 1 <= i <= k
+        dy = X_arr[1:, 1] - X_arr[:-1, 1]  # 1 <= i <= k
+        dz = X_arr[1:, 2] - X_arr[:-1, 2]  # 1 <= i <= k
+
+        if t is None:
+            dt = np.sqrt(dx**2 + dy**2)
+            tp = np.cumsum(dt)
+        else:
+            t_ = np.append(0, t)
+            dt = t_[1:] - t_[:-1]  # 1 <= i <= k
+            tp = np.cumsum(dt)
+
+        if duplicated_points == "infinitesimal":
+            dt[dt < 10**-10] = 10**-10
+        elif duplicated_points == "deletion":
+            idx_duplicated_points = np.where(dt == 0)[0]
+            if len(idx_duplicated_points) > 0:
+                dx = np.delete(dx, idx_duplicated_points)
+                dy = np.delete(dy, idx_duplicated_points)
+                dz = np.delete(dz, idx_duplicated_points)
+
+                dt = np.delete(dt, idx_duplicated_points)
+                tp = np.delete(
+                    tp,
+                    (np.array(idx_duplicated_points) + 1).tolist(),
+                )
+                X_arr = np.delete(X_arr, idx_duplicated_points, 0)
+        else:
+            raise ValueError(
+                "'duplicated_points' must be 'infinitesimal' or 'deletion'"
+            )
+
+        if len(tp) != len(X):
+            raise ValueError(
+                "len(t) must have a same len(X), len(t): "
+                + str(len(tp))
+                + ", len(X): "
+                + str(len(X))
+            )
+
+        # Fourier series expansion
+        T = tp[-1]
+        a0 = 2 / T * np.sum(X_arr[1:, 0])
+        c0 = 2 / T * np.sum(X_arr[1:, 1])
+        e0 = 2 / T * np.sum(X_arr[1:, 2])
+        an = np.append(a0, _cse(dx, dt, n_harmonics))
+        bn = np.append(0, _sse(dx, dt, n_harmonics))
+        cn = np.append(c0, _cse(dy, dt, n_harmonics))
+        dn = np.append(0, _sse(dy, dt, n_harmonics))
+        en = np.append(e0, _cse(dz, dt, n_harmonics))
+        fn = np.append(0, _sse(dz, dt, n_harmonics))
+
+        # Normalize
+        if norm:
+            an, bn, cn, dn, en, fn = self._normalize_3d(an, bn, cn, dn, en, fn)
+
+        X_transformed = np.hstack([an, bn, cn, dn, en, fn])
+
+        return X_transformed
 
     def _normalize_3d(self, an, bn, cn, dn, en, fn):
         raise NotImplementedError("Not implemented yet")
 
-    def _inverse_transform_single_3d(self):
-        pass
+    def _inverse_transform_single_3d(
+        self,
+        X_transformed,
+        t_num: int = 100,
+        norm=True,
+        as_frame: bool = False,
+    ):
+        coef = X_transformed
+        if as_frame:
+            a0 = coef["an"][0]
+            c0 = coef["cn"][0]
+            e0 = coef["en"][0]
+            an = coef["an"][1:]
+            bn = coef["bn"][1:]
+            cn = coef["cn"][1:]
+            dn = coef["dn"][1:]
+            en = coef["en"][1:]
+            fn = coef["fn"][1:]
+        else:
+            an, bn, cn, dn, en, fn = coef.reshape([2 * self.n_dim, -1])
+            a0 = an[0]
+            c0 = cn[0]
+            e0 = en[0]
+            an = an[1:]
+            bn = bn[1:]
+            cn = cn[1:]
+            dn = dn[1:]
+            en = en[1:]
+            fn = fn[1:]
+
+        n_max = len(an)
+
+        theta = np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
+
+        if norm:
+            a0 = 0
+            c0 = 0
+            e0 = 0
+
+        cos = np.cos(np.tensordot(np.arange(1, n_max + 1, 1), theta, 0))
+        sin = np.sin(np.tensordot(np.arange(1, n_max + 1, 1), theta, 0))
+
+        x = a0 / 2 + np.dot(an, cos) + np.dot(bn, sin)
+        y = c0 / 2 + np.dot(cn, cos) + np.dot(dn, sin)
+        z = e0 / 2 + np.dot(en, cos) + np.dot(fn, sin)
+
+        X_coords = np.stack([x, y, z], 1)
+
+        return X_coords
+
+    ###########################################################
+    #
+    #   set_output API
+    #
+    ###########################################################
 
     def get_feature_names_out(
         self, input_features: None | npt.ArrayLike = None
@@ -457,7 +621,7 @@ class EllipticFourierAnalysis(
     @property
     def _n_features_out(self):
         """Number of transformed output features."""
-        return (self.n_harmonics + 1) * 4
+        return (self.n_harmonics + 1) * (2 * self.n_dim)
 
 
 ###########################################################
@@ -475,7 +639,7 @@ def rotation_matrix_2d(theta):
 
 
 def _cse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
-    """Cos series expansion
+    """Cos series expansion n>=1
 
     Parameters
     ----------
@@ -492,10 +656,11 @@ def _cse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
         coefficients of cos series expansion
     """
 
+    # t = np.concatenate([[0], np.cumsum(dt)]) - dt[0]  # t_{i-1}
+    # T = t[-1] + dt[0]
     t = np.concatenate([[0], np.cumsum(dt)])
     T = t[-1]
 
-    c0 = 2 / T * np.sum(np.cumsum(dx) * dt)
     cn = [
         (T / (2 * (np.pi**2) * (n**2)))
         * np.sum(
@@ -505,17 +670,18 @@ def _cse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
         for n in range(1, n_harmonics + 1, 1)
     ]
 
-    coef = np.array([c0] + cn)
+    coef = np.array(cn)
 
     return coef
 
 
 def _sse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
-    """Sin series expansion"""
+    """Sin series expansion n>=1"""
+    # t = np.concatenate([[np.sum(dt)], np.cumsum(dt)]) - dt[0]  # t_{i-1}
+    # T = t[-1] + dt[0]
     t = np.concatenate([[0], np.cumsum(dt)])
     T = t[-1]
 
-    c0 = 0
     cn = [
         (T / (2 * (np.pi**2) * (n**2)))
         * np.sum(
@@ -525,7 +691,7 @@ def _sse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
         for n in range(1, n_harmonics + 1, 1)
     ]
 
-    coef = np.array([c0] + cn)
+    coef = np.array(cn)
 
     return coef
 

@@ -24,7 +24,7 @@ version = "0.4.2"
 
 [tool.poetry.dependencies]
 numpy = ">=1.22"
-pandas = {version = ">=1.5", extras = ["pyarrow"]}
+pandas = { version = ">=1.5", extras = ["pyarrow"] }
 python = "^3.9"
 scikit-learn = ">=1.2"
 scipy = ">=1.8"
@@ -100,10 +100,7 @@ authorized_licenses = [
   "python software foundation license",
   "Python Software Foundation",
 ]
-unauthorized_licenses = [
-  "gpl v3",
-  "gnu agplv3",
-]
+unauthorized_licenses = ["gpl v3", "gnu agplv3"]
 
 [tool.liccheck.authorized_packages]
 uuid = "<=1.30"
@@ -123,10 +120,10 @@ exclude = [
 line-length = 88
 
 [tool.ruff.lint]
-# all rules can be found here: https://beta.ruff.rs/docs/rules/
 ignore = [
   "E203", # space before : (needed for how black formats slicing)
   "E731", # do not assign a lambda expression, use a def
   "E741", # do not use variables named 'l', 'O', or 'I'
+  "F401", # imported but unused
 ]
 select = ["E", "F", "W", "I"]
