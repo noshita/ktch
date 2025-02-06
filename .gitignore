@@ -372,3 +372,6 @@ pytest-coverage.txt
 
 ## Jupytext
 *.ipynb
+
+# direnv
+.envrc

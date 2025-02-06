@@ -90,9 +90,9 @@ def test_transform_exact():
     y = c0 / 2 + np.dot(cn, cos) + np.dot(dn, sin)
     X_coords = np.stack([x, y], 1)
 
-    fig, ax = plt.subplots()
-    ax.plot(X_coords[:, 0], X_coords[:, 1])
-    fig.savefig("X_exact.png")
+    # fig, ax = plt.subplots()
+    # ax.plot(X_coords[:, 0], X_coords[:, 1])
+    # fig.savefig("X_exact.png")
 
     efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
     coef_est = efa.fit_transform([X_coords], t=[t], norm=False)[0]
