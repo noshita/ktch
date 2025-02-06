@@ -1,11 +1,11 @@
 [project]
 name = "ktch"
-version = "0.4.3"
+version = "0.4.4"
 description = "ktch is a python package for model-based morphometrics."
 authors = [{ name = "Noshita, Koji", email = "noshita@morphometrics.jp" }]
 requires-python = ">=3.11"
 readme = "README.md"
-license = "Apache-2.0"
+license = { file = "LICENSE" }
 keywords = ["morphometrics", "theoretical morphology"]
 classifiers = [
   "Intended Audience :: Science/Research",
@@ -18,13 +18,13 @@ classifiers = [
   "Operating System :: POSIX",
   "Operating System :: Unix",
   "Operating System :: MacOS",
-  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
-  "numpy>=1.26",
-  "pandas[pyarrow]>=2.2",
-  "scikit-learn>=1.6",
-  "scipy>=1.13",
+  "numpy>=1.20",
+  "pandas[pyarrow]>=2.1",
+  "scikit-learn>=1.5",
+  "scipy>=1.7",
 ]
 
 [project.optional-dependencies]
@@ -73,7 +73,7 @@ doc = [
 default-groups = ["dev", "doc"]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-conda-build"]
 build-backend = "hatchling.build"
 
 [tool.poetry2conda]
