@@ -46,3 +46,19 @@ git commit --allow-empty -m "chore: 🔧 release x.x.x" -m "Release-As: x.x.x"
 ```
 
 * [How do I change the version number?| Release Please](https://github.com/googleapis/release-please?tab=readme-ov-file#how-do-i-change-the-version-number)
+
+## Licese
+
+The documentations are licensed under a Creative Commons Attribution 4.0 International (CC BY 4.0) License.
+
+The documentation system may also include some components licensed under open source licenses.
+
+### scikit-learn
+
+The following items forked from [scikit-learn](https://github.com/scikit-learn/scikit-learn) are licensed under the BSD 3-Clause License.
+
+* shinxext/override_pst_pagetoc.py
+* _templates/base.rst
+
+
+

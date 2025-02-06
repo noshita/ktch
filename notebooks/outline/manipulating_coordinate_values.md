@@ -143,7 +143,7 @@ print("scale: ", s[idx])
 ```
 
 ## Changing the starting point
-The starting point (arclength parameter $t = 0$) is often adjusted for aligning the outlines.
+The starting point (arclength parameter $t = 0$ ) is often adjusted for aligning the outlines.
 
 You can use the `numpy.roll` function for the purpose.
 

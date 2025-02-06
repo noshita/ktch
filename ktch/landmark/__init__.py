@@ -1,5 +1,5 @@
 """
-The :mod:`katatch.landmark` module implements landmark-based morphometrics.
+The :mod:`ktch.landmark` module implements landmark-based morphometrics.
 """
 
 # Copyright 2020 Koji Noshita

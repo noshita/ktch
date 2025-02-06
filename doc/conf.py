@@ -43,6 +43,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
+    # "sphinx_gallery.gen_gallery",
     # "sphinx.ext.linkcode",
     "sphinxcontrib.bibtex",
     "sphinx.ext.viewcode",
@@ -51,11 +52,14 @@ extensions = [
     "myst_nb",
     "sphinx_sitemap",
     "sphinx_favicon",
+    "override_pst_pagetoc",
 ]
 
 # this is needed for some reason...
 # see https://github.com/numpy/numpydoc/issues/69
 numpydoc_show_class_members = False
+numpydoc_show_inherited_class_members = False
+numpydoc_class_members_toctree = False
 
 # bibtex file
 bibtex_bibfiles = ["references.bib"]
@@ -69,9 +73,7 @@ bibtex_default_style = "plain"
 #     extensions.append('sphinx.ext.pngmath')
 # else:
 #     extensions.append('sphinx.ext.imgmath')
-mathjax_path = (
-    "https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
-)
+mathjax_path = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
 
 # autodoc_default_flags = ['members', 'inherited-members']
 
@@ -176,10 +178,9 @@ html_theme = "pydata_sphinx_theme"
 # documentation.
 # html_theme_options = {}
 html_theme_options = {
-    "logo_link": "index",
+    # "logo_link": "index",
     "github_url": "https://github.com/noshita/ktch",
-    # "twitter_url": "https://twitter.com/numpy_team",
-    "collapse_navigation": True,
+    # "collapse_navigation": True,
     # "external_links": [
     #     {"name": "Learn", "url": "https://numpy.org/numpy-tutorials/"}
     #     ],

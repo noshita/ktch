@@ -1,5 +1,5 @@
 """
-The :mod:`katatch.io` module implements I/O interface for morphometrics file formats.
+The :mod:`ktch.io` module implements I/O interface for morphometrics file formats.
 """
 
 # Copyright 2020 Koji Noshita
@@ -16,7 +16,7 @@ The :mod:`katatch.io` module implements I/O interface for morphometrics file for
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._tps import read_tps, write_tps
 from ._SPHARM_PDM import read_coef_SPHARM_PDM
+from ._tps import read_tps, write_tps
 
 __all__ = ["read_tps", "write_tps", "read_coef_SPHARM_PDM"]

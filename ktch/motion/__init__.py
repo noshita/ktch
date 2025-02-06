@@ -1,5 +1,5 @@
 """
-The :mod:`katatch.motion` module implements utility functions for analyzing motion (time-series of morphological properties).
+The :mod:`ktch.motion` module implements utility functions for analyzing motion (time-series of morphological properties).
 
 """
 
