@@ -357,6 +357,7 @@ dkms.conf
 doc/_build/
 doc/auto_examples/
 doc/modules/generated/
+doc/api/generated/
 doc/datasets/generated/
 
 # ktch specific
