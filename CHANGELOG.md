@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.4.3](https://github.com/noshita/ktch/compare/v0.4.2...v0.4.3) (2025-02-06)
+
+
+### Features
+
+* ✨ add 3D EFA ([4d74c92](https://github.com/noshita/ktch/commit/4d74c92949e030703918c26c2c5de7c7f5074d6d))
+* ✨ add auto-approve for owener ([a38fb05](https://github.com/noshita/ktch/commit/a38fb05db971cd2e62ba03f938ccd81ac0b19d69))
+
+
+### Bug Fixes
+
+* 🐛 actions/setup-python ([d06a63e](https://github.com/noshita/ktch/commit/d06a63e8fc558f66d3dcce14393bddbe32b7372e))
+* 🐛 github actions filters ([43aa28c](https://github.com/noshita/ktch/commit/43aa28cb75cfeb2791a376b6ad43859167015ac7))
+* 🐛 pull_request ([19ad8c7](https://github.com/noshita/ktch/commit/19ad8c757bfd67016ad0ca08fbf165ca79f0264d))
+
+
+### Miscellaneous Chores
+
+* 🔧  v0.4.3 ([7e07f19](https://github.com/noshita/ktch/commit/7e07f199dfad803844867e6e06def27efbd2a795))
+* 🔧 update requirements.txt ([a43ec5f](https://github.com/noshita/ktch/commit/a43ec5f7ec020c338cb04bf87c8f22020c081f60))
+
 ## [0.4.2](https://github.com/noshita/ktch/compare/v0.4.1...v0.4.2) (2024-06-09)
 
 
