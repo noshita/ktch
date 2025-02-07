@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.5.0](https://github.com/noshita/ktch/compare/v0.4.3...v0.5.0) (2025-02-07)
+
+
+### Features
+
+* ✨ add example notebook of 3D EFA ([8f8ead2](https://github.com/noshita/ktch/commit/8f8ead20d27fbe86e7c49ff7e1fe8ff1e2f72838))
+
+
+### Bug Fixes
+
+* 🐛 github actions test-codecov.yml ([30e31b1](https://github.com/noshita/ktch/commit/30e31b1498fc7b4a01e21938fd433e02b0c6ed6b))
+* 🐛 paths filter ([3dbf322](https://github.com/noshita/ktch/commit/3dbf3229b5db6d4e425662622ebf4f0b17bfcbe2))
+
+
+### Documentation
+
+* 📚 reorganize documentations ([ff4ec55](https://github.com/noshita/ktch/commit/ff4ec5546582b11e0f48c396df2a9fc8df2c3b6c))
+
 ## [0.4.3](https://github.com/noshita/ktch/compare/v0.4.2...v0.4.3) (2025-02-06)
 
 
