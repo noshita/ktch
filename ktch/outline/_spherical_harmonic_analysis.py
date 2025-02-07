@@ -1,4 +1,4 @@
-"""Spherical Harmonic (SPHARM) Analysis """
+"""Spherical Harmonic (SPHARM) Analysis"""
 
 # Copyright 2020 Koji Noshita
 #
@@ -14,14 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List
 import dataclasses
+from typing import List
 
 import numpy as np
-import scipy as sp
-
 import numpy.typing as npt
-
+import scipy as sp
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
@@ -409,9 +407,9 @@ class SPHARMCoefficients:
                 raise ValueError("abs(m) must be less than l")
 
             if type(m) is int:
-                m = m + l
+                m = m + self.n_degree
             elif type(m) is slice:
-                m = slice(m.start + l, m.stop + l, m.step)
+                m = slice(m.start + self.n_degree, m.stop + self.n_degree, m.step)
             else:
                 raise ValueError("m must be int or slice")
 
@@ -444,7 +442,7 @@ class SPHARMCoefficients:
             l = lm
 
             if len(value) != 2 * l + 1:
-                raise ValueError(f"len(value) must be {2*l+1}")
+                raise ValueError(f"len(value) must be {2 * l + 1}")
 
             if l > len(self.coef):
                 raise ValueError(f"l must be less than {len(self.coef)}")
