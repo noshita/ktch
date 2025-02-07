@@ -1114,7 +1114,7 @@ wheels = [
 
 [[package]]
 name = "ktch"
-version = "0.4.4a0"
+version = "0.4.3"
 source = { editable = "." }
 dependencies = [
     { name = "numpy" },
