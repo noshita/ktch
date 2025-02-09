@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/noshita/ktch/compare/v0.5.0...v0.5.1) (2025-02-09)
+
+
+### Bug Fixes
+
+* 🐛 release-please config files ([a231c32](https://github.com/noshita/ktch/commit/a231c32fb686ac6f7ee91682d4147c2085ccbd6f))
+
 ## [0.5.0](https://github.com/noshita/ktch/compare/v0.4.3...v0.5.0) (2025-02-07)
 
 
