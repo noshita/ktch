@@ -1,5 +1,5 @@
 # The shell script used to clear the cache of the GitHub CDN is forked from [hub-purge](https://github.com/mpyw/hub-purge/tree/master?tab=MIT-1-ov-file#readme) licensed under MIT License.
-
+name: Clear camo cache
 on:
     workflow_dispatch:
     schedule:
@@ -10,10 +10,12 @@ jobs:
       steps:
         - name: Fetch target page(s)
           run: |
+            echo "https://github.com/${GITHUB_REPOSITORY}/README.md"
             curl -sL "https://github.com/${GITHUB_REPOSITORY}/README.md" \
             | sed -n '/<script type="application\/json" data-target="react-partial.embeddedData">/,/<\/script>/p' \
             | sed 's/\\u003e/>/g; s/\\u002F/\//g; s/\\u0022/"/g; s/\\//g' \
             | grep -oE 'https?://camo.githubusercontent.com/[^"]+' \
             | while read -r url; do
+                echo "$url"
                 curl -sX PURGE "$url" >/dev/null &
             done
