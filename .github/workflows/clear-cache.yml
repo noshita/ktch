@@ -8,20 +8,16 @@ jobs:
     purge:
       runs-on: ubuntu-latest
       steps:
-        - run: echo "https://github.com/${GITHUB_REPOSITORY}/README.md"
-        - name: Find camo urls from target page(s)
-          id: find-camo-urls
+        - name: Target URL(s)
           run: |
-            urls=(curl -sL "https://github.com/${GITHUB_REPOSITORY}/README.md" \
+            echo "target: https://github.com/${GITHUB_REPOSITORY}/"
+        - name: Purge cache from target URL(s)
+          run: |
+            curl -sL "https://github.com/${GITHUB_REPOSITORY}/" \
             | sed -n '/<script type="application\/json" data-target="react-partial.embeddedData">/,/<\/script>/p' \
             | sed 's/\\u003e/>/g; s/\\u002F/\//g; s/\\u0022/"/g; s/\\//g' \
-            | grep -oE 'https?://camo.githubusercontent.com/[^"]+') \
-            && echo "urls=${urls}" >> ${GITHUB_OUTPUT}
-        - env:
-            URLS: ${{ steps.find-camo-urls.outputs.urls }}
-          run: |
-            echo "${URLS}"\
-            && while read -r url; do
-                echo "$url"
+            | grep -oE 'https?://camo.githubusercontent.com/[^"]+' \
+            | while read -r url; do
+                echo "purge: $url"
                 curl -sX PURGE "$url" >/dev/null &
-            done < "${URLS}"
+            done
