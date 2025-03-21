@@ -106,14 +106,17 @@ class EllipticFourierAnalysis(
         self.metric = metric
         self.impute = impute
 
-    def fit_transform(self, X, t=None, norm=True):
-        return self.transform(X, t, norm=norm)
+    def fit_transform(self, X, t=None, norm=True, return_orientation_scale=False):
+        return self.transform(
+            X, t, norm=norm, return_orientation_scale=return_orientation_scale
+        )
 
     def transform(
         self,
         X: list(npt.ArrayLike) | npt.ArrayLike,
         t: npt.ArrayLike = None,
         norm: bool = True,
+        return_orientation_scale: bool = False,
     ) -> npt.ArrayLike:
         """EFA.
 
@@ -134,6 +137,11 @@ class EllipticFourierAnalysis(
         norm: bool, default=True
             Normalize the elliptic Fourier coefficients
             by the major axis of the 1st ellipse.
+
+        return_orientation_scale: bool, default=False
+            Return orientation and scale of the outline.
+            If `norm=True`, the orientation and scale are normalized by the 1st ellipse.
+            Then, the orientation and scale are returned as the last columns of the output.
 
         Returns
         ------------
@@ -168,14 +176,24 @@ class EllipticFourierAnalysis(
         if n_dim == 2:
             X_transformed = np.stack(
                 [
-                    self._transform_single_2d(X_[i], t_[i], norm=norm)
+                    self._transform_single_2d(
+                        X_[i],
+                        t_[i],
+                        norm=norm,
+                        return_orientation_scale=return_orientation_scale,
+                    )
                     for i in range(len(X_))
                 ]
             )
         elif n_dim == 3:
             X_transformed = np.stack(
                 [
-                    self._transform_single_3d(X_[i], t_[i], norm=norm)
+                    self._transform_single_3d(
+                        X_[i],
+                        t_[i],
+                        norm=norm,
+                        return_orientation_scale=return_orientation_scale,
+                    )
                     for i in range(len(X_))
                 ]
             )
@@ -250,6 +268,7 @@ class EllipticFourierAnalysis(
         X: np.ndarray,
         t: np.ndarray | None = None,
         norm=True,
+        return_orientation_scale: bool = False,
         duplicated_points="infinitesimal",
     ):
         """Fit the model with a signle outline.
@@ -316,8 +335,8 @@ class EllipticFourierAnalysis(
 
         # Fourier series expansion
         T = tp[-1]
-        a0 = 2 / T * np.sum(X_arr[1:, 0])
-        c0 = 2 / T * np.sum(X_arr[1:, 1])
+        a0 = 2 * np.sum(X_arr[1:, 0] * dt) / T
+        c0 = 2 * np.sum(X_arr[1:, 1] * dt) / T
         an = np.append(a0, _cse(dx, dt, n_harmonics))
         bn = np.append(0, _sse(dx, dt, n_harmonics))
         cn = np.append(c0, _cse(dy, dt, n_harmonics))
@@ -325,9 +344,12 @@ class EllipticFourierAnalysis(
 
         # Normalize
         if norm:
-            an, bn, cn, dn = self._normalize_2d(an, bn, cn, dn)
+            an, bn, cn, dn, psi, scale = self._normalize_2d(an, bn, cn, dn)
 
-        X_transformed = np.hstack([an, bn, cn, dn])
+        if return_orientation_scale:
+            X_transformed = np.hstack([an, bn, cn, dn, psi, scale])
+        else:
+            X_transformed = np.hstack([an, bn, cn, dn])
 
         return X_transformed
 
@@ -382,7 +404,7 @@ class EllipticFourierAnalysis(
         Cn = np.append(cn[0], coef_norm[:, 2])
         Dn = np.append(dn[0], coef_norm[:, 3])
 
-        return An, Bn, Cn, Dn
+        return An, Bn, Cn, Dn, psi, scale
 
     def _inverse_transform_single_2d(
         self,
@@ -437,6 +459,7 @@ class EllipticFourierAnalysis(
         X: np.ndarray,
         t: np.ndarray | None = None,
         norm: bool = False,
+        return_orientation_scale: bool = False,
         duplicated_points: str = "infinitesimal",
     ):
         """Fit the model with a signle outline.

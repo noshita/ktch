@@ -371,6 +371,8 @@ doc/notebooks/
 pytest.xml
 pytest-coverage.txt
 
+tests/figures/
+
 ## Jupytext
 *.ipynb
 
