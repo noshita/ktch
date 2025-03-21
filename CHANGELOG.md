@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.0](https://github.com/noshita/ktch/compare/v0.5.0...v0.6.0) (2025-03-21)
+
+
+### Features
+
+* ✨ add  option to  2D ([6032557](https://github.com/noshita/ktch/commit/6032557d1cce9fc9d06854a54111d6a27353f8ad))
+* ✨ add n_jobs to EllipticFourierAnalysis class ([5db88e5](https://github.com/noshita/ktch/commit/5db88e58cd25f0721962c2991371fdc48bce55ab))
+* ✨ add n_jobs to EllipticFourierAnalysis class ([321193a](https://github.com/noshita/ktch/commit/321193aad7770f8958b6261da1be475d8406f497))
+
+
+### Bug Fixes
+
+* 🐛 release-please config files ([a231c32](https://github.com/noshita/ktch/commit/a231c32fb686ac6f7ee91682d4147c2085ccbd6f))
+
 ## [0.5.0](https://github.com/noshita/ktch/compare/v0.4.3...v0.5.0) (2025-02-07)
 
 
