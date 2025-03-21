@@ -28,6 +28,7 @@ from sklearn.base import (
     TransformerMixin,
 )
 from sklearn.decomposition import PCA
+from sklearn.utils.parallel import Parallel, delayed
 
 
 class EllipticFourierAnalysis(
@@ -90,6 +91,8 @@ class EllipticFourierAnalysis(
         reflect: bool = False,
         metric: str = "",
         impute: bool = False,
+        n_jobs: [int, None] = None,
+        verbose: int = 0,
     ):
         """
         ToDo
@@ -105,6 +108,8 @@ class EllipticFourierAnalysis(
         self.reflect = reflect
         self.metric = metric
         self.impute = impute
+        self.n_jobs = n_jobs
+        self.verbose = verbose
 
     def fit_transform(self, X, t=None, norm=True, return_orientation_scale=False):
         return self.transform(
@@ -174,28 +179,26 @@ class EllipticFourierAnalysis(
             X_ = X
 
         if n_dim == 2:
+            print(self.n_jobs)
             X_transformed = np.stack(
-                [
-                    self._transform_single_2d(
-                        X_[i],
-                        t_[i],
-                        norm=norm,
-                        return_orientation_scale=return_orientation_scale,
+                Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
+                    delayed(self._transform_single_2d)(
+                        X_[i], t_[i], norm, return_orientation_scale
                     )
                     for i in range(len(X_))
-                ]
+                )
             )
         elif n_dim == 3:
             X_transformed = np.stack(
-                [
-                    self._transform_single_3d(
+                Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
+                    delayed(self._transform_single_3d)(
                         X_[i],
                         t_[i],
                         norm=norm,
                         return_orientation_scale=return_orientation_scale,
                     )
                     for i in range(len(X_))
-                ]
+                )
             )
 
         return X_transformed

@@ -81,6 +81,27 @@ def test_transform(norm, set_output):
     assert_array_almost_equal(coef, coef_val)
 
 
+@pytest.mark.parametrize("n_jobs", [None, 1, 3])
+def test_transform_parallel(benchmark, n_jobs, norm=True):
+    n_iter = 10
+    n_harmonics = 6
+
+    bottles_coef = load_coefficient_bottles(norm=norm)
+
+    X = bottles.coords * n_iter
+
+    efa = EllipticFourierAnalysis(n_harmonics=n_harmonics, n_jobs=n_jobs, verbose=1)
+
+    X_transformed = benchmark(efa.fit_transform, X, norm=norm)
+
+    coef = X_transformed.reshape(-1, 4, n_harmonics + 1)[:, :, 1:].reshape(
+        -1, n_harmonics * 4
+    )
+    coef_val = np.tile(bottles_coef.coef, (n_iter, 1))
+
+    assert_array_almost_equal(coef, coef_val)
+
+
 def test_transform_exact():
     n_harmonics = 6
     t_num = 360
