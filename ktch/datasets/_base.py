@@ -17,8 +17,8 @@
 from importlib import resources
 
 import pandas as pd
-from sklearn.utils import Bunch
 from sklearn.datasets._base import load_descr
+from sklearn.utils import Bunch
 
 
 def load_landmark_mosquito_wings(*, as_frame=False):
@@ -69,10 +69,10 @@ def load_landmark_mosquito_wings(*, as_frame=False):
     descr_file_name = "data_landmark_mosquito_wings.rst"
 
     coords = pd.read_csv(
-        resources.open_text(data_module, data_file_name), index_col=[0, 1]
+        resources.files(data_module).joinpath(data_file_name), index_col=[0, 1]
     )
     meta = pd.read_csv(
-        resources.open_text(data_module, metadata_file_name), index_col=[0]
+        resources.files(data_module).joinpath(metadata_file_name), index_col=[0]
     )
     fdescr = load_descr(
         descr_module=descr_module,
@@ -200,10 +200,10 @@ def load_outline_bottles(*, as_frame=False):
     descr_file_name = "data_outline_bottles.rst"
 
     coords = pd.read_csv(
-        resources.open_text(data_module, data_file_name), index_col=[0, 1]
+        resources.files(data_module).joinpath(data_file_name), index_col=[0, 1]
     )
     meta = pd.read_csv(
-        resources.open_text(data_module, metadata_file_name), index_col=[0]
+        resources.files(data_module).joinpath(metadata_file_name), index_col=[0]
     )
     fdescr = load_descr(
         descr_module=descr_module,
@@ -262,10 +262,10 @@ def load_coefficient_bottles(*, as_frame=False, norm=True):
     descr_file_name = "data_outline_bottles.rst"
 
     coef = pd.read_csv(
-        resources.open_text(data_module, data_file_name), index_col=[0, 1]
+        resources.files(data_module).joinpath(data_file_name), index_col=[0, 1]
     )
     meta = pd.read_csv(
-        resources.open_text(data_module, metadata_file_name), index_col=[0]
+        resources.files(data_module).joinpath(metadata_file_name), index_col=[0]
     )
     fdescr = load_descr(
         descr_module=descr_module,
