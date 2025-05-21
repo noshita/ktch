@@ -150,6 +150,8 @@ def write_chc(file_path, chain_codes, sample_names=None, numbers=None, xs=None, 
             raise ValueError("chain_codes must be a 1D or 2D array.")
     elif not isinstance(chain_codes, list):
         raise ValueError("chain_codes must be a list of numpy arrays or a numpy array.")
+        
+    n_samples = len(chain_codes)
     
     if sample_names is None:
         sample_names = ["Sample"] * n_samples
