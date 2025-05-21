@@ -30,8 +30,6 @@ class ChainCodeData:
     ----------
     sample_name : str
         Sample name.
-    number : int
-        Sample number.
     x : float
         X coordinate.
     y : float
@@ -46,7 +44,6 @@ class ChainCodeData:
         If True, validate that chain code values are between 0 and 7.
     """
     sample_name: str
-    number: int
     x: float
     y: float
     area_per_pixel: float
@@ -86,7 +83,7 @@ class ChainCodeData:
                 "chain_code": self.chain_code,
             },
             index=pd.MultiIndex.from_tuples(
-                [[f"{self.sample_name}_{self.number}", i] for i in range(len(self.chain_code))],
+                [[self.sample_name, i] for i in range(len(self.chain_code))],
                 name=["specimen_id", "coord_id"],
             ),
         )
@@ -105,6 +102,9 @@ def read_chc(file_path, as_frame=False, validate=True):
         4 - * - 0
          /  |  \\
         5   6   7
+    
+    The chain code file format is:
+    [Sample name] [X] [Y] [Area (mm2) per pixel] [Area (pixels)] [Chain code] -1
     
     Parameters
     ----------
@@ -143,7 +143,7 @@ def read_chc(file_path, as_frame=False, validate=True):
             return [chc_data.to_numpy() for chc_data in chc_data_list]
 
 
-def write_chc(file_path, chain_codes, sample_names=None, numbers=None, xs=None, ys=None, 
+def write_chc(file_path, chain_codes, sample_names=None, xs=None, ys=None, 
               area_per_pixels=None, area_pixels_values=None, validate=True):
     """Write chain code to .chc file.
     
@@ -155,6 +155,9 @@ def write_chc(file_path, chain_codes, sample_names=None, numbers=None, xs=None, 
          /  |  \\
         5   6   7
     
+    The chain code file format is:
+    [Sample name] [X] [Y] [Area (mm2) per pixel] [Area (pixels)] [Chain code] -1
+    
     Parameters
     ----------
     file_path : str
@@ -163,8 +166,6 @@ def write_chc(file_path, chain_codes, sample_names=None, numbers=None, xs=None, 
         Chain codes with values from 0 to 7 representing directions.
     sample_names : list of str or str, optional
         Sample names.
-    numbers : list of int or int, optional
-        Sample numbers.
     xs : list of float or float, optional
         X coordinates.
     ys : list of float or float, optional
@@ -196,11 +197,6 @@ def write_chc(file_path, chain_codes, sample_names=None, numbers=None, xs=None, 
     elif isinstance(sample_names, str):
         sample_names = [sample_names] * n_samples
         
-    if numbers is None:
-        numbers = list(range(1, n_samples + 1))
-    elif isinstance(numbers, int):
-        numbers = [numbers] * n_samples
-        
     if xs is None:
         xs = [0] * n_samples
     elif isinstance(xs, (int, float)):
@@ -231,7 +227,6 @@ def write_chc(file_path, chain_codes, sample_names=None, numbers=None, xs=None, 
         chc_data_list.append(
             ChainCodeData(
                 sample_name=sample_names[i],
-                number=numbers[i],
                 x=xs[i],
                 y=ys[i],
                 area_per_pixel=area_per_pixels[i],
@@ -271,9 +266,7 @@ def _read_chc(file_path, validate=True):
                 
             parts = line.split(" ")
             
-            sample_id = parts[0]
-            sample_name, number = sample_id.split("_")
-            number = int(number)
+            sample_name = parts[0]
             
             x = float(parts[1])
             y = float(parts[2])
@@ -289,7 +282,6 @@ def _read_chc(file_path, validate=True):
             try:
                 chc_data = ChainCodeData(
                     sample_name=sample_name,
-                    number=number,
                     x=x,
                     y=y,
                     area_per_pixel=area_per_pixel,
@@ -304,7 +296,6 @@ def _read_chc(file_path, validate=True):
                     ChainCodeData.__post_init__ = lambda self: None if not isinstance(self.chain_code, np.ndarray) else setattr(self, 'chain_code', np.array(self.chain_code))
                     chc_data = ChainCodeData(
                         sample_name=sample_name,
-                        number=number,
                         x=x,
                         y=y,
                         area_per_pixel=area_per_pixel,
@@ -331,7 +322,7 @@ def _write_chc(file_path, chc_data_list):
     """
     with open(file_path, "w") as f:
         for chc_data in chc_data_list:
-            f.write(f"{chc_data.sample_name}_{chc_data.number} {chc_data.x} {chc_data.y} "
+            f.write(f"{chc_data.sample_name} {chc_data.x} {chc_data.y} "
                     f"{chc_data.area_per_pixel} {chc_data.area_pixels} ")
             
             f.write(" ".join(map(str, chc_data.chain_code.tolist())))

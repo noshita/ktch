@@ -12,7 +12,7 @@ from ktch.io import read_chc, write_chc
 
 def test_read_chc():
     """Test read_chc function."""
-    sample_data = "Sample1_1 100 200 1.5 1000 0 1 2 3 4 5 6 7 0 -1"
+    sample_data = "Sample1 100 200 1.5 1000 0 1 2 3 4 5 6 7 0 -1"
     
     with tempfile.NamedTemporaryFile(suffix=".chc", delete=False) as f:
         f.write(sample_data.encode())
@@ -43,7 +43,6 @@ def test_write_chc():
             temp_file, 
             chain_code, 
             sample_names="Test", 
-            numbers=1, 
             xs=100, 
             ys=200, 
             area_per_pixels=1.5, 
@@ -71,7 +70,6 @@ def test_multiple_chain_codes():
             temp_file, 
             [chain_code1, chain_code2], 
             sample_names=["Test1", "Test2"], 
-            numbers=[1, 2], 
             xs=[100, 200], 
             ys=[150, 250], 
             area_per_pixels=[1.0, 2.0], 
@@ -101,15 +99,13 @@ def test_invalid_chain_code():
             write_chc(
                 temp_file, 
                 invalid_chain_code, 
-                sample_names="Test", 
-                numbers=1
+                sample_names="Test"
             )
             
         write_chc(
             temp_file, 
             invalid_chain_code, 
-            sample_names="Test", 
-            numbers=1,
+            sample_names="Test",
             validate=False
         )
         
