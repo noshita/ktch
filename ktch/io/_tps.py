@@ -217,23 +217,23 @@ def write_tps(
 # Regular Express Patterns           #
 ######################################
 
-PTN_HEAD = re.compile(r"^LM3*\s*=", flags=re.MULTILINE)
+PTN_HEAD = re.compile(r"^LM3?\s*=", flags=re.MULTILINE)
 
 PTN_LM = re.compile(
-    r"^(?P<LM>LM3*\s*=\s*[0-9]+\s*([\w\.-]+\s+[\w\.-]+\s*[\w\.-]*\s*)+)$",
+    r"^(?P<LM>LM3?\s*=\s*[0-9]+(?:\s+[-\w\.]+)*)$",
     flags=re.MULTILINE,
 )
 PTN_CURVES = re.compile(
-    r"^(?P<CURVES>CURVES\s*=\s*[0-9]+\s+(?P<POINTS>(POINTS\s*=\s*[0-9]+\s+[0-9\s\.-]+)+))$",
+    r"^(?P<CURVES>CURVES\s*=\s*[0-9]+\s+(?P<POINTS>POINTS\s*=\s*[0-9]+\s+(?:[-0-9\.\s]+)))$",
     flags=re.MULTILINE,
 )
 PTN_POINTS = re.compile(
-    r"^(?P<POINTS>POINTS\s*=\s*[0-9]+\s+([\w\.-]+\s+[\w\.-]+\s*[\w\.-]*\s*)+)",
+    r"^(?P<POINTS>POINTS\s*=\s*[0-9]+(?:\s+[-0-9\.]+)*)$",
     flags=re.MULTILINE,
 )
 
-PTN_DICT = re.compile(r"^(?P<key>\w+)\s*=\s*(?P<value>.+)$")
-PTN_COORD = re.compile(r"^(?P<x>[0-9-\.]*)\s(?P<y>[0-9-\.]*)\s*(?P<z>[0-9-\.]*)?$")
+PTN_DICT = re.compile(r"^(?P<key>\w+)\s*=\s*(?P<value>[^\r\n]+)$")
+PTN_COORD = re.compile(r"^(?P<x>[-0-9\.]*)\s(?P<y>[-0-9\.]*)\s*(?P<z>[-0-9\.]*)?$")
 
 ######################################
 # Helper functions                   #
