@@ -60,39 +60,110 @@ class ChainCodeData:
             raise ValueError(f"Chain code contains invalid values: {invalid_values}. "
                              f"Values must be between 0 and 7 (inclusive).")
     
-    def to_numpy(self):
-        """Convert chain code to numpy array.
+    def get_chain_code(self):
+        """Get the raw chain code as a numpy array.
         
         Returns
         -------
         chain_code : np.ndarray
-            Chain code.
+            Raw chain code values (0-7) representing directions.
         """
         return self.chain_code
     
+    def to_numpy(self):
+        """Convert chain code to 2D coordinates as a numpy array.
+        
+        The chain code is converted to a sequence of 2D coordinates,
+        starting from (0, 0) and applying the directional changes
+        based on the chain code values. The coordinates are scaled
+        using the area_per_pixel value.
+        
+        Chain codes represent 2D contours using directional codes from 0 to 7:
+        
+            3   2   1
+             \\  |  /
+            4 - * - 0
+             /  |  \\
+            5   6   7
+        
+        Returns
+        -------
+        coords : np.ndarray
+            2D coordinates with shape (n, 2) where n is the number of points.
+            The first column is the x-coordinate and the second column is the y-coordinate.
+        """
+        directions = np.array([
+            [1, 0],    # 0: right
+            [1, -1],   # 1: up-right
+            [0, -1],   # 2: up
+            [-1, -1],  # 3: up-left
+            [-1, 0],   # 4: left
+            [-1, 1],   # 5: down-left
+            [0, 1],    # 6: down
+            [1, 1]     # 7: down-right
+        ])
+        
+        coords = np.zeros((len(self.chain_code) + 1, 2))
+        
+        for i, code in enumerate(self.chain_code):
+            valid_code = min(max(0, code), 7)
+            coords[i+1] = coords[i] + directions[valid_code]
+        
+        scale_factor = np.sqrt(self.area_per_pixel)
+        coords *= scale_factor
+        
+        coords[:, 0] += self.x
+        coords[:, 1] += self.y
+        
+        return coords
+    
     def to_dataframe(self):
-        """Convert chain code to pandas DataFrame.
+        """Convert chain code to 2D coordinates as a pandas DataFrame.
+        
+        The chain code is converted to a sequence of 2D coordinates,
+        starting from (0, 0) and applying the directional changes
+        based on the chain code values. The coordinates are scaled
+        using the area_per_pixel value.
+        
+        Chain codes represent 2D contours using directional codes from 0 to 7:
+        
+            3   2   1
+             \\  |  /
+            4 - * - 0
+             /  |  \\
+            5   6   7
         
         Returns
         -------
         df : pd.DataFrame
-            Chain code.
+            DataFrame with x and y columns for the coordinates and chain_code
+            column for the direction codes. The first point has chain_code=-1
+            since it has no direction.
         """
+        coords = self.to_numpy()
+        
+        chain_code_values = np.zeros(len(coords), dtype=int)
+        chain_code_values[0] = -1  # First point has no direction
+        chain_code_values[1:] = self.chain_code  # Remaining points have directions
+        
         df = pd.DataFrame(
             {
-                "chain_code": self.chain_code,
+                "x": coords[:, 0],
+                "y": coords[:, 1],
+                "chain_code": chain_code_values,
             },
             index=pd.MultiIndex.from_tuples(
-                [[self.sample_name, i] for i in range(len(self.chain_code))],
+                [[self.sample_name, i] for i in range(len(coords))],
                 name=["specimen_id", "coord_id"],
             ),
         )
+        
         return df
 
 
 
 
-def read_chc(file_path, as_frame=False, validate=True):
+def read_chc(file_path, as_frame=False, validate=True, as_coordinates=True):
     """Read chain code (.chc) file.
     
     Chain codes represent 2D contours using directional codes from 0 to 7:
@@ -115,11 +186,14 @@ def read_chc(file_path, as_frame=False, validate=True):
     validate : bool, default=True
         If True, validate that chain code values are between 0 and 7.
         Set to False to skip validation for legacy files that may contain other values.
+    as_coordinates : bool, default=True
+        If True, convert chain codes to 2D coordinates.
+        If False, return the raw chain code values.
         
     Returns
     -------
-    chain_codes : list of ChainCodeData or pd.DataFrame
-        Chain codes.
+    chain_codes : list of np.ndarray or pd.DataFrame
+        Chain codes or coordinates.
     """
     path = Path(file_path)
     if not path.exists():
@@ -134,13 +208,19 @@ def read_chc(file_path, as_frame=False, validate=True):
         if as_frame:
             return chc_data_list[0].to_dataframe()
         else:
-            return chc_data_list[0].to_numpy()
+            if as_coordinates:
+                return chc_data_list[0].to_numpy()
+            else:
+                return chc_data_list[0].get_chain_code()
     else:
         if as_frame:
             dfs = [chc_data.to_dataframe() for chc_data in chc_data_list]
             return pd.concat(dfs)
         else:
-            return [chc_data.to_numpy() for chc_data in chc_data_list]
+            if as_coordinates:
+                return [chc_data.to_numpy() for chc_data in chc_data_list]
+            else:
+                return [chc_data.get_chain_code() for chc_data in chc_data_list]
 
 
 def write_chc(file_path, chain_codes, sample_names=None, xs=None, ys=None, 
