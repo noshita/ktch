@@ -43,13 +43,9 @@ class ChainCodeData:
     area_pixels: int
     chain_code: np.ndarray
     
-    @property
-    def chain_code(self) -> np.ndarray:
-        return self._chain_code
-    
-    @chain_code.setter
-    def chain_code(self, value: npt.ArrayLike) -> None:
-        self._chain_code = np.array(value)
+    def __post_init__(self):
+        if not isinstance(self.chain_code, np.ndarray):
+            self.chain_code = np.array(self.chain_code)
     
     def to_numpy(self):
         """Convert chain code to numpy array.
