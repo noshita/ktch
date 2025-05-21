@@ -18,6 +18,14 @@ import pandas as pd
 class ChainCodeData:
     """Chain code data class.
     
+    Chain codes represent 2D contours using directional codes from 0 to 7:
+    
+        3   2   1
+         \  |  /
+        4 - * - 0
+         /  |  \
+        5   6   7
+    
     Parameters
     ----------
     sample_name : str
@@ -33,7 +41,7 @@ class ChainCodeData:
     area_pixels : int
         Area in pixels.
     chain_code : np.ndarray
-        Chain code.
+        Chain code sequence with values from 0 to 7 representing directions.
     """
     sample_name: str
     number: int
@@ -46,6 +54,11 @@ class ChainCodeData:
     def __post_init__(self):
         if not isinstance(self.chain_code, np.ndarray):
             self.chain_code = np.array(self.chain_code)
+            
+        if not np.all((self.chain_code >= 0) & (self.chain_code <= 7)):
+            invalid_values = self.chain_code[(self.chain_code < 0) | (self.chain_code > 7)]
+            raise ValueError(f"Chain code contains invalid values: {invalid_values}. "
+                             f"Values must be between 0 and 7 (inclusive).")
     
     def to_numpy(self):
         """Convert chain code to numpy array.
@@ -79,8 +92,16 @@ class ChainCodeData:
 
 
 
-def read_chc(file_path, as_frame=False):
+def read_chc(file_path, as_frame=False, validate=True):
     """Read chain code (.chc) file.
+    
+    Chain codes represent 2D contours using directional codes from 0 to 7:
+    
+        3   2   1
+         \  |  /
+        4 - * - 0
+         /  |  \
+        5   6   7
     
     Parameters
     ----------
@@ -88,6 +109,9 @@ def read_chc(file_path, as_frame=False):
         Path to the chain code file.
     as_frame : bool, default=False
         If True, return pandas.DataFrame. Otherwise, return numpy.ndarray.
+    validate : bool, default=True
+        If True, validate that chain code values are between 0 and 7.
+        Set to False to skip validation for legacy files that may contain other values.
         
     Returns
     -------
@@ -101,7 +125,7 @@ def read_chc(file_path, as_frame=False):
     if not path.suffix == ".chc":
         raise ValueError(f"{path} is not a chain code file.")
         
-    chc_data_list = _read_chc(path)
+    chc_data_list = _read_chc(path, validate=validate)
     
     if len(chc_data_list) == 1:
         if as_frame:
@@ -117,15 +141,23 @@ def read_chc(file_path, as_frame=False):
 
 
 def write_chc(file_path, chain_codes, sample_names=None, numbers=None, xs=None, ys=None, 
-              area_per_pixels=None, area_pixels_values=None):
+              area_per_pixels=None, area_pixels_values=None, validate=True):
     """Write chain code to .chc file.
+    
+    Chain codes represent 2D contours using directional codes from 0 to 7:
+    
+        3   2   1
+         \  |  /
+        4 - * - 0
+         /  |  \
+        5   6   7
     
     Parameters
     ----------
     file_path : str
         Path to the chain code file.
     chain_codes : list of np.ndarray or np.ndarray
-        Chain codes.
+        Chain codes with values from 0 to 7 representing directions.
     sample_names : list of str or str, optional
         Sample names.
     numbers : list of int or int, optional
@@ -138,6 +170,9 @@ def write_chc(file_path, chain_codes, sample_names=None, numbers=None, xs=None, 
         Area (mm2) per pixel.
     area_pixels_values : list of int or int, optional
         Area in pixels.
+    validate : bool, default=True
+        If True, validate that chain code values are between 0 and 7.
+        Set to False to skip validation for legacy files that may contain other values.
     """
     path = Path(file_path)
     
@@ -183,31 +218,39 @@ def write_chc(file_path, chain_codes, sample_names=None, numbers=None, xs=None, 
     elif isinstance(area_pixels_values, int):
         area_pixels_values = [area_pixels_values] * n_samples
         
-    chc_data_list = [
-        ChainCodeData(
-            sample_name=sample_names[i],
-            number=numbers[i],
-            x=xs[i],
-            y=ys[i],
-            area_per_pixel=area_per_pixels[i],
-            area_pixels=area_pixels_values[i],
-            chain_code=chain_codes[i]
+    chc_data_list = []
+    for i in range(n_samples):
+        if validate and not np.all((chain_codes[i] >= 0) & (chain_codes[i] <= 7)):
+            invalid_values = chain_codes[i][(chain_codes[i] < 0) | (chain_codes[i] > 7)]
+            raise ValueError(f"Chain code contains invalid values: {invalid_values}. "
+                             f"Values must be between 0 and 7 (inclusive).")
+        
+        chc_data_list.append(
+            ChainCodeData(
+                sample_name=sample_names[i],
+                number=numbers[i],
+                x=xs[i],
+                y=ys[i],
+                area_per_pixel=area_per_pixels[i],
+                area_pixels=area_pixels_values[i],
+                chain_code=chain_codes[i]
+            )
         )
-        for i in range(n_samples)
-    ]
     
     _write_chc(path, chc_data_list)
 
 
 
 
-def _read_chc(file_path):
+def _read_chc(file_path, validate=True):
     """Read chain code file.
     
     Parameters
     ----------
     file_path : str or Path
         Path to the chain code file.
+    validate : bool, default=True
+        If True, validate that chain code values are between 0 and 7.
         
     Returns
     -------
@@ -239,15 +282,33 @@ def _read_chc(file_path):
             except ValueError:
                 chain_code = np.array(parts[5:], dtype=int)
             
-            chc_data = ChainCodeData(
-                sample_name=sample_name,
-                number=number,
-                x=x,
-                y=y,
-                area_per_pixel=area_per_pixel,
-                area_pixels=area_pixels,
-                chain_code=chain_code
-            )
+            try:
+                chc_data = ChainCodeData(
+                    sample_name=sample_name,
+                    number=number,
+                    x=x,
+                    y=y,
+                    area_per_pixel=area_per_pixel,
+                    area_pixels=area_pixels,
+                    chain_code=chain_code
+                )
+            except ValueError as e:
+                if validate:
+                    raise e
+                original_post_init = ChainCodeData.__post_init__
+                try:
+                    ChainCodeData.__post_init__ = lambda self: None if not isinstance(self.chain_code, np.ndarray) else setattr(self, 'chain_code', np.array(self.chain_code))
+                    chc_data = ChainCodeData(
+                        sample_name=sample_name,
+                        number=number,
+                        x=x,
+                        y=y,
+                        area_per_pixel=area_per_pixel,
+                        area_pixels=area_pixels,
+                        chain_code=chain_code
+                    )
+                finally:
+                    ChainCodeData.__post_init__ = original_post_init
             
             chc_data_list.append(chc_data)
     
