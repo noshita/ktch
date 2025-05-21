@@ -141,15 +141,14 @@ def write_chc(file_path, chain_codes, sample_names=None, numbers=None, xs=None, 
     """
     path = Path(file_path)
     
-    if isinstance(chain_codes, list):
-        n_samples = len(chain_codes)
-    elif isinstance(chain_codes, np.ndarray):
-        if chain_codes.ndim == 2:
-            n_samples = 1
+    if isinstance(chain_codes, np.ndarray):
+        if chain_codes.ndim == 1:
             chain_codes = [chain_codes]
+        elif chain_codes.ndim == 2:
+            chain_codes = [chain_codes[i, :] for i in range(chain_codes.shape[0])]
         else:
-            n_samples = len(chain_codes)
-    else:
+            raise ValueError("chain_codes must be a 1D or 2D array.")
+    elif not isinstance(chain_codes, list):
         raise ValueError("chain_codes must be a list of numpy arrays or a numpy array.")
     
     if sample_names is None:
