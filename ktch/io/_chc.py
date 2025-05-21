@@ -21,9 +21,9 @@ class ChainCodeData:
     Chain codes represent 2D contours using directional codes from 0 to 7:
     
         3   2   1
-         \  |  /
+         \\  |  /
         4 - * - 0
-         /  |  \
+         /  |  \\
         5   6   7
     
     Parameters
@@ -42,6 +42,8 @@ class ChainCodeData:
         Area in pixels.
     chain_code : np.ndarray
         Chain code sequence with values from 0 to 7 representing directions.
+    validate : bool, default=True
+        If True, validate that chain code values are between 0 and 7.
     """
     sample_name: str
     number: int
@@ -50,12 +52,13 @@ class ChainCodeData:
     area_per_pixel: float
     area_pixels: int
     chain_code: np.ndarray
+    validate: bool = True
     
     def __post_init__(self):
         if not isinstance(self.chain_code, np.ndarray):
             self.chain_code = np.array(self.chain_code)
             
-        if not np.all((self.chain_code >= 0) & (self.chain_code <= 7)):
+        if self.validate and not np.all((self.chain_code >= 0) & (self.chain_code <= 7)):
             invalid_values = self.chain_code[(self.chain_code < 0) | (self.chain_code > 7)]
             raise ValueError(f"Chain code contains invalid values: {invalid_values}. "
                              f"Values must be between 0 and 7 (inclusive).")
@@ -98,9 +101,9 @@ def read_chc(file_path, as_frame=False, validate=True):
     Chain codes represent 2D contours using directional codes from 0 to 7:
     
         3   2   1
-         \  |  /
+         \\  |  /
         4 - * - 0
-         /  |  \
+         /  |  \\
         5   6   7
     
     Parameters
@@ -147,9 +150,9 @@ def write_chc(file_path, chain_codes, sample_names=None, numbers=None, xs=None, 
     Chain codes represent 2D contours using directional codes from 0 to 7:
     
         3   2   1
-         \  |  /
+         \\  |  /
         4 - * - 0
-         /  |  \
+         /  |  \\
         5   6   7
     
     Parameters
@@ -233,7 +236,8 @@ def write_chc(file_path, chain_codes, sample_names=None, numbers=None, xs=None, 
                 y=ys[i],
                 area_per_pixel=area_per_pixels[i],
                 area_pixels=area_pixels_values[i],
-                chain_code=chain_codes[i]
+                chain_code=chain_codes[i],
+                validate=validate
             )
         )
     
