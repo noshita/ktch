@@ -17,16 +17,14 @@
 from __future__ import annotations
 
 from abc import ABCMeta
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from scipy.interpolate import make_interp_spline
-from sklearn.base import (
-    BaseEstimator,
-    ClassNamePrefixFeaturesOutMixin,
-    TransformerMixin,
-)
+from sklearn.base import (BaseEstimator, ClassNamePrefixFeaturesOutMixin,
+                          TransformerMixin)
 from sklearn.decomposition import PCA
 from sklearn.utils.parallel import Parallel, delayed
 
@@ -91,7 +89,7 @@ class EllipticFourierAnalysis(
         reflect: bool = False,
         metric: str = "",
         impute: bool = False,
-        n_jobs: [int, None] = None,
+        n_jobs: Optional[int] = None,
         verbose: int = 0,
     ):
         """
@@ -720,6 +718,7 @@ def _sse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
     coef = np.array(cn)
 
     return coef
+
 
 
 class PositionAligner(BaseEstimator, TransformerMixin):
