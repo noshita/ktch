@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.6.0](https://github.com/noshita/ktch/compare/v0.5.0...v0.6.0) (2025-06-16)
+
+
+### Features
+
+* ✨ add  option to  2D ([6032557](https://github.com/noshita/ktch/commit/6032557d1cce9fc9d06854a54111d6a27353f8ad))
+* ✨ Add chain code file I/O functionality ([61905e0](https://github.com/noshita/ktch/commit/61905e00b554785ca1290739971c40ad3bed1dee))
+* ✨ Add coordinate conversion functions to ChainCodeData class ([5384d02](https://github.com/noshita/ktch/commit/5384d02aa0170e7ba12f1f4955a963a08076532b))
+* ✨ add n_jobs to EllipticFourierAnalysis class ([5db88e5](https://github.com/noshita/ktch/commit/5db88e58cd25f0721962c2991371fdc48bce55ab))
+* ✨ add n_jobs to EllipticFourierAnalysis class ([321193a](https://github.com/noshita/ktch/commit/321193aad7770f8958b6261da1be475d8406f497))
+* ✨ Update chain code format to use simplified sample name format ([38a4be4](https://github.com/noshita/ktch/commit/38a4be486ec5007c51baced185d084ef3b6d2cbe))
+* ✨ Update chain code implementation to validate direction codes (0-7) ([2242ecc](https://github.com/noshita/ktch/commit/2242ecc6d7938fa5cd97e822bf7b45aee3bdc6e4))
+* Add comprehensive input validation and error handling ([e5b7725](https://github.com/noshita/ktch/commit/e5b7725dd75c536ae4156076b81fa7f404e13ed4))
+* Add type hints and improve documentation for SPHARM-PDM module ([fc47215](https://github.com/noshita/ktch/commit/fc472150ac0c896a9c2aa8cf72fadd9888ea380b))
+
+
+### Bug Fixes
+
+* _cvt_spharm_coef_SPHARMPDM_to_list ([5122e8b](https://github.com/noshita/ktch/commit/5122e8b83516cb8198c49ea514a7014cbb360b51))
+* 🐛 Add n_samples definition in write_chc function ([7944293](https://github.com/noshita/ktch/commit/7944293f455a05ff4b8dafc623e7c916040c0b5c))
+* 🐛 Fix chain_code property in ChainCodeData class ([7632cbf](https://github.com/noshita/ktch/commit/7632cbf3bf31c6792fbf624dfc84c7fdba5dfca6))
+* 🐛 Fix handling of 1D arrays in write_chc function ([a51136e](https://github.com/noshita/ktch/commit/a51136e7fc815f5a3e02b5ed3489ad7656e0c370))
+* 🐛 Optimize regex patterns and add test for CURVES functionality ([0537c4f](https://github.com/noshita/ktch/commit/0537c4f1c681f52a68e6c9bab4328ab6164402ba))
+* 🐛 Optimize regex patterns to avoid catastrophic backtracking ([ee76958](https://github.com/noshita/ktch/commit/ee76958f8eabcd25f4c8e4d0a2734440760eb8ec))
+* 🐛 Pass validate parameter to ChainCodeData constructor ([53f100e](https://github.com/noshita/ktch/commit/53f100ef71ba43c577e4f3d114b781ead779431a))
+* 🐛 release-please config files ([a231c32](https://github.com/noshita/ktch/commit/a231c32fb686ac6f7ee91682d4147c2085ccbd6f))
+
+
+### Performance Improvements
+
+* Optimize coefficient parsing and conversion logic ([3ae8db3](https://github.com/noshita/ktch/commit/3ae8db3281e30defc2ce1a4d0389dbfc33716d64))
+
 ## [0.5.0](https://github.com/noshita/ktch/compare/v0.4.3...v0.5.0) (2025-02-07)
 
 
