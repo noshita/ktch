@@ -1,8 +1,18 @@
 """Chain code file I/O functions."""
 
+# Copyright 2025 Koji Noshita
 #
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import re
 from dataclasses import dataclass
@@ -13,18 +23,15 @@ import numpy.typing as npt
 import pandas as pd
 
 
-
 @dataclass
 class ChainCodeData:
     """Chain code data class.
     
     Chain codes represent 2D contours using directional codes from 0 to 7:
     
-        3   2   1
-         \\  |  /
-        4 - * - 0
-         /  |  \\
-        5   6   7
+        3 2 1
+        4 * 0
+        5 6 7
     
     Parameters
     ----------
@@ -80,11 +87,9 @@ class ChainCodeData:
         
         Chain codes represent 2D contours using directional codes from 0 to 7:
         
-            3   2   1
-             \\  |  /
-            4 - * - 0
-             /  |  \\
-            5   6   7
+            3 2 1
+            4 * 0
+            5 6 7
         
         Returns
         -------
@@ -127,11 +132,9 @@ class ChainCodeData:
         
         Chain codes represent 2D contours using directional codes from 0 to 7:
         
-            3   2   1
-             \\  |  /
-            4 - * - 0
-             /  |  \\
-            5   6   7
+            3 2 1
+            4 * 0
+            5 6 7
         
         Returns
         -------
@@ -168,11 +171,9 @@ def read_chc(file_path, as_frame=False, validate=True, as_coordinates=True):
     
     Chain codes represent 2D contours using directional codes from 0 to 7:
     
-        3   2   1
-         \\  |  /
-        4 - * - 0
-         /  |  \\
-        5   6   7
+        3 2 1
+        4 * 0
+        5 6 7
     
     The chain code file format is:
     [Sample name] [X] [Y] [Area (mm2) per pixel] [Area (pixels)] [Chain code] -1
@@ -229,11 +230,9 @@ def write_chc(file_path, chain_codes, sample_names=None, xs=None, ys=None,
     
     Chain codes represent 2D contours using directional codes from 0 to 7:
     
-        3   2   1
-         \\  |  /
-        4 - * - 0
-         /  |  \\
-        5   6   7
+        3 2 1
+        4 * 0
+        5 6 7
     
     The chain code file format is:
     [Sample name] [X] [Y] [Area (mm2) per pixel] [Area (pixels)] [Chain code] -1
