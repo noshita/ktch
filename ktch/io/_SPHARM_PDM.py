@@ -199,8 +199,8 @@ def _cvt_spharm_coef_SPHARMPDM_to_list(coef_SlicerSALT: npt.NDArray[np.float64])
     coef_list = []
     
     for l in range(lmax + 1):
-        # Pre-allocate array for this degree
-        coef_l = np.zeros(2 * l + 1, dtype=np.complex128)
+        # Pre-allocate array for this degree with shape (2*l+1, 3)
+        coef_l = np.zeros((2 * l + 1, 3), dtype=np.complex128)
         
         for idx, m in enumerate(range(-l, l + 1)):
             if m == 0:
