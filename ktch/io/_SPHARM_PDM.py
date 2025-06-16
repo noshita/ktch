@@ -81,16 +81,12 @@ def read_coef_SPHARM_PDM(path: Union[str, Path]) -> Tuple[SPHARMCoefficients, SP
     if not coef_txt.strip():
         raise ValueError("SPHARM-PDM file is empty")
     
-    # Parse coefficients
+    # Parse coefficients more efficiently
     try:
-        coef = [
-            float(val)
-            for val in coef_txt.replace("\n", "")
-            .replace("{", "")
-            .replace("}", "")
-            .split(",")
-            if val.strip()  # Skip empty strings
-        ]
+        # Remove curly braces and newlines in one pass
+        cleaned_txt = coef_txt.translate(str.maketrans('', '', '{}\n'))
+        # Split and convert to float, filtering empty values
+        coef = [float(val) for val in cleaned_txt.split(',') if val.strip()]
     except ValueError as e:
         raise ValueError(f"Invalid coefficient format in SPHARM-PDM file: {e}")
     
@@ -199,24 +195,30 @@ def _cvt_spharm_coef_SPHARMPDM_to_list(coef_SlicerSALT: npt.NDArray[np.float64])
         raise ValueError(
             f"Invalid coefficient array size: expected {expected_size}, got {coef_.shape[0]}"
         )
-    coef_list = [
-        np.array(
-            [
-                coef_[l**2]
-                if m == 0
-                else (coef_[l**2 + 2 * m - 1] - coef_[l**2 + 2 * m] * 1j) / 2
-                if m > 0
-                else ((-1) ** m)
-                * (
-                    coef_[l**2 + 2 * np.abs(m) - 1]
-                    + coef_[l**2 + 2 * np.abs(m)] * 1j
-                )
-                / 2
-                for m in range(-l, l + 1, 1)
-            ]
-        )
-        for l in range(0, lmax + 1, 1)
-    ]
+    # Pre-allocate list for better performance
+    coef_list = []
+    
+    for l in range(lmax + 1):
+        # Pre-allocate array for this degree
+        coef_l = np.zeros(2 * l + 1, dtype=np.complex128)
+        
+        for idx, m in enumerate(range(-l, l + 1)):
+            if m == 0:
+                # m=0: only real part
+                coef_l[idx] = coef_[l**2]
+            elif m > 0:
+                # m>0: combine real and imaginary parts
+                real_idx = l**2 + 2 * m - 1
+                imag_idx = l**2 + 2 * m
+                coef_l[idx] = (coef_[real_idx] - coef_[imag_idx] * 1j) / 2
+            else:
+                # m<0: use complex conjugate symmetry
+                abs_m = abs(m)
+                real_idx = l**2 + 2 * abs_m - 1
+                imag_idx = l**2 + 2 * abs_m
+                coef_l[idx] = ((-1) ** m) * (coef_[real_idx] + coef_[imag_idx] * 1j) / 2
+        
+        coef_list.append(coef_l)
     return coef_list
 
 
@@ -264,17 +266,30 @@ def _cvt_spharm_coef_list_to_SPHARM_PDM(coef_list: List[npt.NDArray[np.complex12
             raise ValueError(
                 f"coef_list[{l}] has length {len(coef_l)}, expected {expected_len}"
             )
+    # Pre-allocate output array
     coef_SlicerSALT = np.zeros(((lmax + 1) ** 2, 3))
-    for l in range(0, lmax + 1, 1):
-        for m in range(0, l + 1, 1):
-            if m == 0:
-                coef_SlicerSALT[l**2] = coef_list[l][m + l].real
-            else:
-                coef_SlicerSALT[l**2 + 2 * m - 1] = (
-                    coef_list[l][m + l] + ((-1) ** m) * coef_list[l][-m + l]
-                ).real
-                coef_SlicerSALT[l**2 + 2 * m] = (
-                    (coef_list[l][m + l] - ((-1) ** m) * coef_list[l][-m + l]) * 1j
-                ).real
+    
+    for l in range(lmax + 1):
+        l_squared = l ** 2
+        
+        # m = 0 case
+        coef_SlicerSALT[l_squared] = coef_list[l][l].real
+        
+        # m > 0 cases
+        for m in range(1, l + 1):
+            # Get positive and negative m coefficients
+            coef_pos_m = coef_list[l][m + l]
+            coef_neg_m = coef_list[l][-m + l]
+            sign = (-1) ** m
+            
+            # Real part: sum of positive and negative m
+            coef_SlicerSALT[l_squared + 2 * m - 1] = (
+                coef_pos_m + sign * coef_neg_m
+            ).real
+            
+            # Imaginary part: difference of positive and negative m
+            coef_SlicerSALT[l_squared + 2 * m] = (
+                (coef_pos_m - sign * coef_neg_m) * 1j
+            ).real
 
     return coef_SlicerSALT.reshape(-1)
