@@ -150,6 +150,102 @@ def read_coef_SPHARM_PDM(path: Union[str, Path]) -> Tuple[SPHARMCoefficients, SP
     return coef_x, coef_y, coef_z
 
 
+def write_coef_SPHARM_PDM(
+    path: Union[str, Path],
+    coef_x: SPHARMCoefficients,
+    coef_y: SPHARMCoefficients,
+    coef_z: SPHARMCoefficients
+) -> None:
+    """Write SPHARM coefficients to .coef file in SPHARM-PDM format.
+    
+    This function provides the inverse operation of read_coef_SPHARM_PDM,
+    allowing round-trip conversion of SPHARM coefficients.
+    
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Path where the .coef file will be written.
+    coef_x : SPHARMCoefficients
+        SPHARM coefficients for x-coordinate.
+    coef_y : SPHARMCoefficients
+        SPHARM coefficients for y-coordinate.
+    coef_z : SPHARMCoefficients
+        SPHARM coefficients for z-coordinate.
+        
+    Raises
+    ------
+    ValueError
+        If the coefficients have inconsistent degrees or invalid structure.
+    IOError
+        If the file cannot be written.
+        
+    Examples
+    --------
+    >>> # Read coefficients
+    >>> coef_x, coef_y, coef_z = read_coef_SPHARM_PDM('input.coef')
+    >>> # Process coefficients...
+    >>> # Write back to file
+    >>> write_coef_SPHARM_PDM('output.coef', coef_x, coef_y, coef_z)
+    """
+    # Convert to Path object
+    path = Path(path)
+    
+    # Validate input coefficients
+    if not all(isinstance(c, SPHARMCoefficients) for c in [coef_x, coef_y, coef_z]):
+        raise ValueError("All coefficients must be SPHARMCoefficients objects")
+    
+    # Check that all coefficients have the same degree
+    if not (coef_x.n_degree == coef_y.n_degree == coef_z.n_degree):
+        raise ValueError(
+            f"All coefficients must have the same degree. Got: "
+            f"x={coef_x.n_degree}, y={coef_y.n_degree}, z={coef_z.n_degree}"
+        )
+    
+    if coef_x.n_degree is None:
+        raise ValueError("Coefficients have not been initialized")
+    
+    # Convert coefficients to lists
+    coef_x_list = coef_x.as_list()
+    coef_y_list = coef_y.as_list()
+    coef_z_list = coef_z.as_list()
+    
+    # Combine into a single array for each degree
+    combined_coefs = []
+    for l in range(len(coef_x_list)):
+        coef_l = np.zeros((2 * l + 1, 3), dtype=np.complex128)
+        coef_l[:, 0] = coef_x_list[l]
+        coef_l[:, 1] = coef_y_list[l]
+        coef_l[:, 2] = coef_z_list[l]
+        combined_coefs.append(coef_l)
+    
+    # Convert to SPHARM-PDM format
+    spharm_pdm_array = _cvt_spharm_coef_list_to_SPHARM_PDM(combined_coefs)
+    
+    # Format output
+    n_coef_per_coord = (coef_x.n_degree + 1) ** 2
+    
+    # Build output string
+    output_lines = [f"{{ {n_coef_per_coord},"]
+    
+    # Format coefficients in groups of 3 (x, y, z)
+    for i in range(0, len(spharm_pdm_array), 3):
+        x, y, z = spharm_pdm_array[i:i+3]
+        output_lines.append(f"{{{x:.6f}, {y:.6f}, {z:.6f}}},")
+    
+    # Remove trailing comma from last line
+    output_lines[-1] = output_lines[-1][:-1]
+    
+    # Close the outer brace
+    output_lines.append("}")
+    
+    # Write to file
+    try:
+        with open(path, 'w') as f:
+            f.write('\n'.join(output_lines))
+    except IOError as e:
+        raise IOError(f"Failed to write SPHARM-PDM file: {e}")
+
+
 def _cvt_spharm_coef_SPHARMPDM_to_list(coef_SlicerSALT: npt.NDArray[np.float64]) -> List[npt.NDArray[np.complex128]]:
     """Convert SPHARM-PDM format coefficients to list format.
     

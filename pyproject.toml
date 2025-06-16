@@ -29,6 +29,7 @@ dependencies = [
 
 [project.optional-dependencies]
 docs = []
+vtk = ["vtk>=9.4.2"]
 
 [project.urls]
 Homepage = "https://doc.ktch.dev"
@@ -69,6 +70,7 @@ doc = [
   "sphinx-sitemap>=2.6",
   "sphinxcontrib-bibtex>=2.6",
 ]
+vtk = ["pyvista>=0.45.2"]
 
 [tool.uv]
 default-groups = ["dev", "doc"]

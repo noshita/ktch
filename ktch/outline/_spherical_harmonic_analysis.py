@@ -15,15 +15,18 @@
 # limitations under the License.
 
 import dataclasses
-from typing import List
+from abc import ABCMeta
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 import scipy as sp
-from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.base import (BaseEstimator, ClassNamePrefixFeaturesOutMixin,
+                          TransformerMixin)
+from sklearn.utils.parallel import Parallel, delayed
 
 
-class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
+class SphericalHarmonicAnalysis(ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator, metaclass=ABCMeta):
     r"""Spherical Harmonic (SPHARM) Analysis
 
 
@@ -66,60 +69,72 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
     .. [Ritche_Kemp_1999] Ritchie, D.W., Kemp, G.J.L. (1999) Fast computation, rotation, and comparison of low resolution spherical harmonic molecular surfaces. J. Comput. Chem. 20: 383–395.
     .. [Shen_etal_2009] Shen, L., Farid, H., McPeek, M.A. (2009) Modeling three-dimensional morphological structures using spherical harmonics. Evolution (N. Y). 63: 1003–1016.
 
-
-
     """
 
-    def __init__(self, n_harmonics=10, reflect=False, metric="", impute=False):
-        # self.dtype = dtype
+    def __init__(
+        self,
+        n_harmonics: int = 10,
+        reflect=False,
+        metric="",
+        impute=False,
+        n_jobs: Optional[int] = None,
+    ):
         self.n_harmonics = n_harmonics
+        self.n_jobs = n_jobs
 
-    def fit_transform(self, X, theta=None, phi=None):
+    def fit_transform(self, X, t=None, norm=True):
         """SPHARM coefficients of outlines."""
 
         spharm_coef = None
 
         return spharm_coef
 
-    def _transform_single(self, X, theta=None, phi=None):
+    def _transform_single(self, X, t, norm=True):
         """SPHARM coefficients of a single outline.
 
         Parameters
         ----------
-        X: array-like of shape (n_coords, n_dim)
-                Coordinate values of an outline in n_dim (2 or 3).
+        X: array-like of shape (n_coords, 3)
+                Coordinate values on a surface.
 
-        t: array-like of shape (n_coords, ), optional
-                A parameter indicating the position on the outline.
-                If `t=None`, then t is calculated based on the coordinate values with the linear interpolation.
+        t: array-like of shape (n_coords, 2), optional
+                Parameters $\mathbf{t}=(\theta, \phi)$ indicating the position on the surface.
+                If `t=None`, then theta and phi are calculated
+                based on the coordinate values with `parameterization`.
 
         Returns
         ------------------------
-        spharm_coef: list of coeffients
-            Returns the coefficients of Fourier series.
+        c: array of shape (1, 3*(n_harmonics+1)(n_harmonics+2)/2)
+            Returns the coefficients of SPHARM series.
 
-        ToDo
-        ------------------------
-        * EHN: 3D outline
         """
 
-        spharm_coef = None
+        theta, phi = t.T
+        lmax = self.n_harmonics
+        lm2j = np.array([[l, m] for l in range(lmax + 1) for m in range(-l, l + 1)])
 
-        return spharm_coef
+        A_Mat = np.array([sp.special.sph_harm_y(l, m, theta, phi) for l, m in lm2j])
 
-    def transform(self, X, theta=None, phi=None):
-        """Transform X to a SPHARM coefficients.
+        sol = sp.linalg.lstsq(A_Mat.T, X)
+        c = sol[0].T.reshape(1,-1)
+
+        return c
+
+    def transform(self, X, t, norm=True):
+        """Transform coordinates with parameters to SPHARM coefficients.
 
         Parameters
         ------------------------
-        X: list of array-like
-                Coordinate values of n_samples. The i-th array-like whose shape (n_coords_i, 3) represents 3D coordinate values of the i-th sample .
+        X: list (n_samples) of array-like of shape (n_coords_i, 3)
+            Coordinate values of n_samples. The i-th array-like whose shape (n_coords_i, 3) represents 3D coordinate values of the i-th sample .
 
-        theta: array-like of shape (n_coords, )
-            Array-like of theta values.
+        t: array-like of shape (n_samples, n_coords_i, 2)
+            Parameters of the i-th sample.
+            The i-th array-like whose shape (n_coords_i, 2) represents
+            the spherical parameters (theta, phi) of the i-th sample.
 
-        phi: array-like of shape (n_coords, )
-            Array-like of phi values.
+        norm: bool, default=True
+            If True, the SPHARM coefficients are normalized.
 
         Returns
         ------------------------
@@ -127,20 +142,27 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
             Returns the array-like of SPHARM coefficients.
         """
 
-        X_transformed = None
+        # X_transformed = Parallel(
+        #     n_jobs=self.n_jobs)(
+        #         delayed(self._ripser_diagram)(x) for x, (theta, phi) in zip(X, t)
+        #         )
+
+        X_transformed = np.array(
+            [self._transform_single(x, theta, phi) for x, (theta, phi) in zip(X, t)]
+        )
 
         return X_transformed
 
-    def _inverse_transform_single(self, lmax, coef_list, theta_range, phi_range):
+    def _inverse_transform_single(self, coef_list, lmax, theta_range, phi_range):
         """SPHARM
 
         Parameters
         ------------------------
-        lmax: int
-            Degree of SPHARM to use how far
         coef_list: list
             SPHARM coefficients
             coef_naive[l,m] corresponding to the coefficient of degree l and order m
+        lmax: int
+            Degree of SPHARM to use how far
         theta_range: array_like
         phi_range: array_like
 
@@ -173,100 +195,37 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
 
         return np.real(x), np.real(y), np.real(z)
 
+    def inverse_transform(self, X_transformed, n_theta, n_phi):
+        """Inverse transform SPHARM coefficients to coordinates.
 
-class PCContribDisplay:
-    """Shape variation visualization along PC axes.
-
-
-    Parameters
-    ------------------------
-    pca:
-
-    n_PCs:
-
-    sd_values:
-
-    lmax:
-
-    theta:
-
-    standardized:
-
-
-    dpi:
-
-    morph_color:
-
-
-    morph_alpha:
-
-
-
-
-    Attributes
-    ------------------------
-    XXX : matplotlib Artist
-        .
-    ax_ : matplotlib Axes
-        Axes with shape variation.
-    figure_ : matplotlib Figure
-        Figure containing the shape variation.
-
-
-    """
-
-    def __init__(self):
-        pass
-
-    def plot(
-        self,
-        *,
-        include_values=True,
-        cmap="viridis",
-        xticks_rotation="horizontal",
-        values_format=None,
-        ax=None,
-        colorbar=True,
-    ):
-        """Plot visualization.
         Parameters
-        ------------------------
-        include_values : bool, default=True
-            Includes values in confusion matrix.
-        cmap : str or matplotlib Colormap, default='viridis'
-            Colormap recognized by matplotlib.
-        xticks_rotation : {'vertical', 'horizontal'} or float, \
-                         default='horizontal'
-            Rotation of xtick labels.
-        values_format : str, default=None
-            Format specification for values in confusion matrix. If `None`,
-            the format specification is 'd' or '.2g' whichever is shorter.
-        ax : matplotlib axes, default=None
-            Axes object to plot on. If `None`, a new figure and axes is
-            created.
-        colorbar : bool, default=True
-            Whether or not to add a colorbar to the plot.
+        ----------
+        X_transformed : Array-like of shape (n_samples, n_coefficients)
+            SPHARM coefficients to be transformed back to coordinates.
+        n_theta : int
+            Number of theta values to generate.
+        n_phi : int
+            Number of phi values to generate.
+
         Returns
-        ------------------------
-        display : :class:`~ktch.outline.PCContribDisplay`
+        -------
+        X_coords : Array-like of shape (n_samples, n_theta, n_phi, 3)
+            Returns the coordinates reconstructed from the SPHARM coefficients.
         """
 
-        import matplotlib.pyplot as plt
+        lmax = self.n_harmonics
+        theta_range = np.linspace(0, np.pi, n_theta)
+        phi_range = np.linspace(0, 2 * np.pi, n_phi)
 
-        if ax is None:
-            fig, ax = plt.subplots()
-        else:
-            fig = ax.figure
+        X_coords = np.array(
+            [
+                self._inverse_transform_single(coef, lmax, theta_range, phi_range)
+                for coef in X_transformed
+            ]
+        )
 
-        self.figure_ = fig
-        self.ax_ = ax
+        return X_coords
 
-        return self
-
-    @classmethod
-    def from_estimator(self):
-        """Create a"""
-        pass
 
 
 ###########################################################
@@ -307,7 +266,7 @@ def spharm(
     coef_x = SPHARMCoefficients()
     coef_y = SPHARMCoefficients()
     coef_z = SPHARMCoefficients()
-    if type(coefficients[0]) is npt.NDArray:
+    if type(coefficients[0]) is np.ndarray:
         coef_x.from_array(coefficients[0])
         coef_y.from_array(coefficients[1])
         coef_z.from_array(coefficients[2])
@@ -342,10 +301,25 @@ def spharm(
 class SPHARMCoefficients:
     """SPHARM coefficients"""
 
-    coef: npt.ArrayLike = None
+    coef_arr: npt.ArrayLike = None
     n_degree: int = None
 
     def from_list(self, coef_list: list):
+        """SPHARM coefficients from list.
+
+        Parameters
+        ----------
+        coef_list : list
+            `coef_list[l][m+l]` ($-l \geq m \geq l$) corresponds to $c_l^m$.
+            `coef_list[l]` has $2l+1$ elements.
+
+        Raises
+        ------
+        ValueError
+            _description_
+        ValueError
+            _description_
+        """
         if len(coef_list) == 0:
             raise ValueError("coef_list must be non-empty")
 
@@ -362,10 +336,27 @@ class SPHARMCoefficients:
             # print(coef_l, coef_arr[l])
             coef_arr[l, (-l + n_degree) : (l + n_degree + 1)] = coef_l
 
-        self.coef = coef_arr
+        self.coef_arr = coef_arr
         self.n_degree = n_degree
 
     def from_array(self, coef_arr: npt.NDArray):
+        """SPHARM coefficients from array.
+
+        Parameters
+        ----------
+        coef_arr : npt.NDArray of shape (lmax+1, 2lmax+1)
+            `coef_arr[l, m+l]`  ($-l \geq m \geq l$) corresponds to $c_l^m$.
+            `` `coef_arr[l, m+l]==0`.
+
+        Raises
+        ------
+        ValueError
+            _description_
+        ValueError
+            _description_
+        ValueError
+            _description_
+        """
         if coef_arr.ndim != 2:
             raise ValueError("coef_arr must be 2-dimensional")
 
@@ -383,7 +374,7 @@ class SPHARMCoefficients:
                         "coef_arr[l, m_] when abs(m+n_degree) > l must be 0"
                     )
 
-        self.coef = coef_arr
+        self.coef_arr = coef_arr
         self.n_degree = n_degree
 
     def as_list(self) -> list:
@@ -430,13 +421,13 @@ class SPHARMCoefficients:
             else:
                 l, m = lm
 
-            if l > len(self.coef):
-                raise ValueError(f"l must be less than {len(self.coef)}")
+            if l > len(self.coef_arr):
+                raise ValueError(f"l must be less than {len(self.coef_arr)}")
 
             if abs(m) > l:
                 raise ValueError(f"abs(m) must be less than {l}")
 
-            self.coef[l][-l + self.n_degree + m] = value
+            self.coef_arr[l][-l + self.n_degree + m] = value
 
         elif type(lm) is int:
             l = lm
@@ -444,12 +435,12 @@ class SPHARMCoefficients:
             if len(value) != 2 * l + 1:
                 raise ValueError(f"len(value) must be {2 * l + 1}")
 
-            if l > len(self.coef):
-                raise ValueError(f"l must be less than {len(self.coef)}")
+            if l > len(self.coef_arr):
+                raise ValueError(f"l must be less than {len(self.coef_arr)}")
 
             row = np.zeros(2 * self.n_degree + 1)
             row[(-l + self.n_degree) : (l + self.n_degree + 1)] = value
-            self.coef[l] = row
+            self.coef_arr[l] = row
 
         else:
             raise ValueError("Indices must be int or tuple of int")
