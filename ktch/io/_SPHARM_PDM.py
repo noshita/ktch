@@ -49,23 +49,90 @@ def read_coef_SPHARM_PDM(path: Union[str, Path]) -> Tuple[SPHARMCoefficients, SP
     coef_z : SPHARMCoefficients
         SPHARM coefficients for z-coordinate.
         
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist.
+    ValueError
+        If the file format is invalid or coefficients are malformed.
+        
     Examples
     --------
     >>> coef_x, coef_y, coef_z = read_coef_SPHARM_PDM('surface.coef')
     >>> print(coef_x.n_degree)  # Maximum degree l
     15
     """
-    with open(path, "r") as f:
-        coef_txt = f.read()
-    coef = [
-        float(val)
-        for val in coef_txt.replace("\n", "")
-        .replace("{", "")
-        .replace("}", "")
-        .split(",")
-    ]
+    # Convert to Path object for better handling
+    path = Path(path)
+    
+    # Check if file exists
+    if not path.exists():
+        raise FileNotFoundError(f"SPHARM-PDM coefficient file not found: {path}")
+    
+    if not path.is_file():
+        raise ValueError(f"Path is not a file: {path}")
+    
+    try:
+        with open(path, "r") as f:
+            coef_txt = f.read()
+    except IOError as e:
+        raise IOError(f"Error reading SPHARM-PDM file: {e}")
+    # Validate file is not empty
+    if not coef_txt.strip():
+        raise ValueError("SPHARM-PDM file is empty")
+    
+    # Parse coefficients
+    try:
+        coef = [
+            float(val)
+            for val in coef_txt.replace("\n", "")
+            .replace("{", "")
+            .replace("}", "")
+            .split(",")
+            if val.strip()  # Skip empty strings
+        ]
+    except ValueError as e:
+        raise ValueError(f"Invalid coefficient format in SPHARM-PDM file: {e}")
+    
+    # Validate we have at least one coefficient (the count)
+    if len(coef) < 1:
+        raise ValueError("SPHARM-PDM file must contain at least one value")
+    
+    # Validate coefficient count
+    # First value is (lmax+1)^2, total coefficients should be 3 times that
+    n_coef_per_coord = int(coef[0])
+    expected_total = 3 * n_coef_per_coord
+    actual_count = len(coef) - 1
+    if actual_count != expected_total:
+        raise ValueError(
+            f"Coefficient count mismatch: expected {expected_total} (3 * {n_coef_per_coord}), found {actual_count}"
+        )
 
-    coef_lists = _cvt_spharm_coef_SPHARMPDM_to_list(np.array(coef[1:]))
+    # Convert to numpy array and validate dimensions
+    try:
+        coef_array = np.array(coef[1:])
+    except Exception as e:
+        raise ValueError(f"Failed to convert coefficients to numpy array: {e}")
+    
+    if coef_array.size == 0:
+        raise ValueError("No coefficients found after the count value")
+    
+    # Validate that the number of coefficients is consistent with a valid lmax
+    # For SPHARM-PDM: total coefficients = 3 * (lmax+1)^2
+    n_coef_per_coord = coef_array.size // 3
+    if coef_array.size % 3 != 0:
+        raise ValueError(
+            f"Total coefficient count ({coef_array.size}) must be divisible by 3"
+        )
+    
+    # Check if n_coef_per_coord is a perfect square
+    lmax_plus_one = np.sqrt(n_coef_per_coord)
+    if not lmax_plus_one.is_integer():
+        raise ValueError(
+            f"Invalid coefficient count: {n_coef_per_coord} is not a perfect square"
+        )
+    
+    coef_lists = _cvt_spharm_coef_SPHARMPDM_to_list(coef_array)
 
     coefficients = [
         (
@@ -107,9 +174,31 @@ def _cvt_spharm_coef_SPHARMPDM_to_list(coef_SlicerSALT: npt.NDArray[np.float64])
         List where coef_list[l] contains coefficients for degree l.
         Each element is an array of shape (2*l+1, 3) with complex values.
         The order is m = -l, -l+1, ..., l-1, l.
+        
+    Raises
+    ------
+    ValueError
+        If the input array has invalid shape or dimensions.
     """
+    if coef_SlicerSALT.ndim != 1:
+        raise ValueError(
+            f"Expected 1D array, got {coef_SlicerSALT.ndim}D array"
+        )
+    
+    if coef_SlicerSALT.size % 3 != 0:
+        raise ValueError(
+            f"Array size ({coef_SlicerSALT.size}) must be divisible by 3"
+        )
+    
     coef_ = coef_SlicerSALT.reshape((-1, 3))
-    lmax = int(np.sqrt(coef_.shape)[0] - 1)
+    lmax = int(np.sqrt(coef_.shape[0]) - 1)
+    
+    # Validate that we have the correct number of coefficients
+    expected_size = (lmax + 1) ** 2
+    if coef_.shape[0] != expected_size:
+        raise ValueError(
+            f"Invalid coefficient array size: expected {expected_size}, got {coef_.shape[0]}"
+        )
     coef_list = [
         np.array(
             [
@@ -150,12 +239,31 @@ def _cvt_spharm_coef_list_to_SPHARM_PDM(coef_list: List[npt.NDArray[np.complex12
         Flattened array of coefficients in SPHARM-PDM format.
         Real and imaginary parts are stored separately.
         
+    Raises
+    ------
+    ValueError
+        If the input list has invalid structure or dimensions.
+        
     Notes
     -----
     The conversion uses the complex conjugate symmetry property:
     Y_l^{-m} = (-1)^m * conj(Y_l^m)
     """
+    if not isinstance(coef_list, list):
+        raise ValueError("coef_list must be a list")
+    
+    if len(coef_list) == 0:
+        raise ValueError("coef_list cannot be empty")
+    
     lmax = len(coef_list) - 1
+    
+    # Validate structure of coefficient list
+    for l, coef_l in enumerate(coef_list):
+        expected_len = 2 * l + 1
+        if len(coef_l) != expected_len:
+            raise ValueError(
+                f"coef_list[{l}] has length {len(coef_l)}, expected {expected_len}"
+            )
     coef_SlicerSALT = np.zeros(((lmax + 1) ** 2, 3))
     for l in range(0, lmax + 1, 1):
         for m in range(0, l + 1, 1):
