@@ -148,8 +148,11 @@ class GeneralizedProcrustesAnalysis(
     def _transform_shape(self, X):
         X_ = np.array(X, dtype=np.double, copy=True)
         X_ = self._center(X_)
+        X_ = self._scale(X_)
         mu = np.sum(X_, axis=0) / len(X_)
         mu = mu / centroid_size(mu)
+        if self.debug:
+            print("mu: ", mu, "centroid_size(mu): ", centroid_size(mu))
 
         diff_disp = np.inf
         total_disp_prev = np.inf
