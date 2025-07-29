@@ -4,6 +4,9 @@ on:
     paths: ["ktch/**", .github/workflows/test-codecov.yml, pyproject.toml, requirements.txt]
 jobs:
   run:
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

@@ -1,3 +1,5 @@
+"""ktch: A Python package for model-based morphometrics
+"""
 # Copyright 2020 Koji Noshita
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +16,7 @@
 
 from importlib.metadata import version
 
-from . import landmark
-from . import outline
-from . import io
-from . import datasets
+from . import datasets, io, landmark, outline
 
 __version__ = version(__name__)
 
