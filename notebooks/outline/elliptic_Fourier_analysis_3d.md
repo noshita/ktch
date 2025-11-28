@@ -4,7 +4,7 @@ jupytext:
     extension: .md
     format_name: myst
     format_version: 0.13
-    jupytext_version: 1.16.6
+    jupytext_version: 1.18.1
 kernelspec:
   display_name: Python 3 (ipykernel)
   language: python
@@ -27,18 +27,16 @@ from ktch.outline import EllipticFourierAnalysis
 ## 3D coordinate values of a leaf edge
 
 ```{code-cell} ipython3
-resp = urllib.request.urlopen("https://strata.morphometrics.jp/examples/rolling_alpha_016_nIntervals_64.csv")
+resp = urllib.request.urlopen(
+    "https://strata.morphometrics.jp/examples/rolling_alpha_016_nIntervals_64.csv"
+)
 arr_coord = np.loadtxt(resp)
 df_coord = pd.DataFrame(arr_coord, columns=["x", "y", "z"])
 ```
 
 ```{code-cell} ipython3
 fig = px.line_3d(df_coord, x="x", y="y", z="z")
-fig.update_layout(
-    scene=dict(
-                 aspectmode='data'
-         )
-)
+fig.update_layout(scene=dict(aspectmode="data"))
 fig.show()
 ```
 
@@ -57,16 +55,16 @@ coef[0]
 ## Reconstruction of 3D coordinate values from Fourier coefficients
 
 ```{code-cell} ipython3
-arr_coord_recon = efa3d.inverse_transform(coef,t_num=600)
+arr_coord_recon = efa3d.inverse_transform(coef, t_num=600)
 df_coord_recon = pd.DataFrame(arr_coord_recon[0], columns=["x", "y", "z"])
 ```
 
 ```{code-cell} ipython3
 fig = px.line_3d(df_coord_recon, x="x", y="y", z="z")
-fig.update_layout(
-    scene=dict(
-                 aspectmode='data'
-         )
-)
+fig.update_layout(scene=dict(aspectmode="data"))
 fig.show()
+```
+
+```{code-cell} ipython3
+
 ```

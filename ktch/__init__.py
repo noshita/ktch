@@ -1,5 +1,4 @@
-"""ktch: A Python package for model-based morphometrics
-"""
+"""ktch: A Python package for model-based morphometrics"""
 # Copyright 2020 Koji Noshita
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
