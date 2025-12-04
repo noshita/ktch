@@ -55,6 +55,7 @@ dev = [
   "setuptools<60.0",
   "tqdm>=4.67",
   "tslearn>=0.6.3",
+  "vtk>=9.5.2",
   "xarray>=2025.1",
 ]
 doc = [

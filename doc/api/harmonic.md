@@ -1,9 +1,9 @@
-(outline_ref)=
+(harmonic_ref)=
 
-# ktch.outline
+# ktch.harmonic
 
 ```{eval-rst}
-.. automodule:: ktch.outline
+.. automodule:: ktch.harmonic
    :no-members:
    :no-inherited-members:
 ```
@@ -17,7 +17,7 @@
    :toctree: generated/
    :template: base.rst
 
-   outline.EllipticFourierAnalysis
+   harmonic.EllipticFourierAnalysis
 ```
 
 ## Functions
@@ -29,5 +29,5 @@
    :toctree: generated/
    :template: base.rst
    
-   outline.spharm
+   harmonic.spharm
 ```

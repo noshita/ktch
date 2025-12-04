@@ -1,4 +1,7 @@
-"""ktch: A Python package for model-based morphometrics"""
+"""
+The :mod:`ktch.harmonic` module implements harmonic-based morphometrics.
+"""
+
 # Copyright 2020 Koji Noshita
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,30 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from importlib.metadata import version
-
-from . import datasets, harmonic, io, landmark
-
-__version__ = version(__name__)
+# from ._polar_Fourier_analysis import PFA
+from ._elliptic_Fourier_analysis import EllipticFourierAnalysis, rotation_matrix_2d
+from ._spherical_harmonic_analysis import spharm
 
 __all__ = [
-    "landmark",
-    "harmonic",
-    "outline",
-    "io",
-    "datasets",
-    "__version__",
+    "EllipticFourierAnalysis",
+    "rotation_matrix_2d",
+    # "SphericalHarmonicAnalysis",
+    "spharm",
 ]
-
-
-# for deprecated modules
-def __getattr__(name: str):
-    if name == "outline":
-        from . import outline
-
-        return outline
-    raise AttributeError(f"'ktch' has no attribute '{name}'")
-
-
-def __dir__():
-    return list(globals().keys()) + ["outline"]

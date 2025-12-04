@@ -3,6 +3,7 @@
 # User Guide
 
 ## Getting started
+
 ```{eval-rst}
 .. toctree::
     :maxdepth: 1
@@ -11,6 +12,7 @@
 ```
 
 ## Landmark-based morphometrics
+
 ```{eval-rst}
 .. toctree::
     :maxdepth: 1
@@ -18,13 +20,13 @@
     landmark/landmark
 ```
 
-## Outline-based morphometrics
+## Harmonic-based morphometrics
 
 ```{eval-rst}
 .. toctree::
     :maxdepth: 1
 
-    outline/outline_based_morphometrics
+    harmonic/harmonic_based_morphometrics
 ```
 
 ## Visualizations
@@ -44,4 +46,3 @@
 
    toy_dataset
 ```
-

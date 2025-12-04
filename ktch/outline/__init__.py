@@ -1,35 +1,31 @@
 """
-The :mod:`ktch.outline` module implements outline-based morphometrics.
+Deprecated module: ktch.outline
 
-The outline, which are boundary lines or boundary surfaces separating
-the target object from others, are modeled as closed functions.
+This module has been renamed to ktch.harmonic.
+Please update your imports accordingly.
+
+This compatibility shim will be removed in version 0.9.
 """
 
-# Copyright 2020 Koji Noshita
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+import warnings
 
-# from ._polar_Fourier_analysis import PFA
-from ._elliptic_Fourier_analysis import EllipticFourierAnalysis, rotation_matrix_2d
-from ._spherical_harmonic_analysis import SPHARMCoefficients, spharm
+warnings.filterwarnings(
+    "once",
+    category=FutureWarning,
+    module=r"ktch\.outline",
+)
 
-# from ._spherical_harmonic_analysis import SphericalHarmonicAnalysis, PCContribDisplay
+warnings.warn(
+    "The 'outline' module is deprecated and will be removed in version 0.9. "
+    "Use 'harmonic' instead.",
+    FutureWarning,
+    stacklevel=2,
+)
 
-__all__ = [
-    "EllipticFourierAnalysis",
-    "rotation_matrix_2d",
-    # "SphericalHarmonicAnalysis",
-    # "PCContribDisplay",
-    "spharm",
-    "SPHARMCoefficients",
-]
+
+from ..harmonic import *
+
+try:
+    from ktch.harmonic import __all__
+except ImportError:
+    pass

@@ -1,8 +1,8 @@
-(outline-examples)=
+(harmonic-examples)=
 
-# Outline-based morphometrics examples
+# Harmonic-based morphometrics examples
 
-Examples concerning the :mod:`ktch.outline` module.
+Examples concerning the :mod:`ktch.harmonic` module.
 
 ```{eval-rst}
 .. toctree::

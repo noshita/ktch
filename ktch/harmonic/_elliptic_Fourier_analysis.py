@@ -46,12 +46,6 @@ class EllipticFourierAnalysis(
     reflect: bool, default=False
         reflect
 
-    metric: str
-        metric
-
-    impute: bool, False
-        impute
-
     Notes
     ------------
     EFA is widely applied for outline shape analysis
@@ -87,15 +81,11 @@ class EllipticFourierAnalysis(
         n_harmonics: int = 20,
         n_dim: int = 2,
         reflect: bool = False,
-        metric: str = "",
-        impute: bool = False,
         n_jobs: Optional[int] = None,
         verbose: int = 0,
     ):
         """
-        ToDo
-        -------
-        * EHN: excluding position from the output
+
         """
         # self.dtype = dtype
         self.n_harmonics = n_harmonics
@@ -104,8 +94,6 @@ class EllipticFourierAnalysis(
         else:
             self.n_dim = n_dim
         self.reflect = reflect
-        self.metric = metric
-        self.impute = impute
         self.n_jobs = n_jobs
         self.verbose = verbose
 
@@ -177,7 +165,6 @@ class EllipticFourierAnalysis(
             X_ = X
 
         if n_dim == 2:
-            print(self.n_jobs)
             X_transformed = np.stack(
                 Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
                     delayed(self._transform_single_2d)(

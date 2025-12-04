@@ -7,6 +7,6 @@
     :maxdepth: 2
     :glob:
 
-    outline/index
+    harmonic/index
     landmark/index
 ```

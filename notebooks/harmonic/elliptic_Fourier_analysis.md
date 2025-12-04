@@ -23,7 +23,7 @@ import seaborn as sns
 from sklearn.decomposition import PCA
 
 from ktch.datasets import load_outline_mosquito_wings
-from ktch.outline import EllipticFourierAnalysis
+from ktch.harmonic import EllipticFourierAnalysis
 ```
 
 ## Load mosquito wing outline dataset

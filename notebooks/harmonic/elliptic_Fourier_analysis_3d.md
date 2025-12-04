@@ -21,7 +21,7 @@ import pandas as pd
 
 import plotly.express as px
 
-from ktch.outline import EllipticFourierAnalysis
+from ktch.harmonic import EllipticFourierAnalysis
 ```
 
 ## 3D coordinate values of a leaf edge

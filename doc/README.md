@@ -1,12 +1,14 @@
 # Documentation
 
-
 ```sh
 # ktch/doc
-poetry run make html
+uv run make html
 ```
+
 ## dev notes
+
 ### Conda
+
 `environment.yml`はconda向けの環境設定ファイル．
 `poetry2conda`を使って，`pyproject.toml`から生成する方針にする．
 
@@ -36,7 +38,6 @@ poetry run liccheck -s pyproject.toml
 * feat: which represents a new feature, and correlates to a SemVer minor.
 * feat!:, or fix!:, refactor!:, etc., which represent a breaking change (indicated by the !) and will result in a SemVer major.
 
-
 #### バージョンの変更
 
 gitのcommit bodyに`Release-As: x.x.x`（`x.x.x`は指定したいバージョン）と記載することで，そのバージョンのPRが作成される．
@@ -59,6 +60,3 @@ The following items forked from [scikit-learn](https://github.com/scikit-learn/s
 
 * shinxext/override_pst_pagetoc.py
 * _templates/base.rst
-
-
-

@@ -7,7 +7,7 @@
     :maxdepth: 1
 
     landmark
-    outline
+    harmonic
     io
     datasets
     plotting
