@@ -23,8 +23,6 @@ import numpy.typing as npt
 import scipy as sp
 from sklearn.base import BaseEstimator, TransformerMixin
 
-from ..utils import SymmetricIndexArray
-
 
 class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
     r"""Spherical Harmonic (SPHARM) Analysis
