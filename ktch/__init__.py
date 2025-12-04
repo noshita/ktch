@@ -15,7 +15,7 @@
 
 from importlib.metadata import version
 
-from . import datasets, harmonic, io, landmark
+from . import datasets, harmonic, io, landmark, plot
 
 __version__ = version(__name__)
 
@@ -25,6 +25,7 @@ __all__ = [
     "outline",
     "io",
     "datasets",
+    "plot",
     "__version__",
 ]
 

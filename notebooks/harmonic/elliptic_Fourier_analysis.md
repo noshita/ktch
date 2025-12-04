@@ -24,6 +24,7 @@ from sklearn.decomposition import PCA
 
 from ktch.datasets import load_outline_mosquito_wings
 from ktch.harmonic import EllipticFourierAnalysis
+from ktch.plot import plot_explained_variance_ratio
 ```
 
 ## Load mosquito wing outline dataset
@@ -101,17 +102,13 @@ def get_pc_scores_for_morphospace(ax, num=5):
 def plot_recon_morphs(
     pca,
     efa,
-    hue,
-    hue_order,
     fig,
     ax,
     n_PCs_xy=[1, 2],
-    lmax=20,
     morph_num=3,
     morph_scale=1.0,
     morph_color="lightgray",
     morph_alpha=0.7,
-    standardized_by_1st_ellipsoid=False,
 ):
     pc_scores_h, pc_scores_v = get_pc_scores_for_morphospace(ax, morph_num)
     print("PC_h: ", pc_scores_h, ", PC_v: ", pc_scores_v)
@@ -165,9 +162,7 @@ sns.scatterplot(
     legend=True,
 )
 
-plot_recon_morphs(
-    pca, efa, morph_num=5, morph_scale=0.5, hue=None, hue_order=None, fig=fig, ax=ax
-)
+plot_recon_morphs(pca, efa, morph_num=5, morph_scale=0.5, fig=fig, ax=ax)
 ```
 
 ```{code-cell} ipython3
@@ -175,6 +170,8 @@ morph_num = 5
 morph_scale = 0.8
 morph_color = "gray"
 morph_alpha = 0.8
+
+hue_order = df_pca["genus"].unique()
 
 fig = plt.figure(figsize=(16, 16), dpi=200)
 
@@ -187,7 +184,7 @@ sns.scatterplot(
     x="PC1",
     y="PC2",
     hue="genus",
-    hue_order=None,
+    hue_order=hue_order,
     palette="Paired",
     ax=ax,
     legend=True,
@@ -198,16 +195,10 @@ plot_recon_morphs(
     efa,
     morph_num=5,
     morph_scale=morph_scale,
-    hue=None,
-    hue_order=None,
     morph_color=morph_color,
     morph_alpha=morph_alpha,
     fig=fig,
     ax=ax,
-)
-
-sns.scatterplot(
-    data=df_pca, x="PC1", y="PC2", hue="genus", hue_order=None, palette="Paired", ax=ax
 )
 
 ax.patch.set_alpha(0)
@@ -224,7 +215,7 @@ sns.scatterplot(
     x="PC2",
     y="PC3",
     hue="genus",
-    hue_order=None,
+    hue_order=hue_order,
     palette="Paired",
     ax=ax,
     legend=True,
@@ -235,17 +226,11 @@ plot_recon_morphs(
     efa,
     morph_num=5,
     morph_scale=morph_scale,
-    hue=None,
-    hue_order=None,
     morph_color=morph_color,
     morph_alpha=morph_alpha,
     fig=fig,
     ax=ax,
     n_PCs_xy=[2, 3],
-)
-
-sns.scatterplot(
-    data=df_pca, x="PC2", y="PC3", hue="genus", hue_order=None, palette="Paired", ax=ax
 )
 
 ax.patch.set_alpha(0)
@@ -262,7 +247,7 @@ sns.scatterplot(
     x="PC3",
     y="PC1",
     hue="genus",
-    hue_order=None,
+    hue_order=hue_order,
     palette="Paired",
     ax=ax,
     legend=True,
@@ -273,17 +258,11 @@ plot_recon_morphs(
     efa,
     morph_num=5,
     morph_scale=morph_scale,
-    hue=None,
-    hue_order=None,
     morph_color=morph_color,
     morph_alpha=morph_alpha,
     fig=fig,
     ax=ax,
     n_PCs_xy=[3, 1],
-)
-
-sns.scatterplot(
-    data=df_pca, x="PC3", y="PC1", hue="genus", hue_order=None, palette="Paired", ax=ax
 )
 
 ax.patch.set_alpha(0)
@@ -295,12 +274,8 @@ print("PC3-PC1 done")
 # CCR
 #########
 
-fig.add_subplot(2, 2, 4)
-sns.barplot(
-    x=["PC" + str(i + 1) for i in range(12)],
-    y=pca.explained_variance_ratio_[0:16],
-    color="gray",
-)
+ax = fig.add_subplot(2, 2, 4)
+plot_explained_variance_ratio(pca, ax=ax, verbose=True)
 ```
 
 ```{code-cell} ipython3

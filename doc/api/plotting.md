@@ -1,8 +1,9 @@
+(plotting-ref)=
 
 # Plotting
 
 ```{eval-rst}
-.. automodule:: ktch.plotting
+.. automodule:: ktch.plot
    :no-members:
    :no-inherited-members:
 ```
@@ -14,5 +15,5 @@
    :toctree: generated/
    :template: base.rst
    
-   outline.PCContribDisplay
+   plot.plot_explained_variance_ratio
 ```

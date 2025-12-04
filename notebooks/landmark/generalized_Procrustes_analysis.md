@@ -6,7 +6,7 @@ jupytext:
     format_version: 0.13
     jupytext_version: 1.18.1
 kernelspec:
-  display_name: Python 3 (ipykernel)
+  display_name: ktch
   language: python
   name: python3
 ---
@@ -24,6 +24,7 @@ from sklearn.decomposition import PCA
 
 from ktch.datasets import load_landmark_mosquito_wings
 from ktch.landmark import GeneralizedProcrustesAnalysis
+from ktch.plot import plot_explained_variance_ratio
 ```
 
 ## Load mosquito wing landmark dataset
@@ -32,10 +33,6 @@ from Rohlf and Slice 1990 _Syst. Zool._
 ```{code-cell} ipython3
 data_landmark_mosquito_wings = load_landmark_mosquito_wings(as_frame=True)
 data_landmark_mosquito_wings.coords
-```
-
-```{code-cell} ipython3
-
 ```
 
 ```{code-cell} ipython3
@@ -176,7 +173,7 @@ df_shapes_vis.columns = pd.MultiIndex.from_tuples(
     names=["coord_id", "dim"],
 )
 df_shapes_vis.sort_index(axis=1, inplace=True)
-df_shapes_vis = df_shapes_vis.swaplevel(0, 1, axis=1).stack(level=1)
+df_shapes_vis = df_shapes_vis.swaplevel(0, 1, axis=1).stack(level=1, future_stack=True)
 df_shapes_vis
 ```
 
@@ -215,6 +212,8 @@ sns.scatterplot(data=df_pca, x="pca0", y="pca1", hue="genus", palette="Paired", 
 ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
 ```
 
+## Morphospace
+
 ```{code-cell} ipython3
 def get_pc_scores_for_morphospace(ax, num=5):
     xrange = np.linspace(ax.get_xlim()[0], ax.get_xlim()[1], num)
@@ -224,16 +223,12 @@ def get_pc_scores_for_morphospace(ax, num=5):
 
 def plot_recon_morphs(
     pca,
-    hue,
-    hue_order,
     fig,
     ax,
     n_PCs_xy=[1, 2],
-    lmax=20,
     morph_num=3,
     morph_alpha=1.0,
     morph_scale=1.0,
-    standardized_by_1st_ellipsoid=False,
     links=[],
 ):
     pc_scores_h, pc_scores_v = get_pc_scores_for_morphospace(ax, morph_num)
@@ -296,6 +291,7 @@ morph_scale = 1.0
 morph_alpha = 0.5
 
 fig = plt.figure(figsize=(16, 16), dpi=200)
+hue_order = df_pca["genus"].unique()
 
 #########
 # PC1
@@ -306,7 +302,7 @@ sns.scatterplot(
     x="pca0",
     y="pca1",
     hue="genus",
-    hue_order=None,
+    hue_order=hue_order,
     palette="Paired",
     ax=ax,
     legend=True,
@@ -316,8 +312,6 @@ plot_recon_morphs(
     pca,
     morph_num=5,
     morph_scale=morph_scale,
-    hue=None,
-    hue_order=None,
     morph_alpha=0.5,
     fig=fig,
     ax=ax,
@@ -338,7 +332,7 @@ sns.scatterplot(
     x="pca1",
     y="pca2",
     hue="genus",
-    hue_order=None,
+    hue_order=hue_order,
     palette="Paired",
     ax=ax,
     legend=True,
@@ -348,8 +342,6 @@ plot_recon_morphs(
     pca,
     morph_num=5,
     morph_scale=morph_scale,
-    hue=None,
-    hue_order=None,
     morph_alpha=0.5,
     fig=fig,
     ax=ax,
@@ -372,7 +364,7 @@ sns.scatterplot(
     x="pca2",
     y="pca0",
     hue="genus",
-    hue_order=None,
+    hue_order=hue_order,
     palette="Paired",
     ax=ax,
     legend=True,
@@ -382,8 +374,6 @@ plot_recon_morphs(
     pca,
     morph_num=5,
     morph_scale=morph_scale,
-    hue=None,
-    hue_order=None,
     morph_alpha=0.5,
     fig=fig,
     ax=ax,
@@ -401,10 +391,10 @@ print("PC3-PC1 done")
 # CCR
 #########
 
-fig.add_subplot(2, 2, 4)
-sns.barplot(
-    x=["PC" + str(i + 1) for i in range(10)],
-    y=pca.explained_variance_ratio_[0:10],
-    color="gray",
-)
+ax = fig.add_subplot(2, 2, 4)
+plot_explained_variance_ratio(pca, ax=ax, verbose=True)
+```
+
+```{code-cell} ipython3
+
 ```
