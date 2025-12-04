@@ -20,8 +20,10 @@ from typing import List
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import scipy as sp
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.utils.parallel import Parallel, delayed
 
 
 class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
@@ -71,58 +73,66 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
 
     """
 
-    def __init__(self, n_harmonics=10, reflect=False, metric="", impute=False):
-        # self.dtype = dtype
+    def __init__(
+        self,
+        n_harmonics=10,
+        n_jobs=None,
+        verbose=0,
+    ):
         self.n_harmonics = n_harmonics
+        self.n_jobs = n_jobs
+        self.verbose = verbose
 
-    def fit_transform(self, X, theta=None, phi=None):
+    def fit_transform(self, X, theta_phi):
         """SPHARM coefficients of outlines."""
 
-        spharm_coef = None
+        return self.transform(X, theta_phi)
 
-        return spharm_coef
-
-    def _transform_single(self, X, theta):
+    def _transform_single(self, X, theta_phi):
         """SPHARM coefficients of a single outline.
 
         Parameters
         ----------
         X: array-like of shape (n_coords, n_dim)
-                Coordinate values of an outline in n_dim (2 or 3).
+                Coordinate values of a surface.
 
-        theta: array-like of shape (n_coords,2)
+        theta_phi: array-like of shape (n_coords,2)
                 Parameters indicating the position on the surface.
-
 
         Returns
         ------------------------
-        spharm_coef: list of coeffients
-            Returns the coefficients of Fourier series.
-
-        ToDo
-        ------------------------
-        * EHN: 3D outline
+        X_transformed: array-like
+            Returns the SPHARM coefficients.
         """
 
-        spharm_coef = None
+        l_max = self.n_harmonics
+        theta = theta_phi[:, 0]
+        phi = theta_phi[:, 1]
 
-        return spharm_coef
+        lm2j = np.array([[l, m] for l in range(l_max + 1) for m in range(-l, l + 1)])
 
-    def transform(self, X, theta=None, phi=None):
+        A_Mat = np.array([sp.special.sph_harm_y(l, m, theta, phi) for l, m in lm2j])
+
+        sol = sp.linalg.lstsq(A_Mat.T, X)
+        c_x, c_y, c_z = sol[0].T
+
+        X_transformed = np.concatenate([c_x, c_y, c_z], axis=-1)
+
+        return X_transformed
+
+    def transform(self, X, theta_phi):
         """Transform X to a SPHARM coefficients.
 
         Parameters
         ------------------------
         X: list of array-like
-                Coordinate values of n_samples.
-                The i-th array-like whose shape (n_coords_i, 3) represents
-                3D coordinate values of the i-th sample .
+            Coordinate values of n_samples.
+            The i-th array-like whose shape (n_coords_i, 3) represents
+            3D coordinate values of the i-th sample .
 
-        theta: array-like of shape (n_coords, )
-            Array-like of theta values.
-
-        phi: array-like of shape (n_coords, )
-            Array-like of phi values.
+        theta_phi: list of array-like of shape (n_coords, 2)
+            Surface parameter of n_samples.
+            The i-th array-like of theta and phi values whose shape is (n_coords_i, 2).
 
         Returns
         ------------------------
@@ -130,11 +140,27 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
             Returns the array-like of SPHARM coefficients.
         """
 
-        X_transformed = None
+        if isinstance(X, pd.DataFrame):
+            X_ = [row.dropna().to_numpy().reshape(3, -1).T for idx, row in X.iterrows()]
+        else:
+            X_ = X
+
+        X_transformed = np.stack(
+            Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
+                delayed(self._transform_single)(X_[i], theta_phi[i])
+                for i in range(len(X_))
+            )
+        )
 
         return X_transformed
 
-    def _inverse_transform_single(self, lmax, coef_list, theta_range, phi_range):
+    def _inverse_transform_single(
+        self,
+        X_transformed,
+        theta_range,
+        phi_range,
+        l_max=None,
+    ):
         """SPHARM
 
         Parameters
@@ -150,31 +176,58 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
 
         Returns
         ------------------------
-        x, y, z: tuple of array_like
+        X_coords: array-like of shape (n_theta, n_phi, 3)
             Coordinate values of SPHARM.
 
         """
-        x = 0
-        y = 0
-        z = 0
-        # coef_list = cvt_spharm_coef_from_SlicerSALT_to_list(coef_naive)
-        for l in range(lmax + 1):
-            m, theta, phi = np.meshgrid(np.arange(-l, l + 1, 1), theta_range, phi_range)
-            coef = coef_list[l]
-            x = x + np.sum(
-                sp.special.sph_harm(m, l, theta, phi) * coef[:, 0].reshape((-1, 1)),
-                axis=1,
-            )
-            y = y + np.sum(
-                sp.special.sph_harm(m, l, theta, phi) * coef[:, 1].reshape((-1, 1)),
-                axis=1,
-            )
-            z = z + np.sum(
-                sp.special.sph_harm(m, l, theta, phi) * coef[:, 2].reshape((-1, 1)),
-                axis=1,
-            )
 
-        return np.real(x), np.real(y), np.real(z)
+        if l_max is None:
+            l_max = self.n_harmonics
+
+        x, y, z = spharm(
+            l_max,
+            cvt_spharm_coef_to_list(X_transformed.T),
+            theta_range,
+            phi_range,
+        )
+        X_coords = np.stack([x, y, z], axis=-1)
+        return X_coords
+
+    def inverse_transform(
+        self,
+        X_transformed,
+        theta_range=np.linspace(0, np.pi, 90),
+        phi_range=np.linspace(0, 2 * np.pi, 180),
+        l_max=None,
+    ):
+        """Inverse SPHARM transform
+        Parameters
+        ------------------------
+        X_transformed: array-like of shape (n_samples, n_coefficients)
+            SPHARM coefficients.
+        theta_range: array_like
+        phi_range: array_like
+        lmax: int
+            Degree of SPHARM to use how far
+
+        Returns
+        ------------------------
+        X_coords: array-like of shape (n_samples, n_theta, n_phi, 3)
+            Coordinate values of reconstructed surfaces.
+        """
+        if l_max is None:
+            l_max = self.n_harmonics
+
+        X_coords = np.stack(
+            Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
+                delayed(self._inverse_transform_single)(
+                    X_transformed[i], theta_range, phi_range, l_max
+                )
+                for i in range(len(X_transformed))
+            )
+        )
+
+        return X_coords
 
 
 ###########################################################
@@ -232,7 +285,6 @@ def spharm(
     )
 
     sph_mat = sp.special.sph_harm_y(l, m, theta, phi)
-    print(sph_mat.shape)
 
     coords = np.tensordot(c, sph_mat, axes=([0, 1], [0, 1]))
 
@@ -246,3 +298,13 @@ def spharm(
 
     x, y, z = np.real(coords)
     return x, y, z
+
+
+def cvt_spharm_coef_to_list(coef):
+    coef_ = coef.reshape((-1, 3))
+    lmax = int(np.sqrt(coef_.shape)[0] - 1)
+    coef_list = [
+        np.array([coef_[l**2 + l + m] for m in range(-l, l + 1, 1)])
+        for l in range(0, lmax + 1, 1)
+    ]
+    return coef_list
