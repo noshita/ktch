@@ -29,6 +29,7 @@ dependencies = [
 
 [project.optional-dependencies]
 docs = []
+plot = ["matplotlib>=3.10.7", "plotly<6.0", "seaborn>=0.13.2"]
 
 [project.urls]
 Homepage = "https://doc.ktch.dev"
