@@ -19,4 +19,7 @@
    
    io.read_tps
    io.write_tps
+   io.read_chc
+   io.write_chc
+   io.read_spharmpdm_coef
 ```
