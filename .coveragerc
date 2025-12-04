@@ -6,6 +6,7 @@ source = ktch
 include = */ktch/*
 omit =
     */setup.py
+    */ktch/outline/*
 
 [report]
 exclude_lines =
