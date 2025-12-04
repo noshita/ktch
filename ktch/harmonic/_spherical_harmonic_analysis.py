@@ -238,6 +238,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
 
 
 def xyz2spherical(xyz: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    """Convert Cartesian coordinates to spherical coordinates (theta, phi)"""
     theta = np.arccos(xyz[:, 2])
     phi = np.sign(xyz[:, 1]) * np.arccos(
         xyz[:, 0] / np.linalg.norm(xyz[:, 0:2], axis=1)

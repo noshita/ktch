@@ -18,6 +18,7 @@
    :template: base.rst
 
    harmonic.EllipticFourierAnalysis
+   harmonic.SphericalHarmonicAnalysis
 ```
 
 ## Functions
@@ -30,4 +31,5 @@
    :template: base.rst
    
    harmonic.spharm
+   harmonic.xyz2spherical
 ```

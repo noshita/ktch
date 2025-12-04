@@ -12,4 +12,5 @@ Examples concerning the :mod:`ktch.harmonic` module.
     ./elliptic_Fourier_analysis
     ./manipulating_coordinate_values
     ./elliptic_Fourier_analysis_3d
+    ./spharm
 ```
