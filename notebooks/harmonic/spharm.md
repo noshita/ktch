@@ -15,7 +15,9 @@ kernelspec:
 
 ```{code-cell} ipython3
 from pathlib import Path
+import shutil
 import urllib
+import tempfile
 
 import numpy as np
 
@@ -30,34 +32,33 @@ from ktch.harmonic import SphericalHarmonicAnalysis, xyz2spherical
 ## Load 3D potato surface data
 
 ```{code-cell} ipython3
-# parameter
-resp = urllib.request.urlopen(
-    "https://strata.morphometrics.jp/examples/andesred_07_allSegments_para.vtk"
-)
-
 reader = vtk.vtkDataSetReader()
-reader.SetFileName(resp)
-reader.Update()
 
-dataset = reader.GetOutput()
-obj_para = dsa.WrapDataObject(dataset)
+# parameter
+with urllib.request.urlopen(
+    "https://strata.morphometrics.jp/examples/andesred_07_allSegments_para.vtk"
+) as response:
+    with tempfile.NamedTemporaryFile() as tmp_file:
+        shutil.copyfileobj(response, tmp_file)
+        reader.SetFileName(tmp_file.name)
+        reader.Update()
+        dataset = reader.GetOutput()
+        obj_para = dsa.WrapDataObject(dataset)
 
 # surface
-resp = urllib.request.urlopen(
+with urllib.request.urlopen(
     "https://strata.morphometrics.jp/examples/andesred_07_allSegments_surf.vtk"
-)
+) as response:
+    with tempfile.NamedTemporaryFile() as tmp_file:
+        shutil.copyfileobj(response, tmp_file)
+        reader.SetFileName(tmp_file.name)
+        reader.Update()
 
-reader = vtk.vtkDataSetReader()
-reader.SetFileName(resp)
-reader.Update()
-
-dataset = reader.GetOutput()
-obj_surf = dsa.WrapDataObject(dataset)
+        dataset = reader.GetOutput()
+        obj_surf = dsa.WrapDataObject(dataset)
 ```
 
 ```{code-cell} ipython3
-# path_para = Path("../../ktch/io/tests/data/andesred_07_allSegments_para.vtk")
-# path_surf = Path("../../ktch/io/tests/data/andesred_07_allSegments_surf.vtk")
 arr_para_faces = np.array(obj_para.Polygons.reshape(-1, 4)[:, 1:])
 arr_para = np.array(obj_para.Points)
 
