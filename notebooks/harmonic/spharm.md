@@ -32,16 +32,16 @@ from ktch.harmonic import SphericalHarmonicAnalysis, xyz2spherical
 ## Load 3D potato surface data
 
 ```{code-cell} ipython3
-reader = vtk.vtkDataSetReader()
-
 # parameter
 with urllib.request.urlopen(
     "https://strata.morphometrics.jp/examples/andesred_07_allSegments_para.vtk"
 ) as response:
     with tempfile.NamedTemporaryFile() as tmp_file:
         shutil.copyfileobj(response, tmp_file)
+        reader = vtk.vtkDataSetReader()
         reader.SetFileName(tmp_file.name)
         reader.Update()
+
         dataset = reader.GetOutput()
         obj_para = dsa.WrapDataObject(dataset)
 
@@ -51,6 +51,7 @@ with urllib.request.urlopen(
 ) as response:
     with tempfile.NamedTemporaryFile() as tmp_file:
         shutil.copyfileobj(response, tmp_file)
+        reader = vtk.vtkDataSetReader()
         reader.SetFileName(tmp_file.name)
         reader.Update()
 
