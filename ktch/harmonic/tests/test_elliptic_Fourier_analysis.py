@@ -9,7 +9,7 @@ from scipy.interpolate import BSpline, make_interp_spline
 from scipy.stats import wasserstein_distance_nd
 
 from ktch.datasets import load_coefficient_bottles, load_outline_bottles
-from ktch.outline import EllipticFourierAnalysis
+from ktch.harmonic import EllipticFourierAnalysis
 
 bottles = load_outline_bottles()
 bottles_frame = load_outline_bottles(as_frame=True)
