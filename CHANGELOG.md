@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/noshita/ktch/compare/v0.6.1...v0.7.0) (2025-12-08)
+
+
+### Miscellaneous Chores
+
+* release 0.7.0 ([e9c2476](https://github.com/noshita/ktch/commit/e9c2476ef3790c6afd687052fb39841644c74292))
+
 ## [0.6.1](https://github.com/noshita/ktch/compare/v0.6.0...v0.6.1) (2025-12-08)
 
 
