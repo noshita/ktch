@@ -16,7 +16,35 @@ The :mod:`ktch.landmark` module implements landmark-based morphometrics.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._plot._tps import tps_grid_2d_plot
+import warnings
+
 from ._Procrustes_analysis import GeneralizedProcrustesAnalysis, centroid_size
 
+_MOVED_FUNCTIONS = {
+    "tps_grid_2d_plot": "ktch.plot",
+}
+
 __all__ = ["GeneralizedProcrustesAnalysis", "centroid_size", "tps_grid_2d_plot"]
+
+
+def __getattr__(name: str):
+    if name in _MOVED_FUNCTIONS:
+        new_module = _MOVED_FUNCTIONS[name]
+        warnings.warn(
+            f"'{name}' has been moved to '{new_module}'. "
+            f"Importing from 'ktch.landmark' is deprecated "
+            f"and will be removed in v0.9.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        import importlib
+
+        module = importlib.import_module(new_module)
+        return getattr(module, name)
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__():
+    """Include moved functions in dir() and autocompletion."""
+    return list(__all__) + list(_MOVED_FUNCTIONS.keys())

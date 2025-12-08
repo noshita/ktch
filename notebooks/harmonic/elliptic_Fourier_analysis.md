@@ -24,7 +24,7 @@ from sklearn.decomposition import PCA
 
 from ktch.datasets import load_outline_mosquito_wings
 from ktch.harmonic import EllipticFourierAnalysis
-from ktch.plot import plot_explained_variance_ratio
+from ktch.plot import explained_variance_ratio_plot
 ```
 
 ## Load mosquito wing outline dataset
@@ -275,7 +275,7 @@ print("PC3-PC1 done")
 #########
 
 ax = fig.add_subplot(2, 2, 4)
-plot_explained_variance_ratio(pca, ax=ax, verbose=True)
+explained_variance_ratio_plot(pca, ax=ax, verbose=True)
 ```
 
 ```{code-cell} ipython3

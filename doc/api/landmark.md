@@ -32,5 +32,4 @@ landmark classes and utility functions
    :template: base.rst
 
    centroid_size
-   tps_grid_2d_plot
 ```
