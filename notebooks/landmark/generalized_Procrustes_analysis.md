@@ -54,7 +54,18 @@ we convert the configuration data into DataFrame of shape n_specimens x (n_landm
 
 ```{code-cell} ipython3
 def configulation_plot(
-    configuration_2d, links=[], ax=None, hue=None, style=None, s=10, alpha=1
+    configuration_2d,
+    x="x",
+    y="y",
+    links=[],
+    ax=None,
+    hue=None,
+    c="gray",
+    palette=None,
+    c_line="gray",
+    style=None,
+    s=10,
+    alpha=1,
 ):
     if ax is None:
         fig = plt.figure()
@@ -65,23 +76,26 @@ def configulation_plot(
     for link in links:
         sns.lineplot(
             data=configuration[configuration["coord_id"].isin(link)],
-            x="x",
-            y="y",
+            x=x,
+            y=y,
             sort=False,
             ax=ax,
             hue=hue,
-            c="gray",
+            c=c_line,
+            palette=palette,
             alpha=alpha,
+            legend=False,
         )
 
     axis = sns.scatterplot(
         data=configuration,
-        x="x",
-        y="y",
+        x=x,
+        y=y,
         ax=ax,
         hue=hue,
+        palette=palette,
         style=style,
-        c="gray",
+        c=c,
         alpha=alpha,
         s=s,
     )
@@ -117,7 +131,9 @@ links = [
     [17, 9],
 ]
 
-configulation_plot(data_landmark_mosquito_wings.coords.loc[1], links=links, alpha=0.5)
+configulation_plot(
+    data_landmark_mosquito_wings.coords.loc[1], links=links, alpha=0.5, s=20
+)
 ```
 
 ```{code-cell} ipython3
@@ -135,7 +151,25 @@ configulation_plot(
     links=links,
     hue="specimen_id",
     style="coord_id",
+    palette="Set2",
+    s=30,
 )
+```
+
+```{code-cell} ipython3
+index = pd.MultiIndex.from_tuples(
+    [(2, i) for i in data_landmark_mosquito_wings.coords.loc[2].index],
+    names=["specimen_id", "coord_id"],
+)
+x2 = pd.DataFrame(
+    data_landmark_mosquito_wings.coords.loc[2].to_numpy(),
+    columns=["x", "y"],
+    index=index,
+)
+```
+
+```{code-cell} ipython3
+data_landmark_mosquito_wings.coords.loc[1:3]
 ```
 
 ```{code-cell} ipython3

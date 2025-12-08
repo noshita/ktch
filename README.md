@@ -9,7 +9,7 @@
 ktch provides implementations of various morphometric analysis methods:
 
 - **Landmark-based methods**: Generalized Procrustes Analysis (GPA) for shape analysis
-- **Surface-based methods**: Elliptic Fourier Analysis (EFA) for 2D and 3D closed curves
+- **Harmonic-based methods**: Elliptic Fourier Analysis (EFA) for 2D and 3D closed curves, spherical harmonic analysis for 3D closed surfaces.
 - **File I/O**: Support for standard morphometric file formats (TPS, CHC)
 - **Datasets**: Example datasets for testing and learning
 
@@ -36,7 +36,6 @@ git clone https://github.com/noshita/ktch.git
 cd ktch
 pip install -e .
 ```
-
 
 ## License
 

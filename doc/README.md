@@ -7,6 +7,12 @@ uv run make html
 
 ## dev notes
 
+### Release
+
+1. Merge PR generated with Release Please
+2. build and publish using uv
+3. Merge PR of conda-forge/ktch-feedstock
+
 ### Conda
 
 `environment.yml`はconda向けの環境設定ファイル．
