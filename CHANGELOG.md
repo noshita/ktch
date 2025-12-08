@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.6.1](https://github.com/noshita/ktch/compare/v0.6.0...v0.6.1) (2025-12-08)
+
+
+### Bug Fixes
+
+* 🐛 rename _tps to _kriging ([94089f8](https://github.com/noshita/ktch/commit/94089f83f70a0dc745ff9e8491c083d006d89b9d))
+
+
+### Documentation
+
+* 📚 update api, notebooks ([63ab4ac](https://github.com/noshita/ktch/commit/63ab4ac3b31ffcdc398406ed0686a520d19943bc))
+
+
+### Miscellaneous Chores
+
+* release 0.6.1 ([4cb985a](https://github.com/noshita/ktch/commit/4cb985a61221ff510a0af9b867f9823f79e733fe))
+
 ## [0.6.0](https://github.com/noshita/ktch/compare/v0.5.0...v0.6.0) (2025-12-04)
 
 
