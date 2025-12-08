@@ -19,7 +19,7 @@ import numpy as np
 import seaborn as sns
 
 
-def plot_explained_variance_ratio(pca, n_components=None, ax=None, verbose=False):
+def explained_variance_ratio_plot(pca, n_components=None, ax=None, verbose=False):
     """Plot explained variance ratio of PCA components.
 
     Parameters

@@ -15,8 +15,35 @@ The :mod:`ktch.plot` module implements plotting functions for morphometrics.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._pca import plot_explained_variance_ratio
+import warnings
+
+from ._pca import explained_variance_ratio_plot
+from ._tps import tps_grid_2d_plot
+
+_RENAMED_FUNCTIONS = {
+    "plot_explained_variance_ratio": "explained_variance_ratio_plot",
+}
 
 __all__ = [
-    "plot_explained_variance_ratio",
+    "explained_variance_ratio_plot",
+    "tps_grid_2d_plot",
 ]
+
+
+def __getattr__(name: str):
+    if name in _RENAMED_FUNCTIONS:
+        new_name = _RENAMED_FUNCTIONS[name]
+        warnings.warn(
+            f"'{name}' has been renamed to '{new_name}'. "
+            f"The {name} is deprecated and will be removed in version v0.9.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return globals()[new_name]
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__():
+    """Include old function names in dir() and autocompletion."""
+    return list(__all__) + list(_RENAMED_FUNCTIONS.keys())

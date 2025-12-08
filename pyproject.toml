@@ -1,6 +1,6 @@
 [project]
 name = "ktch"
-version = "0.6.0"
+version = "0.6.1"
 description = "ktch is a python package for model-based morphometrics."
 authors = [{ name = "Noshita, Koji", email = "noshita@morphometrics.jp" }]
 requires-python = ">=3.11"
@@ -45,6 +45,7 @@ dev = [
   "llvmlite>=0.44",
   "matplotlib>=3.10",
   "module-name>=0.6.0",
+  "networkx>=3.6",
   "numba>=0.61",
   "opencv-python>=4.11",
   "plotly<6.0",
