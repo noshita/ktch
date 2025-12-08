@@ -4,7 +4,7 @@ jupytext:
     extension: .md
     format_name: myst
     format_version: 0.13
-    jupytext_version: 1.16.1
+    jupytext_version: 1.18.1
 kernelspec:
   display_name: Python 3 (ipykernel)
   language: python
@@ -23,6 +23,7 @@ from ktch.datasets import load_landmark_mosquito_wings
 ```
 
 ## Load mosquito wing landmark dataset
+
 from Rohlf and Slice 1990 Syst. Zool.
 
 ```{code-cell} ipython3
@@ -31,6 +32,7 @@ data_landmark_mosquito_wings.coords
 ```
 
 ## GPA
+
 see also :ref:`generalized_Procrustes_analysis`
 
 ```{code-cell} ipython3
