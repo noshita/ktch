@@ -14,6 +14,7 @@
 .. autosummary::
    :toctree: generated/
    :template: base.rst
-   
+
    plot.plot_explained_variance_ratio
+   plot.tps_grid_2d_plot
 ```

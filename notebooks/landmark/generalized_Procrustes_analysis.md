@@ -24,7 +24,7 @@ from sklearn.decomposition import PCA
 
 from ktch.datasets import load_landmark_mosquito_wings
 from ktch.landmark import GeneralizedProcrustesAnalysis
-from ktch.plot import plot_explained_variance_ratio
+from ktch.plot import explained_variance_ratio_plot
 ```
 
 ## Load mosquito wing landmark dataset
@@ -281,8 +281,6 @@ def plot_recon_morphs(
             df_shapes["coord_id"] = [i for i in range(len(df_shapes))]
             df_shapes = df_shapes.set_index("coord_id")
 
-            # print(df_shapes)
-
             ax_width = ax.get_window_extent().width
             fig_width = fig.get_window_extent().width
             fig_height = fig.get_window_extent().height
@@ -426,7 +424,7 @@ print("PC3-PC1 done")
 #########
 
 ax = fig.add_subplot(2, 2, 4)
-plot_explained_variance_ratio(pca, ax=ax, verbose=True)
+explained_variance_ratio_plot(pca, ax=ax, verbose=True)
 ```
 
 ```{code-cell} ipython3
