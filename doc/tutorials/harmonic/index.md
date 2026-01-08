@@ -1,15 +1,15 @@
-(outline-examples)=
+(harmonic-tutorials)=
 
-# Outline-based morphometrics examples
+# Harmonic-based Morphometrics Tutorials
 
-Examples concerning the :mod:`ktch.outline` module.
+Tutorials for the :mod:`ktch.harmonic` module.
 
 ```{eval-rst}
 .. toctree::
     :maxdepth: 1
-    :glob:
 
     ./elliptic_Fourier_analysis
     ./manipulating_coordinate_values
     ./elliptic_Fourier_analysis_3d
+    ./spharm
 ```
