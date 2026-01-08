@@ -62,13 +62,13 @@ dev = [
 ]
 doc = [
   "myst-nb>=1.1",
-  "nbsphinx>=0.9.6",
   "numpydoc>=1.8",
   "pydata-sphinx-theme>=0.16",
   "sphinx>=8.1",
   "sphinx-autobuild~=2024.10",
   "sphinx-favicon>=1.0.1",
   "sphinx-gallery>=0.18",
+  "sphinx-multiversion>=0.2.4",
   "sphinx-sitemap>=2.6",
   "sphinxcontrib-bibtex>=2.6",
 ]
