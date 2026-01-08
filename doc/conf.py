@@ -14,7 +14,9 @@
 
 import datetime
 import os
+import shutil
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.abspath("sphinxext"))
 # import sphinx_gallery
@@ -184,6 +186,7 @@ html_theme_options = {
     #     {"name": "Learn", "url": "https://numpy.org/numpy-tutorials/"}
     #     ],
     "analytics": {"google_analytics_id": "G-6WZ5SLD7H7"},
+    "article_header_end": ["notebook-download"],
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
@@ -395,3 +398,21 @@ myst_enable_extensions = [
     "html_image",
 ]
 myst_url_schemes = ("http", "https", "mailto")
+
+
+def copy_jupyter_execute(app, exception):
+    """ビルド後に jupyter_execute を html ディレクトリにコピー"""
+    if exception is not None:
+        return
+
+    src = Path(app.outdir).parent / "jupyter_execute"
+    dst = Path(app.outdir) / "jupyter_execute"
+
+    if src.exists():
+        if dst.exists():
+            shutil.rmtree(dst)
+        shutil.copytree(src, dst)
+
+
+def setup(app):
+    app.connect("build-finished", copy_jupyter_execute)

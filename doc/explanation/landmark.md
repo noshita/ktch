@@ -42,7 +42,7 @@ For a sample of configurations, GPA iteratively:
 4. Compute the mean shape
 5. Repeat until convergence
 
-The result is a set of Procrustes shape coordinates.
+The result is a set of shape coordinates.
 
 In ktch:
 
@@ -55,13 +55,13 @@ shapes = gpa.fit_transform(configurations)
 
 ## Pre-shape Space and Shape Space
 
-After centering and scaling, configurations lie on a pre-shape space—a high-dimensional hypersphere.
+After centering and scaling, configurations lie on a pre-shape space, a high-dimensional hypersphere.
 
-After GPA removes rotation, specimens occupy Kendall's shape space. The Procrustes distance between shapes corresponds to the great-circle distance on this space.
+After GPA removes orientation information, the specimens occupy Kendall's shape space. The Procrustes distance between shapes corresponds to the great-circle distance on this space.
 
 ### Tangent Space Approximation
 
-For practical analysis, data are projected onto a tangent space—a linear approximation at the mean shape. This enables standard multivariate statistics (PCA, regression, etc.).
+For practical analysis, data are projected onto a tangent space, which is a linear approximation at the mean shape. This enables standard multivariate statistics (PCA, regression, etc.).
 
 ## Statistical Analysis of Shape
 
@@ -86,4 +86,6 @@ pc_scores = pca.fit_transform(shapes)
 
 ## References
 
-- Noshita, K. (2022). Model-based phenotyping for plant morphometrics. Breeding Science, 72(1), 3-13.
+- Dryden, I.L., Mardia, K.V., 2016. Statistical Shape Analysis: With Applications in R, John Wiley & Sons. John Wiley & Sons.
+- Claude, J., 2008. Morphometrics with R, Springer Science & Business Media. Springer Science & Business Media. <https://doi.org/10.1007/978-0-387-77789-4>
+- Bookstein, F.L., 1997. Morphometric tools for landmark data: geometry and biology, Cambridge University Press. Cambridge University Press.

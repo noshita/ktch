@@ -1,0 +1,8 @@
+{% if meta is defined and meta is not none and (meta.get('kernelspec') or meta.get('file_format') == 'mystnb') %}
+<div class="article-header-buttons">
+    <a href="{{ pathto('jupyter_execute/' + pagename + '.ipynb', 1) }}" class="btn btn-sm btn-secondary"
+        title="Download notebook" download>
+        <i class="fas fa-download"></i> .ipynb
+    </a>
+</div>
+{% endif %}

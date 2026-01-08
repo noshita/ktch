@@ -130,7 +130,6 @@ This enables visualization of shape variation along PC axes or between groups.
 
 ## Limitations
 
-- High dimensionality (many coefficients)
 - Global description may miss local features
 - Sensitive to outline/surface quality and sampling
 - Normalization choices affect results
@@ -142,7 +141,6 @@ This enables visualization of shape variation along PC axes or between groups.
 
 ## References
 
-- Noshita, K. (2022). Model-based phenotyping for plant morphometrics. Breeding Science, 72(1), 3-13.
 - Kuhl, F. P., & Giardina, C. R. (1982). Elliptic Fourier features of a closed contour. Computer Graphics and Image Processing, 18(3), 236-258.
 - Crampton, J. S. (1995). Elliptic Fourier shape analysis of fossil bivalves. Lethaia, 28(2), 147-158.
 - Shen, L., & Makedon, F. (2006). Spherical mapping for processing of 3D closed surfaces. Image and Vision Computing, 24(7), 743-761.
