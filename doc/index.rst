@@ -7,30 +7,60 @@ ktch is a python package for model-based morphometrics.
 .. toctree::
    :maxdepth: 2
    :hidden:
-   :caption: Documentation
+   :caption: Getting Started
 
-   user_guide/index
-   api/index
+   installation
 
 .. toctree::
    :maxdepth: 2
    :hidden:
-   :caption: Tutorial - Examples
+   :caption: Tutorials
 
-   notebooks/index
+   tutorials/index
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: How-to Guides
+
+   how-to/index
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Explanation
+
+   explanation/index
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Reference
+
+   api/index
 
 
-`User Guide <user_guide/index.html>`_
+`Installation <installation.html>`_
 -------------------------------------------------
 
-User Guide is an overview and explains the key concepts and the important features.
+Get started by installing ktch.
 
-`API <api/index.html>`_
+`Tutorials <tutorials/index.html>`_
 -------------------------------------------------
 
-API documentation details classes, functions, modules, and other objects included in ktch.
+Step-by-step guides for learning ktch through hands-on examples.
 
-`Example notebooks <notebooks/index.html>`_
+`How-to Guides <how-to/index.html>`_
 -------------------------------------------------
 
-A set of example notebooks. It complements the `User Guide <user_guide/index.html>`_.
+Task-oriented guides for common operations.
+
+`Explanation <explanation/index.html>`_
+-------------------------------------------------
+
+Conceptual explanations of morphometric methods and theory.
+
+`API Reference <api/index.html>`_
+-------------------------------------------------
+
+Complete API documentation for all classes, functions, and modules.

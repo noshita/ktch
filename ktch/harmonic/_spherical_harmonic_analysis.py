@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import dataclasses
 import warnings
 from typing import List
 
@@ -28,6 +27,16 @@ from sklearn.utils.parallel import Parallel, delayed
 
 class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
     r"""Spherical Harmonic (SPHARM) Analysis
+
+    Parameters
+    ------------------------
+    n_harmonics: int, default=10
+        Number of harmonics to use ($l_\mathrm{max}$).
+    n_jobs: int, default=None
+        The number of jobs to run in parallel. None means 1 unless in a
+        joblib.parallel_backend context. -1 means using all processors.
+    verbose: int, default=0
+        The verbosity level.
 
 
     Notes
@@ -201,6 +210,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
         l_max=None,
     ):
         """Inverse SPHARM transform
+
         Parameters
         ------------------------
         X_transformed: array-like of shape (n_samples, n_coefficients)

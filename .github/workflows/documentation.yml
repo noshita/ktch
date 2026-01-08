@@ -1,50 +1,95 @@
 name: Docs
-# on: [push, pull_request, workflow_dispatch]
+
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
+    tags: ["v*"]
     paths:
-      [
-        "doc/**",
-        "ktch/**",
-        "notebooks/**",
-        .github/workflows/documentation.yml,
-        pyproject.toml,
-      ]
-  # Allows you to run this workflow manually from the Actions tab
+      - "doc/**"
+      - "ktch/**"
+      - ".github/workflows/documentation.yml"
+      - "pyproject.toml"
   workflow_dispatch:
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
 concurrency:
   group: "pages"
   cancel-in-progress: false
+
 env:
-  PYTHON_VERSION: 3.11
+  PYTHON_VERSION: "3.11"
+  CI: "true"
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install sphinx pydata-sphinx-theme sphinx-autobuild sphinx-gallery sphinxcontrib-bibtex myst-nb nbsphinx numpydoc matplotlib seaborn 'plotly<6.0' sphinx-sitemap sphinx-favicon jupytext vtk
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install sphinx pydata-sphinx-theme sphinx-multiversion \
+                      sphinx-gallery sphinxcontrib-bibtex myst-nb \
+                      numpydoc matplotlib seaborn 'plotly<6.0' \
+                      sphinx-sitemap sphinx-favicon vtk
           pip install -e .
-      - name: Sphinx build
+
+      - name: Build multi-version docs
         run: |
-          cd doc
-          make html
+          # Build all versions with sphinx-multiversion
+          # -j auto enables parallel build (auto-detects CPU cores)
+          sphinx-multiversion doc doc/_build/html -j auto
+
+          # Rename main -> dev
+          if [ -d "doc/_build/html/main" ]; then
+            mv doc/_build/html/main doc/_build/html/dev
+          fi
+
+          # Create root index.html (redirect to dev)
+          cat > doc/_build/html/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta http-equiv="refresh" content="0; url=dev/">
+              <link rel="canonical" href="https://doc.ktch.dev/dev/">
+              <title>Redirecting to dev documentation</title>
+            </head>
+            <body>
+              <p>Redirecting to <a href="dev/">dev documentation</a>...</p>
+            </body>
+          </html>
+          EOF
+
+          # Create .nojekyll for GitHub Pages
+          touch doc/_build/html/.nojekyll
+
+          # Create CNAME for custom domain
+          echo "doc.ktch.dev" > doc/_build/html/CNAME
+
+          # List built versions
+          echo "Built versions:"
+          ls -la doc/_build/html/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: doc/_build/html
+
   deploy:
     needs: build
     environment:
@@ -52,10 +97,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

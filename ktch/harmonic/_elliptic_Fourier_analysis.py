@@ -23,8 +23,11 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from scipy.interpolate import make_interp_spline
-from sklearn.base import (BaseEstimator, ClassNamePrefixFeaturesOutMixin,
-                          TransformerMixin)
+from sklearn.base import (
+    BaseEstimator,
+    ClassNamePrefixFeaturesOutMixin,
+    TransformerMixin,
+)
 from sklearn.decomposition import PCA
 from sklearn.utils.parallel import Parallel, delayed
 
@@ -38,13 +41,15 @@ class EllipticFourierAnalysis(
     Parameters
     ------------
     n_harmonics: int, default=20
-        harmonics
-
+        Number of harmonics
     n_dim: int, default=2
-        dimension
-
-    reflect: bool, default=False
-        reflect
+        Dimension of the coordinate space.
+        Must be 2 (for planar curves) or 3 (for space curves).
+    n_jobs: int, default=None
+        The number of jobs to run in parallel. None means 1 unless in a
+        joblib.parallel_backend context. -1 means using all processors.
+    verbose: int, default=0
+        The verbosity level.
 
     Notes
     ------------
@@ -80,20 +85,14 @@ class EllipticFourierAnalysis(
         self,
         n_harmonics: int = 20,
         n_dim: int = 2,
-        reflect: bool = False,
         n_jobs: Optional[int] = None,
         verbose: int = 0,
     ):
-        """
-
-        """
-        # self.dtype = dtype
         self.n_harmonics = n_harmonics
         if n_dim not in (2, 3):
             raise ValueError("n_dim must be 2 or 3")
         else:
             self.n_dim = n_dim
-        self.reflect = reflect
         self.n_jobs = n_jobs
         self.verbose = verbose
 
@@ -705,7 +704,6 @@ def _sse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
     coef = np.array(cn)
 
     return coef
-
 
 
 class PositionAligner(BaseEstimator, TransformerMixin):

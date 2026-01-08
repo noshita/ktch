@@ -15,6 +15,6 @@
    :toctree: generated/
    :template: base.rst
 
-   plot.plot_explained_variance_ratio
+   plot.explained_variance_ratio_plot
    plot.tps_grid_2d_plot
 ```
