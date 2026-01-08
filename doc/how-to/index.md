@@ -6,6 +6,9 @@ Task-oriented guides for common operations.
 
 ```{eval-rst}
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
 
+    data/index
+    analysis/index
+    visualization/index
 ```

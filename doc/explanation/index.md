@@ -4,11 +4,21 @@
 
 Conceptual explanations of morphometric methods and theory.
 
-## Harmonic-based morphometrics
+## Overview
 
 ```{eval-rst}
 .. toctree::
     :maxdepth: 1
 
-    harmonic/harmonic_based_morphometrics
+    morphometrics
+```
+
+## Geometric Morphometrics
+
+```{eval-rst}
+.. toctree::
+    :maxdepth: 1
+
+    landmark
+    harmonic
 ```

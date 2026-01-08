@@ -18,12 +18,25 @@ conda install -c conda-forge ktch
 
 ## Development Installation
 
-For development or to get the latest features:
+For development, ktch uses [uv](https://docs.astral.sh/uv/) as the package manager.
 
 ```bash
 git clone https://github.com/noshita/ktch.git
 cd ktch
-pip install -e .
+uv sync
+```
+
+To run tests:
+
+```bash
+uv run pytest --benchmark-skip
+```
+
+To build documentation:
+
+```bash
+cd doc
+uv run make html
 ```
 
 ## Dependencies
