@@ -1,3 +1,9 @@
 User-agent: *
 
-Sitemap: https://doc.ktch.dev/sitemap.xml
+# Only index stable version
+Sitemap: https://doc.ktch.dev/stable/sitemap.xml
+
+# Prevent indexing of dev and versioned paths
+Disallow: /dev/
+Disallow: /0.*/
+Disallow: /1.*/

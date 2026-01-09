@@ -318,10 +318,23 @@ html_use_opensearch = "https://doc.ktch.dev/"
 # Output file base name for HTML help builder.
 htmlhelp_basename = "ktchdoc"
 
-# sphinx-sitemap
+# sphinx-sitemap configuration for multi-version docs
 html_baseurl = "https://doc.ktch.dev/"
 sitemap_locales = [None]
-sitemap_url_scheme = "{link}"
+
+# Set sitemap URL scheme based on build target
+# Each version generates sitemap with its own path
+if _smv_name == "main":
+    # dev version: /dev/
+    sitemap_url_scheme = "dev/{link}"
+elif _smv_name.startswith("v"):
+    # Tagged releases: use version number without 'v' prefix
+    # e.g., "v0.6.1" -> "0.6.1/{link}"
+    _sitemap_version = _smv_name[1:]
+    sitemap_url_scheme = f"{_sitemap_version}/{{link}}"
+else:
+    # Local/single-version builds
+    sitemap_url_scheme = "{link}"
 
 # -- Options for LaTeX output ---------------------------------------------
 

@@ -99,6 +99,13 @@ jobs:
           if [ -d "$SOURCE_DIR" ]; then
             echo "Creating /stable/ directory as copy of ${STABLE_VERSION}"
             cp -r "$SOURCE_DIR" doc/_build/html/stable
+
+            # Fix sitemap URLs in stable: replace version number with "stable"
+            # e.g., https://doc.ktch.dev/0.6.1/index.html -> https://doc.ktch.dev/stable/index.html
+            if [ -f "doc/_build/html/stable/sitemap.xml" ]; then
+              echo "Fixing sitemap URLs in /stable/sitemap.xml"
+              sed -i "s|/${STABLE_VERSION}/|/stable/|g" doc/_build/html/stable/sitemap.xml
+            fi
           else
             echo "Warning: $SOURCE_DIR directory not found"
             echo "Available directories:"
