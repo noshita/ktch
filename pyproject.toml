@@ -68,7 +68,8 @@ doc = [
   "sphinx-autobuild~=2024.10",
   "sphinx-favicon>=1.0.1",
   "sphinx-gallery>=0.18",
-  "sphinx-multiversion>=0.2.4",
+  # NOTE: GitHub version required for SPHINX_MULTIVERSION_NAME env var support
+  "sphinx-multiversion @ git+https://github.com/sphinx-contrib/multiversion.git",
   "sphinx-sitemap>=2.6",
   "sphinxcontrib-bibtex>=2.6",
 ]
