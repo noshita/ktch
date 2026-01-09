@@ -64,36 +64,59 @@ jobs:
             mv doc/_build/html/main doc/_build/html/dev
           fi
 
-          # Get latest stable version from versions.json
+          # Rename v* directories to remove 'v' prefix (e.g., v0.6.1 -> 0.6.1)
+          # This follows NumPy/scikit-learn conventions
+          for dir in doc/_build/html/v[0-9]*; do
+            if [ -d "$dir" ]; then
+              version_num=$(basename "$dir" | sed 's/^v//')
+              echo "Renaming $dir -> doc/_build/html/$version_num"
+              mv "$dir" "doc/_build/html/$version_num"
+            fi
+          done
+
+          # Get stable version number from versions.json (the preferred entry's version)
           STABLE_VERSION=$(python3 -c "
           import json
           with open('doc/_static/versions.json') as f:
               versions = json.load(f)
-          # Find version with 'preferred: true' or first non-dev version
+          # Find version with 'preferred: true' and get its version number
           for v in versions:
-              if v.get('preferred'):
-                  print(v['url'].rstrip('/').split('/')[-1])
+              if v.get('preferred') and v.get('version') != 'dev':
+                  print(v['version'])  # e.g., '0.6.1'
                   break
           else:
+              # Fallback: first non-dev version
               for v in versions:
                   if v.get('version') != 'dev':
-                      print(v['url'].rstrip('/').split('/')[-1])
+                      print(v['version'])
                       break
           ")
-          echo "Redirecting to stable version: $STABLE_VERSION"
+          echo "Stable version: $STABLE_VERSION"
 
-          # Create root index.html (redirect to stable)
+          # Create /stable/ directory as a copy of the versioned directory
+          # This allows URLs like /stable/api/index.html to work directly
+          SOURCE_DIR="doc/_build/html/${STABLE_VERSION}"
+          if [ -d "$SOURCE_DIR" ]; then
+            echo "Creating /stable/ directory as copy of ${STABLE_VERSION}"
+            cp -r "$SOURCE_DIR" doc/_build/html/stable
+          else
+            echo "Warning: $SOURCE_DIR directory not found"
+            echo "Available directories:"
+            ls -la doc/_build/html/
+          fi
+
+          # Create root index.html (redirect to /stable/)
           cat > doc/_build/html/index.html << EOF
           <!DOCTYPE html>
           <html>
             <head>
               <meta charset="utf-8">
-              <meta http-equiv="refresh" content="0; url=${STABLE_VERSION}/">
-              <link rel="canonical" href="https://doc.ktch.dev/${STABLE_VERSION}/">
+              <meta http-equiv="refresh" content="0; url=stable/">
+              <link rel="canonical" href="https://doc.ktch.dev/stable/">
               <title>Redirecting to stable documentation</title>
             </head>
             <body>
-              <p>Redirecting to <a href="${STABLE_VERSION}/">stable documentation</a>...</p>
+              <p>Redirecting to <a href="stable/">stable documentation</a>...</p>
             </body>
           </html>
           EOF
