@@ -34,11 +34,11 @@ from ktch.harmonic import SphericalHarmonicAnalysis, xyz2spherical
 ```{code-cell} ipython3
 # parameter
 with urllib.request.urlopen(
-    "https://strata.morphometrics.jp/examples/andesred_07_allSegments_para.vtk"
+    "https://strata.morphometrics.jp/examples/danshaku_08_allSegments_para.vtp"
 ) as response:
     with tempfile.NamedTemporaryFile() as tmp_file:
         shutil.copyfileobj(response, tmp_file)
-        reader = vtk.vtkDataSetReader()
+        reader = vtk.vtkXMLPolyDataReader()
         reader.SetFileName(tmp_file.name)
         reader.Update()
 
@@ -47,11 +47,11 @@ with urllib.request.urlopen(
 
 # surface
 with urllib.request.urlopen(
-    "https://strata.morphometrics.jp/examples/andesred_07_allSegments_surf.vtk"
+    "https://strata.morphometrics.jp/examples/danshaku_08_allSegments_surf.vtp"
 ) as response:
     with tempfile.NamedTemporaryFile() as tmp_file:
         shutil.copyfileobj(response, tmp_file)
-        reader = vtk.vtkDataSetReader()
+        reader = vtk.vtkXMLPolyDataReader()
         reader.SetFileName(tmp_file.name)
         reader.Update()
 
@@ -204,6 +204,7 @@ fig.show()
 ```
 
 ### Original vs reconstructed shapes
+
 Overlay the original and reconstructed surface data.
 This demonstrates that the original shape is well reproduced.
 

@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
 import seaborn as sns
 
 from sklearn.decomposition import PCA
@@ -28,6 +29,7 @@ from ktch.plot import explained_variance_ratio_plot
 ```
 
 ## Load mosquito wing landmark dataset
+
 from Rohlf and Slice 1990 _Syst. Zool._
 
 ```{code-cell} ipython3
@@ -49,17 +51,18 @@ ax.set_aspect("equal")
 ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
 ```
 
-For applying generalized Procrustes analysis (GPA), 
+For applying generalized Procrustes analysis (GPA),
 we convert the configuration data into DataFrame of shape n_specimens x (n_landmarks*n_dim).
 
 ```{code-cell} ipython3
-def configulation_plot(
+def configuration_plot(
     configuration_2d,
     x="x",
     y="y",
-    links=[],
+    links=None,
     ax=None,
     hue=None,
+    hue_order=None,
     c="gray",
     palette=None,
     c_line="gray",
@@ -71,21 +74,62 @@ def configulation_plot(
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
+    if links is None:
+        links = []
+
     configuration = configuration_2d.reset_index()
 
-    for link in links:
-        sns.lineplot(
-            data=configuration[configuration["coord_id"].isin(link)],
-            x=x,
-            y=y,
-            sort=False,
-            ax=ax,
-            hue=hue,
-            c=c_line,
-            palette=palette,
-            alpha=alpha,
-            legend=False,
-        )
+    if hue is not None and hue_order is None:
+        hue_order = configuration[hue].unique()
+
+    color_map = None
+    if hue is not None:
+        if palette is not None:
+            colors = sns.color_palette(palette, n_colors=len(hue_order))
+            color_map = dict(zip(hue_order, colors))
+        else:
+            hue_dtype = configuration[hue].dtype
+            if np.issubdtype(hue_dtype, np.number):
+                cmap = sns.cubehelix_palette(as_cmap=True)
+                hue_min, hue_max = min(hue_order), max(hue_order)
+                color_map = {}
+                for hue_val in hue_order:
+                    if hue_max > hue_min:
+                        norm_val = (hue_val - hue_min) / (hue_max - hue_min)
+                    else:
+                        norm_val = 0.5
+                    color_map[hue_val] = cmap(norm_val)
+            else:
+                colors = sns.color_palette(n_colors=len(hue_order))
+                color_map = dict(zip(hue_order, colors))
+
+    if links:
+        if hue is None:
+            segments = []
+            for link in links:
+                link_data = configuration[configuration["coord_id"].isin(link)]
+                if len(link_data) == 2:
+                    coords = link_data[[x, y]].values
+                    segments.append(coords)
+            if segments:
+                lc = LineCollection(segments, colors=c_line, alpha=alpha)
+                ax.add_collection(lc)
+        else:
+            for specimen in hue_order:
+                specimen_data = configuration[configuration[hue] == specimen]
+                segments = []
+                for link in links:
+                    link_data = specimen_data[specimen_data["coord_id"].isin(link)]
+                    if len(link_data) == 2:
+                        coords = link_data[[x, y]].values
+                        segments.append(coords)
+                if segments:
+                    lc = LineCollection(
+                        segments, colors=[color_map[specimen]], alpha=alpha
+                    )
+                    ax.add_collection(lc)
+
+        ax.autoscale_view()
 
     axis = sns.scatterplot(
         data=configuration,
@@ -93,6 +137,7 @@ def configulation_plot(
         y=y,
         ax=ax,
         hue=hue,
+        hue_order=hue_order,
         palette=palette,
         style=style,
         c=c,
@@ -131,22 +176,23 @@ links = [
     [17, 9],
 ]
 
-configulation_plot(
+configuration_plot(
     data_landmark_mosquito_wings.coords.loc[1], links=links, alpha=0.5, s=20
 )
 ```
 
 ```{code-cell} ipython3
-configulation_plot(
+configuration_plot(
     data_landmark_mosquito_wings.coords,
     links=links,
+    alpha=0.3,
     hue="specimen_id",
     style="coord_id",
 )
 ```
 
 ```{code-cell} ipython3
-configulation_plot(
+configuration_plot(
     data_landmark_mosquito_wings.coords.loc[0:2],
     links=links,
     hue="specimen_id",
@@ -221,12 +267,19 @@ ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
 ```
 
 ```{code-cell} ipython3
-configulation_plot(df_shapes_vis, links=links, hue="specimen_id", style="coord_id")
+configuration_plot(
+    df_shapes_vis, links=links, alpha=0.3, hue="specimen_id", style="coord_id"
+)
 ```
 
 ```{code-cell} ipython3
-configulation_plot(
-    df_shapes_vis.loc[0:2], links=links, hue="specimen_id", style="coord_id"
+configuration_plot(
+    df_shapes_vis.loc[0:2],
+    links=links,
+    hue="specimen_id",
+    style="coord_id",
+    palette="Set2",
+    s=30,
 )
 ```
 
@@ -300,7 +353,7 @@ def plot_recon_morphs(
                 )
                 axins.patch.set_alpha(0.3)
 
-                configulation_plot(df_shapes, links=links, ax=axins, alpha=morph_alpha)
+                configuration_plot(df_shapes, links=links, ax=axins, alpha=morph_alpha)
 
             else:
                 axins = fig.add_axes(
@@ -312,7 +365,7 @@ def plot_recon_morphs(
                     ],
                     anchor="C",
                 )
-                configulation_plot(df_shapes, links=links, ax=axins, alpha=morph_alpha)
+                configuration_plot(df_shapes, links=links, ax=axins, alpha=morph_alpha)
 
             axins.axis("off")
 ```
