@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.7.0](https://github.com/noshita/ktch/compare/v0.6.1...v0.7.0) (2026-01-12)
+
+
+### Features
+
+* ✨ add Passiflora leaf image dataset ([f75cb0c](https://github.com/noshita/ktch/commit/f75cb0c97b5425a84e765000cc04c662f8deb5c1))
+* ✨ tutorial for outline extraction ([3bfe708](https://github.com/noshita/ktch/commit/3bfe7084de0f083d2db09c30e8563d950a11a2d1))
+
+
+### Bug Fixes
+
+* 🐛 add jupytext for v0.6.1 build ([8e7cff2](https://github.com/noshita/ktch/commit/8e7cff25bd3ba5726a2d9949279a55f95fb28b7b))
+* 🐛 add jupytext for v0.6.1 build ([932a9ab](https://github.com/noshita/ktch/commit/932a9ab7bc6c29472c900ae2d33660a8b75ad5d8))
+* 🐛 add version_match logging ([8e7cff2](https://github.com/noshita/ktch/commit/8e7cff25bd3ba5726a2d9949279a55f95fb28b7b))
+* 🐛 add version_match logging ([932a9ab](https://github.com/noshita/ktch/commit/932a9ab7bc6c29472c900ae2d33660a8b75ad5d8))
+* 🐛 doc ([96ff2c8](https://github.com/noshita/ktch/commit/96ff2c80be52a3d0f58840b684dedb02511eb56d))
+* 🐛 sphinx-multiversion and switcher ([932a9ab](https://github.com/noshita/ktch/commit/932a9ab7bc6c29472c900ae2d33660a8b75ad5d8))
+* 🐛 use sphinx-multiversion on GitHub for env variable ([8e7cff2](https://github.com/noshita/ktch/commit/8e7cff25bd3ba5726a2d9949279a55f95fb28b7b))
+* 🐛 use sphinx-multiversion on GitHub for env variable ([932a9ab](https://github.com/noshita/ktch/commit/932a9ab7bc6c29472c900ae2d33660a8b75ad5d8))
+* 🐛 version switcher, redirect to stable ([8e7cff2](https://github.com/noshita/ktch/commit/8e7cff25bd3ba5726a2d9949279a55f95fb28b7b))
+* 🐛 version switcher, redirect to stable ([932a9ab](https://github.com/noshita/ktch/commit/932a9ab7bc6c29472c900ae2d33660a8b75ad5d8))
+* 🐛 version_match ([8e7cff2](https://github.com/noshita/ktch/commit/8e7cff25bd3ba5726a2d9949279a55f95fb28b7b))
+* 🐛 version_match ([932a9ab](https://github.com/noshita/ktch/commit/932a9ab7bc6c29472c900ae2d33660a8b75ad5d8))
+
+
+### Performance Improvements
+
+* ⚡️ enable parallel read (and execute) ([8f1f1ff](https://github.com/noshita/ktch/commit/8f1f1ff176d0c9f30651e60e94fe8d5616de5f8e))
+
+
+### Documentation
+
+* 📚  move 2D outline registration guide from tutorials to how-to ([cdb1ad3](https://github.com/noshita/ktch/commit/cdb1ad3c4c353d6d5bfd8dc4fa62d16c89088aca))
+* 📚 redesign documentation with Diátaxis framework and multi-version support ([#108](https://github.com/noshita/ktch/issues/108)) ([7bc8465](https://github.com/noshita/ktch/commit/7bc8465737cc2109a7a61a3607a701435d324ea4))
+* 📚 refactor configuration_plot, use vtp files for spharm ([0db89a8](https://github.com/noshita/ktch/commit/0db89a86e0d2633ad6e666543aacb7116003d4d5))
+* 📚 sitemap ([19a1932](https://github.com/noshita/ktch/commit/19a1932c4a0e482b6e552526dcc709691a249111))
+
+
+### Miscellaneous Chores
+
+* release 0.7.0 ([e9c2476](https://github.com/noshita/ktch/commit/e9c2476ef3790c6afd687052fb39841644c74292))
+
 ## [0.6.1](https://github.com/noshita/ktch/compare/v0.6.0...v0.6.1) (2025-12-08)
 
 
