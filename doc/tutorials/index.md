@@ -8,6 +8,7 @@ Step-by-step guides for learning ktch through hands-on examples.
 .. toctree::
     :maxdepth: 2
 
+    preprocessing/index
     landmark/index
     harmonic/index
 ```
