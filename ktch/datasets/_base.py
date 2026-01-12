@@ -14,11 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import zipfile
 from importlib import resources
+from importlib.metadata import version as get_package_version
+from pathlib import Path
 
 import pandas as pd
 from sklearn.datasets._base import load_descr
 from sklearn.utils import Bunch
+
+from ._registry import get_registry, get_url
+
+try:
+    import pooch
+except ImportError:
+    pooch = None
 
 
 def load_landmark_mosquito_wings(*, as_frame=False):
@@ -337,3 +347,190 @@ def convert_coords_df_to_df_sklearn_transform(df_coords):
     df_coords_new = df_coords.unstack().swaplevel(axis=1).sort_index(axis=1)
 
     return df_coords_new
+
+
+###########################################################
+#
+#   Remote dataset functions (using pooch)
+#
+###########################################################
+
+
+def _get_default_version():
+    """Get the default dataset version based on the package version.
+
+    Returns
+    -------
+    str
+        The major.minor.patch version string (e.g., "0.7.0").
+    """
+    pkg_version = get_package_version("ktch")
+    # Extract major.minor.patch (e.g., "0.7.0" from "0.7.0.dev1")
+    parts = pkg_version.split(".")
+    if len(parts) >= 3:
+        # Handle dev/rc versions: "0.7.0.dev1" -> "0.7.0"
+        patch = parts[2].split("dev")[0].split("rc")[0].split("a")[0].split("b")[0]
+        return f"{parts[0]}.{parts[1]}.{patch if patch else '0'}"
+    return pkg_version
+
+
+def _fetch_remote_data(dataset_name, version):
+    """Fetch remote dataset file using pooch.
+
+    Parameters
+    ----------
+    dataset_name : str
+        Name of the dataset file to fetch.
+    version : str
+        The dataset version to fetch (e.g., "0.7.0").
+
+    Returns
+    -------
+    str
+        Path to the downloaded file.
+
+    Raises
+    ------
+    ImportError
+        If pooch is not installed.
+    ValueError
+        If the version is not found in the registry.
+    """
+    if pooch is None:
+        raise ImportError(
+            "Missing optional dependency 'pooch' for downloading remote datasets."
+            "Please install it using: pip install ktch[data]"
+        )
+
+    registry = get_registry(version)
+    url = get_url(dataset_name, version)
+    known_hash = registry.get(dataset_name)
+
+    if known_hash is None:
+        raise ValueError(f"Dataset '{dataset_name}' not found in version '{version}'")
+
+    return pooch.retrieve(
+        url=url,
+        known_hash=f"sha256:{known_hash}",
+        path=pooch.os_cache("ktch-data") / version,
+        fname=dataset_name,
+    )
+
+
+def load_image_passiflora_leaves(*, return_paths=False, as_frame=False, version=None):
+    """Load and return the Passiflora leaf image dataset.
+
+    This dataset contains leaf images of Passiflora species from GigaDB
+    [Chitwood_et_al_2014]_.
+
+    The data is downloaded from a remote server on first use and cached locally.
+
+    ========================   ============
+    Specimens                      TBD
+    Image format                   PNG
+    ========================   ============
+
+    Parameters
+    ----------
+    return_paths : bool, default=False
+        If True, return file paths to the images instead of loading them
+        as numpy arrays. This is useful for large datasets or when using
+        image loading libraries like PIL or OpenCV.
+    as_frame : bool, default=False
+        If True, the metadata is returned as a pandas DataFrame.
+        Otherwise, it is returned as a dict.
+    version : str, optional
+        The dataset version to load (e.g., "0.7.0"). If None, uses the
+        version corresponding to the installed ktch package.
+
+    Returns
+    -------
+    data : :class:`~sklearn.utils.Bunch`
+        Dictionary-like object, with the following attributes.
+
+        images : list of ndarray or list of str
+            If `return_paths=False`, list of image arrays with shape
+            (height, width, channels). If `return_paths=True`, list of
+            file paths to the images.
+        meta : dict or DataFrame
+            Metadata containing image_id (index), genus, and species for each image.
+            If `as_frame=True`, returns a pandas DataFrame.
+        DESCR : str
+            The full description of the dataset.
+        data_dir : str
+            Path to the directory containing the extracted data.
+        version : str
+            The version of the dataset that was loaded.
+
+    Notes
+    -----
+    This function requires the optional dependency `pooch` for downloading
+    the dataset. Install it using: ``pip install ktch[data]``
+
+    When `return_paths=False`, numpy is used to load the images. For more
+    control over image loading, use `return_paths=True` and load images
+    with your preferred library.
+
+    References
+    ----------
+    .. [Chitwood_et_al_2016] Chitwood, D.H., Otoni, W.C., 2016. Supporting data
+       for "Morphometric analysis of Passiflora leaves: the relationship
+       between landmarks of the vasculature and elliptical Fourier
+       descriptors of the blade". GigaScience Database.
+       https://doi.org/10.5524/100251
+
+    Examples
+    --------
+    >>> from ktch.datasets import load_image_passiflora_leaves  # doctest: +SKIP
+    >>> data = load_image_passiflora_leaves()  # doctest: +SKIP
+    >>> len(data.images)  # doctest: +SKIP
+    ...
+    >>> data.meta['species']  # doctest: +SKIP
+    ...
+    >>> # Load a specific version
+    >>> data = load_image_passiflora_leaves(version="0.7.0")  # doctest: +SKIP
+    """
+    if version is None:
+        version = _get_default_version()
+
+    descr_module = "ktch.datasets.descr"
+    descr_file_name = "data_image_passiflora_leaves.rst"
+
+    # Fetch and extract the dataset
+    archive_path = _fetch_remote_data("image_passiflora_leaves.zip", version)
+    data_dir = Path(archive_path).parent / "image_passiflora_leaves"
+
+    if not data_dir.exists():
+        with zipfile.ZipFile(archive_path, "r") as zip_ref:
+            zip_ref.extractall(data_dir.parent)
+
+    # Load metadata and description
+    meta_path = data_dir / "metadata.csv"
+    meta = pd.read_csv(meta_path, index_col=0, skipinitialspace=True)
+
+    fdescr = load_descr(
+        descr_module=descr_module,
+        descr_file_name=descr_file_name,
+    )
+
+    # Image paths/numpy arrays
+    image_paths = [data_dir / "images" / f"{image_id}.png" for image_id in meta.index]
+
+    if return_paths:
+        images = [str(p) for p in image_paths]
+    else:
+        import numpy as np
+        from PIL import Image
+
+        images = [np.array(Image.open(p)) for p in image_paths]
+
+    if not as_frame:
+        meta = meta.to_dict()
+
+    return Bunch(
+        images=images,
+        meta=meta,
+        DESCR=fdescr,
+        data_dir=str(data_dir),
+        version=version,
+    )

@@ -1,0 +1,67 @@
+"""Dataset registry for ktch.datasets module."""
+
+# To generate the SHA256 hash, use the command:
+# openssl sha256 <filename>
+# or in Python:
+# import hashlib
+# hashlib.sha256(open(filename, 'rb').read()).hexdigest()
+
+# Base URL for remote datasets
+BASE_URL = "https://pub-c1d6dba6c94843f88f0fd096d19c0831.r2.dev"
+
+# Version-specific registry: {version: {filename: sha256_hash}}
+versioned_registry = {
+    "0.7.0": {
+        "image_passiflora_leaves.zip": "21bfef56b8c54e0f6274f4c344e6ad79d1414bf7ab7de6162107d667af7810b1",
+    },
+}
+
+# dataset method mapping with their associated filenames
+# <method_name> : ["filename1", "filename2", ...]
+method_files_map = {
+    "image_passiflora_leaves": ["image_passiflora_leaves.zip"],
+}
+
+
+def get_registry(version):
+    """Get the registry for a specific version.
+
+    Parameters
+    ----------
+    version : str
+        The version string (e.g., "0.7.0").
+
+    Returns
+    -------
+    dict
+        Registry mapping filename to SHA256 hash.
+
+    Raises
+    ------
+    ValueError
+        If the version is not found in the registry.
+    """
+    if version not in versioned_registry:
+        available = ", ".join(sorted(versioned_registry.keys()))
+        raise ValueError(
+            f"Dataset version '{version}' not found. Available versions: {available}"
+        )
+    return versioned_registry[version]
+
+
+def get_url(filename, version):
+    """Get the download URL for a specific file and version.
+
+    Parameters
+    ----------
+    filename : str
+        The filename to download.
+    version : str
+        The version string (e.g., "0.7.0").
+
+    Returns
+    -------
+    str
+        The full download URL.
+    """
+    return f"{BASE_URL}/releases/v{version}/{filename}"

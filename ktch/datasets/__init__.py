@@ -8,6 +8,7 @@ from ._base import (
     load_outline_mosquito_wings,
     load_outline_bottles,
     load_coefficient_bottles,
+    load_image_passiflora_leaves,
     convert_coords_df_to_list,
     convert_coords_df_to_df_sklearn_transform,
 )
@@ -21,6 +22,7 @@ __all__ = [
     "load_outline_mosquito_wings",
     "load_outline_bottles",
     "load_coefficient_bottles",
+    "load_image_passiflora_leaves",
     "convert_coords_df_to_list",
     "convert_coords_df_to_df_sklearn_transform",
     "make_landmarks_from_reference",

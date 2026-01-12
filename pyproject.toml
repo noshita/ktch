@@ -28,6 +28,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+data = ["pooch>=1.3"]
 docs = []
 plot = ["matplotlib>=3.10.7", "plotly<6.0", "seaborn>=0.13.2"]
 
@@ -63,6 +64,7 @@ dev = [
 doc = [
   "myst-nb>=1.1",
   "numpydoc>=1.8",
+  "pooch>=1.3",
   "pydata-sphinx-theme>=0.16",
   "sphinx>=8.1",
   "sphinx-autobuild~=2024.10",
