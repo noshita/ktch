@@ -12,4 +12,5 @@ Guides for loading and handling morphometric data.
     load_chc
     load_spharm
     use_datasets
+    2d_outline_registration
 ```

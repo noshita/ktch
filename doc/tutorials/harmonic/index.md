@@ -9,7 +9,6 @@ Tutorials for the :mod:`ktch.harmonic` module.
     :maxdepth: 1
 
     ./elliptic_Fourier_analysis
-    ./manipulating_coordinate_values
     ./elliptic_Fourier_analysis_3d
     ./spharm
 ```

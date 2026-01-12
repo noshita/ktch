@@ -13,6 +13,10 @@ kernelspec:
 
 # Elliptic Fourier Analysis
 
+```{seealso}
+For cases where automatic normalization is not suitable, see {doc}`../../how-to/data/2d_outline_registration`.
+```
+
 ```{code-cell} ipython3
 import numpy as np
 import pandas as pd

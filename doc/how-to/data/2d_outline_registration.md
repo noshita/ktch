@@ -11,7 +11,11 @@ kernelspec:
   name: python3
 ---
 
-# Manipulating coordinate values
+(how-to-2d-outline-registration)=
+
+# 2D Outline Registration
+
+Align 2D outlines by adjusting position, orientation, scale, and starting point before EFA.
 
 ```{code-cell} ipython3
 import numpy as np
@@ -162,4 +166,9 @@ sns.lineplot(x=coords_changed_start[idx][:,0], y=coords_changed_start[idx][:,1],
 ax[0].set_aspect('equal')
 ax[1].set_aspect('equal')
 print("starting point: ", new_staring_points[idx])
+```
+
+```{seealso}
+- {doc}`../../tutorials/harmonic/elliptic_Fourier_analysis` for a complete EFA workflow
+- {doc}`../../explanation/harmonic` for understanding harmonic-based normalization
 ```
