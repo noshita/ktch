@@ -259,7 +259,7 @@ favicons = [
     {"href": "favicon_32.png"},
     {
         "rel": "apple-touch-icon",
-        "href": "https://doc.ktch.dev/apple-touch-icon.png",
+        "href": "apple-touch-icon.png",
     },
 ]
 
