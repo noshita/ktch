@@ -46,7 +46,7 @@ jobs:
           # Remove jupytext when v0.6.1 is no longer in versions.json
           # NOTE: sphinx-multiversion from GitHub (not PyPI) is required for
           # SPHINX_MULTIVERSION_NAME environment variable support
-          pip install sphinx pydata-sphinx-theme \
+          pip install "sphinx>=8.1,<9.0" pydata-sphinx-theme \
                       git+https://github.com/sphinx-contrib/multiversion.git \
                       sphinx-gallery sphinxcontrib-bibtex myst-nb \
                       numpydoc matplotlib seaborn 'plotly<6.0' \
