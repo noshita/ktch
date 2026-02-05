@@ -32,4 +32,6 @@ landmark classes and utility functions
    :template: base.rst
 
    centroid_size
+   define_curve_sliders
+   combine_landmarks_and_curves
 ```

@@ -224,7 +224,7 @@ PTN_LM = re.compile(
     flags=re.MULTILINE,
 )
 PTN_CURVES = re.compile(
-    r"^(?P<CURVES>CURVES\s*=\s*[0-9]+\s+(?P<POINTS>POINTS\s*=\s*[0-9]+\s+(?:[-0-9\.\s]+)))$",
+    r"^(?P<CURVES>CURVES\s*=\s*[0-9]+\s+(?:POINTS\s*=\s*[0-9]+\s+(?:[-0-9\.\s]+?))+)(?=^[A-Z]|\Z)",
     flags=re.MULTILINE,
 )
 PTN_POINTS = re.compile(
@@ -233,7 +233,10 @@ PTN_POINTS = re.compile(
 )
 
 PTN_DICT = re.compile(r"^(?P<key>\w+)\s*=\s*(?P<value>[^\r\n]+)$")
-PTN_COORD = re.compile(r"^(?P<x>[-0-9\.]*)\s(?P<y>[-0-9\.]*)\s*(?P<z>[-0-9\.]*)?$")
+PTN_COORD = re.compile(
+    r"^(?P<x>[-0-9\.]+|nan)\s(?P<y>[-0-9\.]+|nan)\s*(?P<z>[-0-9\.]+|nan)?$",
+    flags=re.IGNORECASE,
+)
 
 ######################################
 # Helper functions                   #
@@ -260,7 +263,7 @@ def _read_tps_single(specimen_str: str) -> TPSData:
             [row for row in m["LM"].splitlines() if len(row) > 0]
         )
     else:
-        raise ValueError("")
+        raise ValueError("Failed to parse landmark (LM) section in TPS specimen")
 
     filtered_str = PTN_CURVES.sub("", PTN_LM.sub("", specimen_str))
     filtered_list = [row for row in filtered_str.splitlines() if len(row) > 0]
@@ -273,7 +276,7 @@ def _read_tps_single(specimen_str: str) -> TPSData:
     if "ID" in meta_dict.keys():
         idx = meta_dict["ID"]
     else:
-        raise ValueError("")
+        raise ValueError("Missing required 'ID' field in TPS specimen")
 
     if "IMAGE" in meta_dict.keys():
         image_path = meta_dict["IMAGE"]
@@ -322,7 +325,7 @@ def _read_coordinate_values(coordinate_list):
     key = m["key"]
     value = np.array(
         [
-            [float(x) for x in PTN_COORD.match(row).groups() if len(x) > 0]
+            [float(x) for x in PTN_COORD.match(row).groups() if x is not None and len(x) > 0]
             for row in body
         ]
     )

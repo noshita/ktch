@@ -77,9 +77,10 @@ pc_scores = pca.fit_transform(shapes)
 ## Limitations
 
 - Requires homologous landmarks across all specimens
-- Not suitable for structures lacking clear landmarks
+- Not suitable for structures lacking clear landmarks (see {doc}`semilandmarks` for extending GPA to curves and surfaces)
 
 ```{seealso}
+- {doc}`semilandmarks` for analyzing curves and surfaces using semilandmarks
 - {doc}`morphometrics` for comparison with harmonic methods
 - {doc}`../tutorials/landmark/generalized_Procrustes_analysis` for practical examples
 ```

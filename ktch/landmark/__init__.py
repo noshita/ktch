@@ -18,13 +18,24 @@ The :mod:`ktch.landmark` module implements landmark-based morphometrics.
 
 import warnings
 
-from ._Procrustes_analysis import GeneralizedProcrustesAnalysis, centroid_size
+from ._Procrustes_analysis import (
+    GeneralizedProcrustesAnalysis,
+    centroid_size,
+    combine_landmarks_and_curves,
+    define_curve_sliders,
+)
 
 _MOVED_FUNCTIONS = {
     "tps_grid_2d_plot": "ktch.plot",
 }
 
-__all__ = ["GeneralizedProcrustesAnalysis", "centroid_size", "tps_grid_2d_plot"]
+__all__ = [
+    "GeneralizedProcrustesAnalysis",
+    "centroid_size",
+    "combine_landmarks_and_curves",
+    "define_curve_sliders",
+    "tps_grid_2d_plot",
+]
 
 
 def __getattr__(name: str):

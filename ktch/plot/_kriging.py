@@ -16,7 +16,7 @@
 
 import numpy as np
 
-from ..landmark._kriging import _thin_plate_spline_2d, _tps_2d
+from ..landmark._kernels import tps_coefficients, tps_warp
 
 
 def tps_grid_2d_plot(
@@ -37,7 +37,7 @@ def tps_grid_2d_plot(
     n_grid_inner : int, optional
         Number of inner points on each grid, by default 10
     ax : :class:`matplotlib.axes.Axes`, optional
-        Pre-existing matplotlib axes for the plot. Otherwise, call :func:`matplotlib.pyplot.gca` internally.
+        Pre-existing axes for the plot. Otherwise, uses ``plt.gca()``.
 
     Returns
     -------
@@ -47,7 +47,8 @@ def tps_grid_2d_plot(
 
     import matplotlib.pyplot as plt
 
-    W, c, A = _thin_plate_spline_2d(x_reference, x_target)
+    x_reference = np.asarray(x_reference)
+    W, c, A = tps_coefficients(x_reference, x_target)
 
     if ax is None:
         ax = plt.gca()
@@ -72,14 +73,14 @@ def tps_grid_2d_plot(
     n_grid_x_ = int(n_grid_x * n_grid_inner + 1)
     n_grid_y_ = int(n_grid_y * n_grid_inner + 1)
 
-    warped = np.array(
-        [
-            _tps_2d(x, y, x_reference, W, c, A)
-            for x in np.linspace(x_min, x_max, n_grid_x_)
-            for y in np.linspace(y_min, y_max, n_grid_y_)
-        ]
-    )
+    # Grid points
+    xx = np.linspace(x_min, x_max, n_grid_x_)
+    yy = np.linspace(y_min, y_max, n_grid_y_)
+    grid_x, grid_y = np.meshgrid(xx, yy, indexing="ij")
+    grid_points = np.column_stack([grid_x.ravel(), grid_y.ravel()])
 
+    # Warp all grid points
+    warped = tps_warp(grid_points, x_reference, W, c, A)
     w_1 = warped.reshape(n_grid_x_, n_grid_y_, 2)
     w_2 = w_1.transpose(1, 0, 2)
 

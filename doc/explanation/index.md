@@ -13,12 +13,21 @@ Conceptual explanations of morphometric methods and theory.
     morphometrics
 ```
 
-## Geometric Morphometrics
+## Landmark-based Morphometrics
 
 ```{eval-rst}
 .. toctree::
     :maxdepth: 1
 
     landmark
+    semilandmarks
+```
+
+## Harmonic-based Morphometrics
+
+```{eval-rst}
+.. toctree::
+    :maxdepth: 1
+
     harmonic
 ```
