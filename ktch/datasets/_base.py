@@ -101,6 +101,94 @@ def load_landmark_mosquito_wings(*, as_frame=False):
     )
 
 
+def load_landmark_trilobite_cephala(*, as_frame=False):
+    """Load and return the trilobite cephala landmark dataset with semilandmarks
+    used in [Serra_2023]_.
+
+    The original of this dataset (v1.2) is available at
+    `Zenodo <https://zenodo.org/records/17308187>`_.
+
+    This dataset contains 2D landmark and curve semilandmark data for
+    301 trilobite cephala specimens, with 16 fixed landmarks and 4 curves.
+
+    ============================   ============
+    Specimens                            301
+    Landmarks per specimen                16
+    Curves per specimen                    4
+    Curve points              12, 20, 20, 20
+    Landmark dimensionality                2
+    Features                            real
+    ============================   ============
+
+    Parameters
+    ----------
+    as_frame : bool, default=False
+        If True, the data is a pandas DataFrame including columns with
+        appropriate dtypes (numeric).
+
+    Returns
+    ----------
+    data : :class:`~sklearn.utils.Bunch`
+        Dictionary-like object, with the following attributes.
+
+        landmarks : {ndarray, dataframe} of shape (301, 16, 2)
+            The landmark data. If ``as_frame=True``, returns a pandas
+            DataFrame.
+        curves : list of list of ndarray
+            Curve semilandmark data. Each element is a list of 4 curves
+            for one specimen.
+        curve_landmarks : list of tuple of (int, int)
+            The start and end fixed-landmark indices for each curve,
+            used by :func:`~ktch.landmark.combine_landmarks_and_curves`.
+        meta : {dict, dataframe}
+            Metadata for each specimen.
+        DESCR : str
+            The full description of the dataset.
+        filename : str
+            The path to the location of the data.
+
+    References
+    --------------------
+    .. [Serra_2023] Serra, F., Balseiro, D., Monnet, C., Randolfe, E., Bignon, A., Rustán, J.J., Bault, V., Muñoz, D.F., Vaccari, N.E., Martinetto, M., Crônier, C., Waisfeld, B.G., 2023. A dynamic and collaborative database for morphogeometric information of trilobites. Sci. Data 10, 841. https://doi.org/10.1038/s41597-023-02724-9
+    """
+    from ktch.io import read_tps
+
+    data_module = "ktch.datasets.data"
+    data_file_name = "data_landmark_trilobite_cephala.tps"
+    metadata_file_name = "meta_landmark_trilobite_cephala.csv"
+    descr_module = "ktch.datasets.descr"
+    descr_file_name = "data_landmark_trilobite_cephala.rst"
+
+    tps_path = str(resources.files(data_module).joinpath(data_file_name))
+    landmarks, curves = read_tps(tps_path, as_frame=as_frame)
+
+    meta = pd.read_csv(
+        resources.files(data_module).joinpath(metadata_file_name), index_col=[0]
+    )
+    fdescr = load_descr(
+        descr_module=descr_module,
+        descr_file_name=descr_file_name,
+    )
+
+    curve_landmarks = [(1, 6), (9, 11), (12, 14), (3, 14)]
+
+    if as_frame:
+        # read_tps returns a list of DataFrames when as_frame=True with curves;
+        # concatenate into a single DataFrame for consistency.
+        landmarks = pd.concat(landmarks)
+    else:
+        meta = meta.to_dict()
+
+    return Bunch(
+        landmarks=landmarks,
+        curves=curves,
+        curve_landmarks=curve_landmarks,
+        meta=meta,
+        DESCR=fdescr,
+        filename=data_file_name,
+    )
+
+
 def load_outline_mosquito_wings(*, as_frame=False):
     """Load and return the mosquito wing outline dataset used in
     [Rohlf_and_Archie_1984]_, however includes only 126 of 127 specimens

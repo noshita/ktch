@@ -139,5 +139,5 @@ where $L_k^{-1}$ is the bending energy matrix (upper-left $k \times k$ block of 
 ```{seealso}
 - {doc}`landmark` for standard landmark-based methods
 - {doc}`../tutorials/landmark/generalized_Procrustes_analysis` for GPA tutorial
-- {doc}`../tutorials/landmark/semilandmarks_gpa` for semilandmark analysis tutorial
+- {doc}`../tutorials/landmark/gpa_with_semilandmarks` for semilandmark analysis tutorial
 ```

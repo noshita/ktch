@@ -18,6 +18,7 @@ ktch includes example datasets for learning and testing.
 | Dataset | Type | Description |
 |---------|------|-------------|
 | `load_landmark_mosquito_wings` | Landmarks | 18 landmarks from 127 mosquito wings |
+| `load_landmark_trilobite_cephala` | Landmarks + Curves | 16 landmarks and 4 curves from 301 trilobite cephala |
 | `load_outline_mosquito_wings` | Outlines | 100-point outlines from 126 mosquito wings |
 
 ## Load landmark data

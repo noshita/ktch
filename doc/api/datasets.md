@@ -16,6 +16,7 @@
    :template: base.rst
 
    datasets.load_landmark_mosquito_wings
+   datasets.load_landmark_trilobite_cephala
    datasets.load_outline_mosquito_wings
    datasets.load_image_passiflora_leaves
    datasets.convert_coords_df_to_list

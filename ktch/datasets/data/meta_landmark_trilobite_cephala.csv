@@ -1,0 +1,302 @@
+specimen_id,genus,species,ref_pic,locality,formation,min_age,max_age,format,has_scale
+1020_Liu_1977,Hunanolenus,Hunanolenus genalatus,Liu 1977,Hunan,Huaqiao,Paibian,Paibian,xml,True
+1023_Liu_1977,Huangshiaspis,Huangshiaspis transversus,Liu 1977,Fenghuang area,Tingziguan,Jiangshanian,Jiangshanian,xml,True
+AMF27749,Weania,Weania semicircularis,Vanderlaan y Ebach 2015,Glen William Road,Flagstaff,Middle Visean,Upper Visean,xml,True
+AMNH_28896,Eldredgeops,Eldredgeops raNAmilleri,Burton and Eldredge 1974,NA,NA,Eifelian,NA,tps,True
+AMNH_28902,Viaphacops,Viaphacops stummi,Eldredge 1973,NA,NA,Eifelian,NA,tps,True
+AMNH_29104,Bouleia,Bouleia dagincourti,Eldregde 1972,Padilla,NA,Pragian,Emsian,xml,True
+AMNH_29248,Trypaulites,Trypaulites calypso,Lesperance 1975,Devonian Chert,NA,Lower Devonian,Middle Devonian,xml,True
+AMNH_36647,Glyptambon,Glyptambon verrucosus,Holloway 1981,Waldron Shale,Waldron Shale,Homerian,Sheinwoodian,xml,True
+AMNH_44818,Kasachstania,Kasachstania gerardoi,Edgecombe and Ramskold 1994,Cochabamba Department,Catavi Formation,Lochkovian,NA,xml,True
+AM_F116995,Raphiophorus,Raphiophorus sandfordi,Edgecomb Sherwin 2001,Cottons Hill Quarry,Cotton Formation,Telychian Llandovery,Telychian Llandovery,xml,True
+ANU_35207,Kainops,Kainops microps,Chatterton et al 1979,Wellington Caves,Garra Formation,Lochkovian,Pragian,tps,True
+AU_7482,Hadromeros,Hadromeros edgecombei,Chatterton & Ludvigsen 2004,Anticosti Island,Jupiter,Telychian,Telychian,xml,True
+Alberti_1983-8.90,Plagiolaria,Plagiolaria senex,Alberti 1983,NA,NA,Pragian,NA,tps,True
+Ar51664,Leonaspis,Leonaspis coronata,Ramskold 1984,Eksta parish type locality,Mulde Formation,Wenlock,NA,xml,True
+Ar51757,Dudleyaspis,Dudleyaspis krausi,Ramskold 1984,Hemse,Marl beds,Ludlow,NA,xml,True
+Ar55100,Wallacia,Wallacia jaanussoni,Ramsköld Edgecombe 1994,Själsö,Lower Visby Beds,Sheinwoodian,Telychian,xml,True
+BGS_GSM23700,Waribole,Waribole dunhevidensis,Owens 1994,Landlake,Petherwin Formation,Famennian,NA,xml,True
+BMS_E5433,Basidechenella,Basidechenella rowi,Lieberman 1994,East Bethany,Ludlowville Formation,Emsian,Givetian,xml,True
+BM_It13732,Metacalymene,Metacalymene baylei,Siveter 1979,Ohrada,Kopanina,Ludfordian,Sheinwoodian,xml,True
+BM_ln_53675,Australosutura,Australosutura gardneri,Amos et.al. 1960,Cerro Mina,NA,lower Mississippian,NA,xml,True
+Becker-etal_2017-4d,Burtonops,Burtonops cristatus,Becker et al 2017,NA,NA,Emsian,NA,tps,True
+Bonner_CEPH_Tafel_2_fig31,Acastellina,AcastelliNAsp,Basse 2003,Eifel-Mulde,Heisdorf-Schichten,Emsian,NA,xml,True
+Brauckmann_1986-6.5a,Dienstina,DienstiNAdiensti,Brauckmann and Brauckmann 1986,NA,NA,Famennian,NA,tps,False
+CCLP_874a,Metacryphaeus,Metacryphaeus tuberculatus,Carbonaro et al 2016,Chapada Group,Chapada Group Unit 4,Frasnian,Givetian,xml,True
+CEGH-UNC_22083,Ogygiocaris,Ogygiocaris araiorhachis,Waisfeld Vaccari 2006,Quebrada Incamayo,Saladillo Formation,Tremadocian,NA,xml,True
+CEGH-UNC_23.950,Maurotarion,Maurotarion gaucho,Rustán & Vaccari 2010,Loma de Los Piojos,Talacasto Formation,Emsian,Emsian,xml,True
+CEGH-UNC_23413,Thysanopyge,Thysanopyge taurinus,Waisfeld Vaccari 2008,Pascha-Incamayo area,Parcha Formation,Tremadocian,NA,xml,True
+CEGH-UNC_24318,Dalmanitoides,Dalmanitoides drevermanni,Rustan and Vaccari 2012,Cerro La Chilca,Talacasto Formation,Emsian,NA,xml,True
+CEGH-UNC_26130,Echidnops,Echidnops taphomimus,Rustan and Balseiro 2016,NA,NA,Lochkovian,NA,tps,True
+CEGH-UNC_26447,Megistaspis,Megistaspis (Ekeraspis) aff pugiocauda,Meroi 2016 (PhD Thesis),Acoite,Acoite Formation,Floian,NA,xml,True
+CEGH_UNC_21212,Porterfieldia,Porterfieldia turneri,Waisfeld Vaccari 2003,Las Aguaditas creek,Las Aguaditas,Tremadocian,Katian,xml,True
+CGP1A-208,Kozlowskiaspis,Kozlowskiaspis subcesiva,Kerber et al 2023,Chapada Group,Unit 2a Chapada Group,Emsian,Pragian,xml,True
+CGP1A104,Pennaia,Pennaia pauliana,Kerber et al 2023,Chapada Group,Unit 2a Chapada Group,Emsian,Pragian,xml,True
+CGP1A213,Bainella,Bainella sulmatogrossensis,Kerber et al 2023,Chapada Group,Unit 2a Chapada Group,Emsian,Pragian,xml,True
+CM_45118,Elliptophillipsia,Elliptophillipsia rotundus,Brezinski 2000a,Boone County,Compton Limestone,Tournaisian,NA,xml,True
+CM_45124,Richterella,Richterella hessleri,Brezinski 2000a,Marion County,Compton Limestone,Tournaisian,NA,xml,True
+CM_45749,Ameropiltonia,Ameropiltonia perplexa,Brezinski 2000b,Indian Wells Canyon,Caballero,Tournaisian,NA,xml,True
+CM_45764,Comptonaspis,Comptonaspis swallowi,Brezinski 2000b,Indian Wells Canyon,NA,lower Mississippian,NA,xml,True
+CM_45766,Kollarcephalus,Kollarcephalus granatai,Brezinski 2000b,Sacramento Mountains,Caballero,Tournaisian,NA,xml,True
+CORD-PZ_30510,Parabolina,ParaboliNA(Neoparabolina) frequens,Zeballo Tortello 2005,Alfarcito,Casa Colorada Formation,Furongian,NA,xml,True
+CPBA_1002,Angelina,Angelina hyeronimi,Monti Confalonieri 2018,Tilcuya,NA,Stage 10,Tremadocian,xml,True
+CPBA_1090,Beltella,Beltella ulrichi,Harrington Leanza 1957,Santa Victoria,Santa Victoria Formation,Tremadocian,NA,xml,True
+CPBA_1195,Parabolinella,Parabolinella coelatifrons,Monti Confalonieri 2018,Iruya,NA,Stage 10,Tremadocian,xml,True
+CPBA_1231,Parabolina (Neoparabolina),Parabolina (Neoparabolina) frequens,Harrington & Leanza 1957,Iruya,NA,Stage 10,Tremadocian,xml,True
+CPBA_1689,Dolerasaphus,Dolerasaphus laevis,Harrington Leanza 1957,Quebrada del Barreal,formation unknown,Tremadocian,NA,xml,True
+CPBA_21910_1,,,,,,,,xml,True
+CPBA_2637,Plicatolina,Plicatolina scalpta,Monti Confalonieri 2018,Quebrada del Sarzo,NA,Jiangshanian,Floian,xml,True
+CPBA_3996,Parakainella,Parakainella lata,Harrington Leanza 1957,Santa Victoria,Santa Rosita Formation,Tremadocian,NA,xml,True
+CPBA_4167,Parabolinella,Parabolinella clarisae,Monti 2015 (PhD Thesis),quebradas Rupasca,Santa Rosita Formation,Tremadocian,NA,xml,True
+CPBA_4245,Hoekaspis,Hoekaspis Megacantha,Harrington Leanza 1957,Cachiyuyo River,Suri Formation,Dapingian,NA,xml,True
+CPBA_4415b,Apatokephalus,Apatokephalus exiguus,Harrington Leanza 1957,Quebrada de Pinguiyal,Pinguiyal shales,Tremadocian,NA,xml,True
+CPBA_4428,Saltaspis,Saltaspis steinmanni,Harrington Leanza 1957,Quebrada de Incamayo,NA,Tremadocian,NA,xml,True
+CPBA_4430,Saltaspis,Saltaspis steinmanni,Harrington & Leanza 1957,Quebrada de Lampazar (S.Ros-12 P18),Cardonal,Tremadocian,Floian,xml,True
+CPBA_4482,Kayseraspis,Kayseraspis hrackebuschi,Harrington Leanza 1957,Quebrada del Guayco Hondo,San Bernardo Formation,Tremadocian,NA,xml,True
+CPBA_4700,Hypermecaspis,Hypermecaspis armata,Waisfeld Vaccari 2003,Quebrada del Barranco,Parcha Formation,Floian,NA,xml,True
+CPBA_5057,Bienvillia,Bienvillia parchaensis,Monti Confalonieri 2018,Quebrada La Salamanca,NA,Stage 10,Dapingian,xml,True
+CPBA_704,Peltocare,Peltocare norvegicum,Monti Confalonieri 2018,Quebrada de Rupasca,NA,Tremadocian,Tremadocian,xml,True
+CPBA_801,Pseudokainella,Pseudokainella keideli,Harrington Leanza 1957,Quebrada de Rupasca,NA,Tremadocian,NA,xml,True
+CPBA_866,Jujuyaspis,Jujuyaspis keideli,Harrington & Leanza 1957,Quebrada de Humahuaca,incierta,Tremadocian,Tremadocian,xml,True
+CPBA_918,Jujuyaspis,Jujuyaspis keideli,Harrington Leanza 1957,Quebrada Chañarcito,Purmamarca Shales,Tremadocian,NA,xml,True
+CSGM_739_89,Parabolinina,Parabolinina fortunata,Varlamov et al 2006,Chopko River Section,Chopko River,Jiangshanian,Jiangshanian,xml,True
+Cronier-etal_2015-3J,Pedinopariops,Pedinopariops insequens,Crônier et al 2015,NA,NA,Eifelian,NA,tps,True
+Cronier_2015_Fig3a_p558,Prokops,Prokops prokopi,Cronier et al 2015,Malá Chuchle,Dvorce-Prokop Limestone,Emsian,NA,xml,True
+DCP-Rest_Stk_967-100-1-7a,Dalejeproetus,Dalejeproetus scipio,Basse 2003,Erndtebruck,Loogh Formation,Givetian,NA,xml,True
+"DGM,_DNPM_78-I",,,,,,,,xml,False
+E3653,Phillipsia,Phillipsia ornata,Owens 1990,Wexford,NA,Tournaisian,NA,xml,True
+FMNH_P11152A,Sphaerocoryphe,Sphaerocoryphe maquoketensis,Congreve Lieberman 2010,Clermont Elgin Bloomfield,Maquoketa shale,Hirnantian,Hirnantian,xml,True
+Feist-etal_2020-4d,Rabienops,Rabienops wedeckindi,Feist et al 2020,La Serre,NA,Famennian,NA,tps,True
+Fig21_Opik_1963,Rhodonaspis,Rhodonaspis longula,Opik 1963,Georgina Limestone,NA,Guzhangian,Guzhangian,xml,True
+Fig4F_Høyberget_Bruton_2012,Sphaerophthalmus,Sphaerophthalmus modestus,Høyberget Bruton 2012,Nærsnes,Alum shale,Jiangshanian,Stage 10,xml,True
+Fig5a_Clarkson_Taylor_1995,Olenus,Olenus wahlenbergi,Clarkson Taylor 1995,Andrarum,Alum shale,Guzhangian,Stage 10,xml,True
+Fig7b_Bird_Clarkson_2003,Peltura,Peltura scaraboides,Bird Clarkson 2003,Varhem,Alum shale,Jiangshanian,Tremadocian,xml,True
+Fortey_1974_fig4,Balnibarbi,Balnibarbi pulvurea,Fortey 1974,Spitsbergen,Valhallfonna Formation,Floian,Floian,xml,True
+Fortey_1974_fig5,Cloacaspis,Cloacaspis senilis,Fortey 1974,Spitsbergen,Valhallfonna Formation,Floian,Dapingian,xml,True
+GPIN_96883,Mirabole,Mirabole crassa,Yuan and Xiang 1998,Xiakou section D. Yishan,Yonghsien,Famennian,NA,xml,True
+GSC-2472,Acernaspis,Acernaspis orestes,Chatterton and Ludvigsen 2004,Anticosti Island,NA,Llandovery,NA,tps,True
+GSC122371,Calymene,Calymene barnesi,Chatterton and Ludvigsen 2004,Ste Marie River Road Anticosti Island (AN22),Becscie Formation,Rhuddanian,NA,xml,True
+GSC_122523,Encrinurus,Encrinurus deomenos,Chatterton & Ludvigsen 2004,AN15,Jupiter,Telychian,Aeronian,xml,True
+GSC_122580,Nucleurus,Nucleurus anticostiensis,Chatterton & Ludvigsen 2004,AN77,Jupiter,Telychian,Aeronian,xml,True
+GSC_25927,Synphoria,Synphoria dolbeli,Lesperance and Bourque 1971,Hymans Store,NA,Lower Devonian,Middle Devonian,xml,True
+GSC_43605,Fuscinipyge,Fuscinipyge yolkini,Ormiston 1976,Mackenzie Mountains,Hume Formation,Eifelian,NA,xml,True
+GSC_95876,Odontopleura,Odontopleura arctica,Adrain and Chatterton 1990,Marshall Peninsula,Cape Phillips Formation,Llandovery,NA,xml,True
+GSM_31742,Gravicalymene,Gravicalymene quadrata,Price 1982,Blaen-y-cwm,Rawtheyan Zone 7,Hirnantian,Katian,xml,True
+GUGM-1359,Omegops,Omegops tilabadensis,Pour et al 2018,NA,NA,Famennian,NA,tps,True
+GUGM_1328,Chungkingaspis,Chungkingaspis sinensis,Ghobadi Pour 2019,Deh-Molla,unamed,Tremadocian,Tremadocian,xml,True
+HM_A1083,Panarchaegonus,Panarchaegonus trigodus,Owens 1978,Ladyburn,Upper Drummuck Group,Katian,Katian,xml,True
+Henn_1957_Plate2_Fig10,Acerocarina,Acerocarina micropygia,Henningsmoen 1957,Gamlebyen,Alum Shale,Stage 10,Tremadocian,xml,True
+Henn_1957_Plate2_Fig18,Ctenopyge,Ctenopyge pecten,Henningsmoen 1957,Nærsnes,Alum Shale,Stage 10,Stage 10,xml,True
+Henn_1957_Plate2_Fig2,Protopeltura,Protopeltura praecursor,Henningsmoen 1957,Nærsnes,Alum Shale,Jiangshanian,Tremadocian,xml,True
+Henn_1957_Plate2_Fig20,Mesoctenopyge,Mesoctenopyge spectabilis,Henningsmoen 1957,Nærsnes,Alum Shale,Jiangshanian,Stage 10,xml,True
+Henn_1957_Plate2_Fig3,Acerocare,Acerocare ecorne,Henningsmoen 1957,Nærsnes,Alum Shale,Stage 10,Stage 10,xml,True
+Henn_1957_Plate2_Fig8,Boeckaspis,Boeckaspis hirsuta,Henningsmoen 1957,Nærsnes,Alum Shale,Stage 10,Tremadocian,xml,True
+ICh_3343a,Eocryphops,Eocryphops termieri,Chlupac 1977,Chote?,Chotec Formation,Eifelian,NA,xml,True
+ICh_3443,Denckmannites,Denckmannites volborthi,Chlupac 1977,Lochkov,KopaniNAFormation,Ludlow,NA,xml,True
+IGR_11232,Breizhops,Breizhops bigranulosus,Morzadec 1983,Lanvoy,Kerdreolet Formation,Emsian,NA,xml,True
+IGR_11305,Heliopyge,Heliopyge porsguenensis,Morzadec 1983,Plougastel-Daoulas,Traonliors Formation,Frasnian,NA,xml,True
+IG_442_II_138,Archegonus,Archegonus aprathensis,Osmolska 1968,Jugiw,NA,Visean,NA,xml,True
+IRSBNa13216,Megraneops,Megraneops renateae,VanViersen and Vanherle 2018,NA,NA,Frasnian,NA,tps,True
+IRSNB13012,Cyphaspis,Cyphaspis kippingi,Van Viersen and Holland 2016,Issoumour,Tazoulait Formation,Emsian,NA,xml,True
+IRSNB_7782A,Scutellum,Scutellum decipulum,Van Viersen and Prescher 2011,Arche Quarry,Moulin Lianaux Formation,Frasnian,NA,xml,True
+IRSNB_a12575,Gerastos,Gerastos prox lessensis,Van Viersen and Prescher 2008,Resteigne quarry,Hanonet Formation,Eifelian,NA,xml,True
+IRSNB_a12604,Dechenella,Dechenella daumeriesi,Van Viersen and Prescher 2008,Resteigne quarry,Hanonet Formation,Eifelian,NA,xml,True
+IRSNB_a12997,Cyphaspis,Cyphaspis kippingi,Van Viersen & Holland 2016,Issoumour,Tazoulait Formation,Emsian,Emsian,xml,True
+IRSNB_a13437,Radiaspis,Radiaspis taghonorum,Van Viersen and Magrean 2019,Resteigne,Hanonet Formation,Givetian,NA,xml,True
+IRSNBa12430,Nyterops,Nyterops hollandi,Van Viersen 2007,Resteigne Belgium,Hanonet Formation,Eifelian,NA,xml,True
+Ich-3441,Denckmannites,Denckmannites volborthi,Chlupac 1977,NA,NA,Ludlow,NA,tps,True
+Ich-4546,Eophacops,Eophacops bulliceps,Chlupac 1977,NA,NA,Ludlow,NA,tps,True
+KSGR_VI-672_334,Plagiolaria,Plagiolaria kitabi,Cronier and Tsmeyrek 2010,Kitab State Geological Reserve,Akbasai Formation,Famennian,NA,xml,True
+KUMIP_307854,Ameura,Ameura major,KU Collection,Kansas,Topeka Limestone Formation,Gzhelian,NA,xml,True
+LO_9639,Leptoplastus,Leptoplastus stenotus,Terfelt 2006,Andrarum,Alum Shale,Jiangshanian,Jiangshanian,xml,True
+MACN-PI-2354,Zaplaops,Zaplaops zaplensis,Baldis et al 1976,NA,NA,Wenlock Ludlow,NA,tps,False
+MACN_2425,Malimanaspis,Malimanaspis sarudianskii,JJRustanPersonalPhoto,Chinguillos Group,Chigua Formation,Frasnian,Givetian,xml,False
+MACN_PI_2481,Helieranella,Helieranella negritoensis,Baldis et al 1984,Llanos Orientales,Negritos,Tremadocian,Tremadocian,xml,True
+MB.T_5501,Archegonus,Archegonus (Phillibole) nehdenensis,Hahm et.al. 2012,Dar Kaoua,NA,Visean,NA,xml,True
+MB.T_5505,Cyrtoproetus,Cyrtoproetus (Crassibole) acrops,Hahm et.al. 2012,Tizi Ibaouane,NA,Tournaisian,NA,xml,True
+MB.T_5574,Dechenelloides,Dechenelloides tazoultensis,Hahn et.al 2012,NA,NA,Tournasian,NA,xml,True
+MCZ103493,Aulacopleura,Aulacopleura koninckii,Hughes and Chapman 1995,Lodnice,Motol Formation,Wenlock,NA,xml,True
+MCZ7623-1,Burmeisteria,Burmeisteria accraensis,Saul 1967,Accra,Accraian Series,Lower Devonian,Middle Devonian,xml,True
+MCZ_172821,Odontochile,Odontochile hausmanni,Budil et. al 2007,NA,Praha Formation,Pragian,NA,xml,True
+MCZ_5445P,Triarthrus,Triarthrus eatoni,Whittington 1957,Trenton,Utica Shale,Dapingian,Hirnantian,xml,True
+MCZ_638,Flexicalymene,Flexicalymene celebra,Whittington 1971,Grafton,Racine Dolomite,Gorstian,Homerian,xml,True
+MCZ_9034,Mackenziurus,Mackenziurus lauriae,Gass et al 1992,Zimmermann Quarry,Racine Dolomite,Ludlow,Wenlock,xml,True
+MGCU451059,Crotalocephalus,Crotalocephalus zinzilbanicus,Owens et al 2010,Zinzilban Sai. ZeraSerra Fhan Range,Khodzhakurgan Formation,Emsian,NA,xml,True
+MGCU_48_814,Lioharpes,Lioharpes venulosus,Owens et al 2010,Turkestan Range,Dzhalpak Formation,Lochkovian,NA,xml,True
+MGUH243,Radiurus,Radiurus pauli,Hughes 2010,Wulff Land,Djævlekløften,Telychian,Telychian,xml,True
+MGUH260,Distyrax,Distyrax bibullus,Hughes 2010,KCL1,Hauge Bjerge,Telychian,Telychian,xml,True
+MGUH_229,Cheirurus,Cheirurus falcatus,Hughes 2010,Kronprins Christian Land 5,Samuelsen Høj,Telychian,Telychian,xml,True
+MGUH_33662,Eurycare,Eurycare bornholmensis,Nielsen Andersen 2021,Laesa stream,Alum shale,Jiangshanian,Jiangshanian,xml,True
+MHNN.P.082761,Colombianaspis,Colombianaspis carvalhoae,Morzadec et al 2015,Quebrada Monticelo,Floresta Formation,Emsian,Emsian,xml,True
+MLP_34245,Rossaspis,Rossaspis? sp,Tortello Esteban 2014,Nazareno,Santa Rosita,Tremadocian,NA,xml,True
+MMB107,Belenopyge,Belenopyge estevei,Corbacho and Kier 2013,Jebel Oufatene,Ihandar Formation,Pragian,NA,xml,True
+MMH11371,Chiozoon,Chiozoon cowiei,Lane 1972,NA,Profilfjeldet Shales,Wenlock,Wenlock,xml,True
+MPM26014,Balizoma,Balizoma indianensis,Gass et al 1992,Thornton Quarry,Racine Dolomite,Wenlock,Wenlock,xml,True
+MS47,Spiniscutellum,Spiniscutellum umbelliferum,Snajdr 1960,Kosor valley. CerNArokle,Lochkov-beds,Ludlow,NA,xml,True
+MS_7390,Orbitoproetus,Orbitoproetus fornicatus,Snajdr 1980,Koneprusy,Acanthopyge Limestone,Eifelian,NA,xml,True
+MU-G-Sr.Tr.S7Ph001,Phacops,Phacops ouarouroutensis,Crônier et al 2018,NA,NA,Eifelian,NA,tps,True
+MUA-1094-001,Phacops,Phacops tamtertensis,Cronier et al 2013,Zereg,Argiles de Marhouma Formation,Famennian,NA,tps,True
+MUGSr_A4_Ph123,Chotecops,Chotecops hoseri,Cronier et al 2016,Saoura Valley,Chefar el Ahmar Formation,Eifelian,NA,xml,True
+MUGSr_S7_Ph003,Struveaspis,Struveaspis maroccanica,Cronier et al 2018,Saoura Valley,Chefar el Ahmar Formation,Eifelian,NA,xml,True
+MUST-RCSR-TRI-0001,Feistops,Feistops mongoliensis,Crônier et al 2020,NA,NA,Famennian,NA,tps,True
+M_1327,Drevermannia,Drevermannia calamicensis,Hahn et.al 1997,Menorca,NA,Tournasian,NA,xml,True
+Maksimova-1978-2.1b,Ainasuella,Ainasuella ainasuensis,Maksimova 1978,NA,NA,Lochkovian,NA,tps,True
+Maksimova-1978-3.9,Rhinoreedops,Rhinoreedops rhinoceras,Maksimova 1978,NA,NA,Eifelian,NA,tps,True
+Mitchell-1919-16.2,Adastocephalum,Adastocephalum teleotypicum,Mitchell 1919,NA,NA,Lower Devonian,NA,tps,True
+Morzadec_2001_plate_11_1a,Coltraneia,Coltraneia oufatenensis,Morzadec 2001,coupe dOufatene,El Oftal Formation,Emsian,NA,xml,True
+Morzadec_2001_plate_12_2a,Comura,Comura bultyncki,Morzadec 2001,coupe dOufatene,El Oftal Formation,Emsian,NA,xml,True
+Morzadec_2001_plate_13_5a,Psychopyge,Psychopyge praestans,Morzadec 2001,Jbel Gara,Timrhanrhart Formation,Emsian,NA,xml,True
+Morzadec_2001_plate_15_3e,Walliserops,Walliserops trifurcatus,Morzadec 2001,Jbel Gara,Timrhanrhart Formation,Emsian,NA,xml,True
+Morzadec_2001_plate_3_4a,Methacanthina,MethacanthiNAissoumourensis,Morzadec 2001,Jbel Issoumour,Ihandar Formation,Pragian,NA,xml,True
+Morzadec_2001_plate_4_5a,Kayserops,Kayserops megaspina,Morzadec 2001,Mader,NA,Emsian,NA,xml,True
+Morzadec_2001_plate_9_8a,Hollardops,Hollardops burtandmimiae,Morzadec 2001,Foum Zguid,Timrhanrhart Formation,Emsian,NA,xml,True
+NGSFI5451,Winterbergia,Winterbergia waterhousei,Engel y Morris 1989,Lake Keepit,NA,late Tournasian,Visean,xml,True
+NHM-It-19284,Eocryphops,Eocryphops albertii,Holloway 2005,NA,NA,Eifelian,NA,tps,False
+NHMM-2016-006,Geesops,Geesops schlotheimi,Van Viersen et al 2017,Trilobitenfelder,Ahrdorf Formation,Eifelian,NA,tps,True
+NHMM-2016-007,Adrisiops,Adrisiops weugi,VanViersen et al 2017b,NA,NA,Emsian,NA,tps,True
+NHMM_2011_003,Ceratarges,Ceratarges aries,Van Viersen and Prescher 2011,Zireg,El Otfal Formation,Eifelian,NA,xml,True
+NHMM_2016-055,Hottonops,Hottonops daumeriesi,VanViersen et al 2017a,NA,NA,Eifelian,NA,tps,False
+NHMM_2016-057,Loreleiops,Loreleiops suffeleersi,VanViersen et al 2017a,NA,NA,Eifelian,NA,tps,False
+NHMM_2016_006,,,,,,,,xml,True
+NHMUK_It_2925_6,Eskoharpes,Eskoharpes sicarius,Johnson 2024,Bouia,Achguig,Early Frasnian,Early Frasnian,xml,True
+NHM_It27126,Erbenochile,Erbenochile erbeni,Chatterton et al 2006,Jbel Gara el Zguilma,Timrhanrhart Formation,Emsian,NA,xml,True
+NHM_It_28323,Paralejurus,Paralejurus brongniarti,Feist and Lerosey-Aubril 2010,El Achane,NA,Pragian,NA,xml,True
+NHM_It_28960,Podoliproetus,Podoliproetus sinespina,Johnson and Fortey 2012,Erfoud,Ihandar Formation,Pragian,NA,xml,True
+NIGPAS_21975,,,,,,,,xml,True
+NM-9324,Ananaspis,Ananaspis fecunda,Chlupac 1977,Dlouhá hora,KopaniNAFormation,Ludlow,NA,tps,True
+NM-IT-391a,Signatops,Signatops signatus,Chlupac 1977,NA,NA,Eifelian,NA,tps,True
+NM-L-8917,Phacopidella,Phacopidella glockeri,Chlupac 1977,Lodenice,Liten Formation,Wenlock,NA,tps,True
+NM-L-9332,Lochkovella,Lochkovella misera,Chlupac 1977,NA,NA,Lochkovian,NA,tps,True
+NML_7943,Lochkovella,Lochkovella misera,Chlupac 1977,Kosor,Lochkov Formation,Lochkovian,NA,xml,True
+NMNH245613,Deltacephalaspis,Deltacephalaspis comis,Eldredge and Branisa 1980,Curuyo,Gamoneda Formation,Pragian,NA,xml,True
+NMNH245618,Schizostylus,Schizostylus brevicaudatus,Eldredge and Branisa 1980,Padilla,Icla Formation,Pragian,NA,xml,True
+NMV_P123401,Dicranurus,Dicranurus sp nov,Ramskold 1991,Boree Creek,Boree Creek Formation,Sheinwoodian,NA,xml,True
+NMV_P144043,Sculptoproetus,Sculptoproetus sp,Owens 1994,Lilydale,Humevale Formation,Lochkovian,NA,xml,True
+NMV_P312919,Australoscutellum,Australoscutellum pulex,Holloway & Lane 2012,Locality PL1995,Mirrabooka Formation,Ludfordian,Sheinwoodian,xml,True
+NMV_P313297,Kosovopeltis,Kosovopeltis trepida,Holloway and Lane 2012,Orange district,Mirrabooka,Wenlock,NA,xml,True
+NMW2005-32G-132,Trimerus,Trimerus kinglakensis,Pour et al 2019,Lake Balkhash,Shakshagaily,Lower Devonian,NA,xml,True
+NMW_2005.32G.135,Agerina,AgeriNAacutilimbata,Ghobadi Pour et al 2011,Ayaguz River,Karagach Formation,Katian,NA,xml,True
+NMW_79.35G.1,Rorringtonia,Rorringtonia kennedyi,Owens 1981,Powys,NA,Darriwilian,Darriwilian,xml,True
+NMW_86.256.40,Bollandia,Bollandia columba,Tisley 1988,Peak District,NA,Tournaisian,NA,xml,True
+NMW_87.75G.1009a,Diacalymene,Diacalymene allportiana,Siveter 1995,Road cut between Buildwas & Telford,Coalbrookdale,Homerian,Homerian,xml,True
+NMW_88.36G.4,,,,,,,,xml,True
+NMW_90_18G187,Madygenia,Madygenia communis,Owens 2004,Allberg,Loka,Rhuddanian,Hirnantian,xml,True
+NMW_95.7G.139,Paladin,Paladin eakringensis,Tilsley and Owens 2003,Derbyshire,Topeka Limestone Formation,Serpukhovian,NA,xml,True
+NM_L6127,Bohemoharpes,Bohemoharpes naumanni,Ebach and MacNamara 2002,NA,NA,NA,NA,xml,False
+NUF4898,Carbonocoryphe,Carbonocoryphe rockhamptonensis,engel y Morris 1989,Great Star River,NA,Visean,NA,xml,True
+NYSM4733,Monodechenella,Monodechenella macrocephala,Owens 1994,Canandaigua Lake,Hamilton Group,Givetian,NA,xml,True
+NYSM_13376-1,Synphoroides,Synphoroides dolphi,Delo 1940,Port Jervis,Helderberg Formation,Devonian,NA,xml,True
+NYSM_31318,Coronura,Coronura aspectans,Stumm 1954,Upper Onondaga limestone,NA,Middle Devonian,NA,xml,True
+NYSM_31330,Odontocephalus,Odontocephalus selenourus,Stumm 1954,Lower Onondaga limestone,Bois Blanc Formation,Middle Devonian,NA,xml,True
+NYSM_9848,Huntoniatonia,Huntoniatonia nasuta,Delo 1940,Schoharie,NA,Lower Devonian,NA,xml,True
+N_704_26_CSGM,Eurycarina,Eurycarina oblonga,Petrurina 2002,Kuznetsk Alatau,Kitat,Jiangshanian,Tremadocian,xml,True
+N_704_47_CSGM,Boekaspina,Boekaspina compressa,Petrurina 2002,Kuznetsk Alatau,Kitat,Tremadocian,Tremadocian,xml,True
+N_704_9_CSGM,Nikarivshanus,Nikarivshanus miraculus,Petrurina 2002,Kuznetsk Alatau,Kitat,Stage 10,Stage 10,xml,True
+P136135,Orygmatos,Orygmatos yanyeani,Sandford 2000,Central Victoria,Melbourne Formation,Ludlow,NA,tps,False
+P307225,Nephranomma,Nephranomma sweeti,Sandford 2003,NA,NA,Pragian,NA,tps,True
+PIL_14383,Psilocara,Psilocara lilliae,Waisfeld Vaccari 2003,Quebrada del Barranco,Parcha,Tremadocian,Floian,xml,True
+PIL_14390,Psilocara,NA,Tortello 1999,Incamayo creek,Parcha Formation,Tremadocian,NA,xml,True
+PIU_V_4284,Parabolina,Parabolina lobata,Henningsmoen 1957,Kinnekulle,Alum shale,Jiangshanian,Tremadocian,xml,True
+PMO_NF_300,Svalbardites,Svalbardites hebaxis,Fortey 1974,Spitsbergen,Valhallfonna Formation,Floian,Floian,xml,True
+PMO_NF_815,Anaximander,Anaximander clavatus,Fortey 1974,Spitsbergen,Valhallfonna Formation,Tremadocian,Floian,xml,True
+PRI_44579,Radnoria,Radnoria bretti,Adrain & Tetreault 2005,Lockport,Rochester,Sheinwoodian,Sheinwoodian,xml,True
+Peng_1992_Chekiangaspis,Chekiangaspis,NA,Peng 1992,Shenjiawan,Huaqiao,Paibian,Paibian,xml,True
+Plate4_fig15_Westergard_1984,Ullaspis,Ullaspis conifrons,Westergard 1984,Ullavi,NA,Guzhangian,Guzhangian,xml,True
+Poroscutellum,Poroscutellum,Poroscutellum porosum,Snajdr et al 1990,Dvorce-Prokop Limestone,Praha,Pragian,NA,xml,True
+RBCM_P977,Aciculolenus,Aciculolenus askewi,Chatterton 2020,Bull River Valley Locality 15,McKay Group,Jiangshanian,Jiangshanian,xml,True
+SBNM-CF_1019,Centriproetus,Centriproetus concentricus,Snajdr 1980,Prokop Limestone,NA,Lochkovian,NA,xml,True
+SBNM-CF_581,Pragoproetus,Pragoproetus menamiensis,Johnson and Fortey 2012,Menany,Veanrice Limeston,Pragian,NA,xml,True
+SBNM-IT_212,Xiphogonium,Xiphogonium loveni,Snajdr 1980,Zlichov Limestone,NA,Eifelian,NA,xml,True
+SBNM-IT_257,Prionopeltis,Prionopeltis striata,Snajdr 1980,Dlouha hora,Pridoli Formation,Pridoli,NA,xml,True
+SBNM_663-66,Voigtaspis,Voigtaspis veleslavini,Snajdr 1980,Koneprusy Limestone,NA,Pragian,NA,xml,True
+SBNM_786-66,Denemarkia,Denemarkia frontalis,Snajdr 1980,Koneprusy Limestone,NA,Pragian,NA,xml,True
+SBNM_Br_291,Planiscutellum,Planiscutellum planum,Snajdr 1960,Lodenice,NA,Wenlock,NA,xml,True
+SBNM_CF682,Thysanopeltis,Thysanopeltis speciosa,Snajdr 1960,Koneprusy,Suchomasty Limestones,Emsian,NA,xml,True
+SBNM_IT_176,Myoproetus,Myoproetus myops,Snajdr 1980,Koneprusy,Acanthopyge Limestone,Emsian,NA,xml,True
+SBNM_IT_177,Unguliproetus,Unguliproetus unguloides,Snajdr 1980,Menany,Suchomasty Limestone,Emsian,NA,xml,True
+SBNM_IT_240,Decoroproetus,Decoroproetus coderus,Snajdr 1980,Lodenice,Liten Formation,Wenlock,NA,xml,True
+SMF-24417,Struvephacops,Struvephacops werneri,Struve 1995,NA,NA,Emsian,NA,tps,True
+SMF-24467,Teichertops,Teichertops soetenicus,Struve 1970,NA,NA,Givetian,NA,tps,True
+SMF-24518,Liolophops,Liolophops sublevatus,Struve 1970,NA,NA,Middle Devonian,NA,tps,True
+SMF-24603,Arduennops,Arduennops michelsi,Franke 2010,NA,NA,Emsian,NA,tps,True
+SMF-49340,Drotops,Drotops megalomanicus,Struve 1995,NA,NA,Givetian,NA,tps,True
+SMF-49402,Hypsipariops,Hypsipariops vagabundus,Struve 1995,NA,NA,Givetian,NA,tps,True
+SMF-57512,Weyerites,Weyerites wocklumeriae,Crônier and Feist 2000,NA,NA,Famennian,NA,tps,True
+SMF-57513,Cryphops,Cryphops cryptophthalmus,Cronier 1999,Sessacker,Bunte Tonschiefer Formation,Famennian,NA,tps,False
+SMF-X564e,Spinicryphops,Spinicryphops lemkei,Crônier and Feist 2000,NA,NA,Famennian,NA,tps,True
+SMF39104,Digonus,Digonus ornatus ornatus,Wenndorf 1990,Oberstadtfeld,Unterems Gladbachschisten,Lower Devonian,NA,xml,True
+SMF_36691,Tawstockia,Tawstockia (Beleckella) nasifrons,Hahn et al. 1994,Liebenstein,Erdbach Limestone,Tournaisian,NA,xml,True
+SMF_55937,Belgibole,Belgibole milieuensis,Muller 2000,Tournai,NA,Tournaisian,NA,xml,True
+SMF_57451,Helioproetus,Helioproetus carintiacus,Feist et al 2000,Apricke,Wocklum Limestone,Famennian,NA,xml,True
+SMF_57476,Silesiops,Silesiops schindewolfi,Feist et al 2000,Apricke,Wocklum Limestone,Famennian,NA,xml,True
+SMF_57759,Semiproetus,semiproetus (Brevivole) brevispiNAklytia,Hahn et.al 1998,Liebenstein,Erdbach Limestone,Tournaisian,NA,xml,True
+SMF_76447,Liobole,Liobole (Liobole) trimeroides,Muller 2004,Liebenstein,Erdbach Limestone,Tournaisian,NA,xml,True
+SMF_76470,Priobole,Proliobole nitida,Muller 2004,Liebenstein,Erdbach Limestone,Tournaisian,NA,xml,False
+SMF_76479,Latiglobusia,Latiglobusia ziegleri,Muller 2004,Erbach,Erdbach Limestone,Tournaisian,NA,xml,True
+SMF_76569a,Cystispina,CystispiNAdiversa,Muller 2008,Erbach,Bromberg Formation,upper visean,NA,xml,True
+SMF_79001B,Acastava,Acastava schmidti,Basse 2003,Oberstadtfeld,Gladbach-Schichten,Emsian,NA,xml,True
+SMF_79804,Acastoides,Acastoides paeckelmanni,Basse 2003,Pendik,NA,Emsian,NA,xml,True
+SMF_81a,Neometacanthus,Neometacanthus stellifer,Basse 2003,Gerolstein,Ahrdorf Formation,Eifelian,NA,xml,True
+SMF_88192,Kettneraspis,Kettneraspis elliptica,Van Viersen and Heising 2015,Gees,Ahrdorf Formation,Eifelian,NA,xml,True
+SMF_97255,Coombewoodia,Coombewoodia ruethenensis,Muller y Hahn 2023,Rhenish Massif,Hillershausen formation,visean,NA,xml,True
+SMF_RX_1316d,Rhenops,Rhenops anserinus,Basse 2003,Raum Ober-Niederstadtfeld,Gladbach-Schichten,Emsian,NA,xml,True
+SMF_X_82f,Asteropyge,Asteropyge comes,Basse 2003,Hillesheim,Ahrdorf,Eifelian,NA,xml,True
+SM_4637,,,,,,,,xml,True
+Sandford-2004-3A,Prokops,Prokops prokopi,Crônier et al 2015,NA,NA,Emsian,NA,tps,True
+TML_58_3139,,,,,,,,xml,True
+TML_985_349,,,,,,,,xml,True
+TP_5,Piltonia,Piltonia kuehnei pauli,Muller 2003,NA,NA,Tournaisian,NA,xml,True
+Tr-229,Echinophacops,Echinophacops mirabilis,Zhou 1983,NA,NA,NA,NA,tps,True
+Tr-240,Rhinophacops,Rhinophacops schizoloma,Kaneko 1990,NA,NA,Emsian,NA,tps,False
+Tr-339,Toxophacops,Toxophacops cristata,Zhou and Campbell 1990,NA,NA,Emsian,NA,tps,True
+Tr-355,Atopophacops,Atopophacops apiculata,Zhou and Campbell 1990,NA,NA,Middle Devonian,NA,tps,True
+Tr-373,Zhusilengops,Zhusilengops ejinensis,Zhou and Campbell 1990,NA,NA,Lower Devonian,NA,tps,True
+UA-13295,Morocops,Morocops granulops,Chatterton et al 2006,NA,NA,Emsian,NA,tps,True
+UA-6843,Reedops,Reedops bronni,McKellar and Chatterton 2009,Issoumour,Ihandar,Pragian,NA,tps,True
+UA-6884,Austerops,Austerops kermiti,McKellar and Chatterton 2009,NA,NA,Eifelian,NA,tps,True
+UA-6897,Boeckops,Boeckops stelcki,McKellar and Chatterton 2009,NA,NA,Emsian,NA,tps,True
+UA13256,Timsaloproetus,Timsaloproetus haasi,Gibb and Chatterton 2009,Tazoulait-bou Dib,El Otfal Formation,Eifelian,NA,xml,True
+UA13381,Parahomalonotus,Parahomalonotus calvus,Chatterton et al 2006,Jbel Gara el Zguilma,Timrhanrhart Formation,Emsian,NA,xml,True
+UA13384,Diademaproetus,Diademaproetus praecursor,Chatterton et al 2006,Jbel Gara el Zguilma,Timrhanrhart Formation,Emsian,NA,xml,True
+UA13394,Tropidocoryphe,Tropidocoryphe amuri,Chatterton et at 2006,Jbel Gara el Zguilma,Timrhanrhart Formation,Emsian,NA,xml,True
+UA13411,Scabriscutellum,Scabriscutellum hammadi,Chatterton et al 2006,Jbel Gara el Zguilma,Timrhanrhart Formation,Emsian,NA,xml,True
+UA13428,Koneprusia,Koneprusia dahmani,Chatterton et al 2006,Zguilma,Timrhanrhart Formation,Emsian,NA,xml,True
+UA14054,Wujiajiania,Wujiajiania lyndasmithae,Chatterton Gibb 2016,Bull River Valley Locality 15,McKay Group,Paibian,Stage 10,xml,True
+UA14277,Claycreekia,Claycreekia chrisorum,Chatterton Gibb 2016,Clay Creek section,McKay Group,Jiangshanian,Jiangshanian,xml,True
+UA_14327,Kolihapeltis,Kolihapeltis chlupaci,Feist and Chatterton 2015,Hamar Laghdad III,Kess Kess Formation,Pragian,NA,xml,True
+UA_4117,Primaspis,Primaspis mackenziensis,Chatterton and Perry 1983,Avalanche Lake One,Delorme Formation,Wenlock,NA,xml,True
+UA_4771_(AV3_62),Ceratocephala,Ceratocephala avalanchensis,Chatterton and Perry 1983,Avalanche Lake three,Delorme Formation,Wenlock,NA,xml,True
+UA_6935,Pedinopariops,Pedinopariops vagabundus,McKellar and Chatterton 2009,Aferdou de Mrakib,Bou Dib Formation,Givetian,NA,xml,True
+UA_8259,Perryus,Perryus barletti,Edgecombe Chatterton 1992,Avalanche Lake 3,Whittaker,Telychian,Telychian,xml,True
+UA_8666,Struszia,Struszia dimitrovi,Edgecombe Chatterton 1993,Avalanche Lake 4,Delorme,Sheinwoodian,Sheinwoodian,xml,True
+UM-IP-712,Chlupacops,Chlupacops laticeps,Feist et al 2016,NA,NA,Frasnian,NA,tps,True
+UM-IP-862,Cronierella,Cronierella gallica,Feist and Klapper 2022,NA,NA,Givetian,NA,tps,True
+UM-IP-894,Acutiphacops,Acutiphacops medius,Feist and Klapper 2022,NA,NA,Frasnian,NA,tps,True
+UM-IP-906,Occitanella,Occitanella hexagonalis,Feist and Klapper 2022,NA,NA,Frasnian,NA,tps,True
+UM-IP-948,Girardina,GirardiNAkonradbartzschi,Feist and Klapper 2022,NA,NA,Frasnian,NA,tps,True
+UMC_IP333,Cyrtosymbole,Cyrtosymbole escoti,Feist and Lerosey-Aubril 2005,Cabriires village,Griotte Limestone Formation,Famennian,NA,xml,True
+UMMP_31317,Anchiopsis,Anchiopsis anchiops,Stumm 1954,Southwest Ontario,Bois Blanc Formation,Middle Devonian,NA,xml,True
+UM_D73,Isbergia,Isbergia parvula,Owens 1978,Kallholn,Boda Limestone,Katian,Katian,xml,True
+USMN_775719,Mendoparabolina,Mendoparabolina nyensis,Taylor et al 2024,Ninemile Canyon,Windfall,Stage 10,Stage 10,xml,True
+USNM8975,Harpidella,Harpidella spinafrons,Adrain and Chatterton 1995,West Brook,Tully Formation,Givetian,NA,xml,True
+USNMPAL_373954,Francovichia,Francovichia branisi,Branisa 1965,Limabamba,NA,Emsian,NA,xml,True
+USNM_298961,Dicranopeltis,NA,Thomas & Holloway 1988,Batesville district,St Clair Limestone,Homerian,Sheinwoodian,xml,True
+USNM_3245,Pudoproetus,Pudoproetus fernglenensis,Owens 1994,Lake Valley,Lake Valley Limestone,Tournaisian,NA,xml,True
+USNM_489773,Cordania,Cordania wessmani,Adrain and Kloc 1997,Wessman Quarry,Haragan,Lochkovian,NA,xml,True
+USNM_84799f,Daytonia,Daytonia werthneri,Holloway 1981,Soldiers Home Quarries,Brassfield,Telychian,Telychian,xml,True
+USNM_PAL_117876,Crassiproetus,Crassiproetus traversensis,Stumm 1953,Charlevoix,Gravel Point Formation,Givetian,NA,xml,True
+USTM_RF_95,Harpes,Harpes neogracillis,Feist and Schindler 1994,Causses et Veyran,Upper KW Horizon,Wenlock,NA,xml,True
+Ulg_2011_11_16,Ohleum,Ohleum magreani,Taghon et al 2012,Couvin,Jemelle Formation,Eifelian,NA,xml,True
+WAM-07.266,Houseops,Houseops canningensis,Feist et al 2009,NA,NA,Famennian,NA,tps,True
+WAM-07.273,Babinops,Babinops minor,Feist et al 2009,South Lawford Range,Virgin Hills Formation,Famennian,NA,tps,True
+WAM-07.286,Acuticryphops,Acuticryphops acuticeps,Feist et al 2009,South Lawford Range,Virgin Hills Formation,Frasnian,NA,tps,True
+WAM_07.273,,,,,,,,xml,True
+WAM_07301,Palpebralia,Palpebralia initialis,Feist and McNamara 2013,Windy Knolls,Virgin Hills Formation,Frasnian,NA,xml,True
+WAM_11.230,Chlupaciparia,Chlupaciparia (Australoparia) australis,Feist & Mcnamara 2012,NA,Virgin Hills,Famennian,Frasnian,xml,True
+WAM_1140,Rudybole,Rudybole adorfensis,Feist and McNamara 2013,Horse Spring,Virgin Hills Formation,Frasnian,NA,xml,True
+WAM_91.316,Pteroparia,Pteroparia extrema,Feist and McNamara 2013,McWhae Ridge,Vigin Hills Formation,Frasnian,NA,xml,True
+YPM-6594-4,Paciphacops,Paciphacops logani,Campbell 1977,John Boyd Thacher State Park,New Scotland Formation,Devonian,NA,tps,True
+YPM16271,Fragiscutum,Fragiscutum glebale,Edgecombe 1990,Decaturville,Brownsport,Ludfordian,Ludfordian,xml,True
+YPM_33805,Proetus,Proetus latifrons,Lieberman 1994,Dudley,Coalbrookdale Formation,Wenlock,NA,xml,True
+Z.Pal.Tr11.139,Cummingella,Cummingella carringtonensis,Osmolska 1970,Todowa Grzaba,NA,Visean,NA,xml,True
+Zhang-1983-183.13,Tangbailaspis,Tangbailaspis beijiangensis,Zhang 1983,NA,NA,Lower Devonian,NA,tps,False
