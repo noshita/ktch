@@ -72,6 +72,10 @@ class EllipticFourierAnalysis(
     EFA is also applied for a closed curve in the three-dimensional space
     (e.g., [Lestrel_1997]_, [Lestrel_et_al_1997]_, and [Godefroy_et_al_2012]_).
 
+    Note: Normalization (``norm=True`` in ``transform``) is currently supported
+    only for 2D (``n_dim=2``). For 3D data, ``norm=True`` will raise
+    ``NotImplementedError``.
+
     References
     ------------
     .. [Kuhl_Giardina_1982] Kuhl, F.P., Giardina, C.R. (1982) Elliptic Fourier features of a closed contour. Comput. Graph. Image Process. 18: 236–258. https://doi.org/10.1016/0146-664X(82)90034-X
@@ -258,7 +262,7 @@ class EllipticFourierAnalysis(
         return_orientation_scale: bool = False,
         duplicated_points="infinitesimal",
     ):
-        """Fit the model with a signle outline.
+        """Fit the model with a single outline.
 
         Parameters
         ----------
@@ -449,7 +453,7 @@ class EllipticFourierAnalysis(
         return_orientation_scale: bool = False,
         duplicated_points: str = "infinitesimal",
     ):
-        """Fit the model with a signle outline.
+        """Fit the model with a single outline.
 
         Parameters
         ----------
@@ -706,101 +710,3 @@ def _sse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
     return coef
 
 
-class PositionAligner(BaseEstimator, TransformerMixin):
-    """_summary_
-
-    Parameters
-    ----------
-    BaseEstimator : _type_
-        _description_
-    TransformerMixin : _type_
-        _description_
-    """
-
-    def __init__(self, approx="points", method="centroid"):
-        self.approx = approx
-        self.method = method
-
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, X):
-        return align_position(X, method=self.method, origin=self.origin)
-
-    def fit_transform(self, X, y=None):
-        return align_position(X, method=self.method, origin=self.origin)
-
-    def _align_centroid(
-        self,
-    ):
-        pass
-
-
-class OrientationAligner(BaseEstimator, TransformerMixin):
-    def __init__(self, approx="points", method="pca"):
-        self.method = method
-
-
-class ScaleAligner(BaseEstimator, TransformerMixin):
-    def __init__(self, approx="points", method="area"):
-        self.method = method
-
-
-class ProcrustesAligner(BaseEstimator, TransformerMixin):
-    def __init__(self, scale=True):
-        self.method = method
-
-
-def _align_position(x, p0, method="centroid_points", origin=None):
-    """Align positions of outline coordinate values."""
-
-    if method == "centroid_points":
-        X_aligned = X - np.mean(X, axis=0)
-    elif method == "centroid_polygon":
-        raise NotImplementedError("Not implemented yet")
-    elif method == "centroid_closed_spline":
-        n_dim = X[0].shape[1]
-        for x in X:
-            dx = x[1:] - x[:-1]
-            dt = np.sqrt(dx * dx)
-            t = np.concatenate([[0], np.cumsum(dt)])
-            spl = make_interp_spline(t, np.c_[[x[:, i] for i in range(n_dim)]], k=3)
-
-        X_aligned = X - np.mean(X, axis=1)[:, None]
-    elif method == "centroid_minimal_surface":
-        raise NotImplementedError("Not implemented yet")
-    else:
-        raise ValueError("Unknown method: {}".format(method))
-
-    return X_aligned
-
-
-def _align_orientation(x1, R0, method="pca"):
-    """Align orientation of outline coordinate values."""
-
-    if method == "pca":
-        n_dim = X[0].shape[1]
-        pca = PCA(n_components=n_dim)
-        X_aligned = [pca.fit_transpose(x) for x in X]
-    else:
-        raise ValueError("Unknown method: {}".format(method))
-
-    return X_aligned
-
-
-def _align_scale(x, s, method="area"):
-    """Align scale of outline coordinate values.
-    Parameters
-    ----------
-    X : np.ndarray
-        outline coordinate values
-    method : str, optional
-        method to align scale, by default "area"
-    """
-
-    if method == "area":
-        X_aligned = [x / np.sqrt(np.sum(x**2)) for x in X]
-    else:
-        raise ValueError("Unknown method: {}".format(method))
-
-    return X_aligned
