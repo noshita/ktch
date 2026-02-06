@@ -4,7 +4,7 @@ jupytext:
     extension: .md
     format_name: myst
     format_version: 0.13
-    jupytext_version: 1.18.1
+    jupytext_version: 1.19.1
 kernelspec:
   display_name: ktch
   language: python
@@ -16,7 +16,7 @@ kernelspec:
 ```{code-cell} ipython3
 from pathlib import Path
 import shutil
-import urllib
+import urllib.request
 import tempfile
 
 import numpy as np
@@ -29,13 +29,25 @@ from vtk.numpy_interface import dataset_adapter as dsa
 from ktch.harmonic import SphericalHarmonicAnalysis, xyz2spherical
 ```
 
+```{code-cell} ipython3
+:tags: [remove-cell]
+
+# This cell is only required for the Sphinx documentation build.
+# You do not need this setting when running in Jupyter.
+import plotly.io as pio
+
+pio.renderers.default = "sphinx_gallery"
+```
+
 ## Load 3D potato surface data
 
 ```{code-cell} ipython3
 # parameter
-with urllib.request.urlopen(
-    "https://strata.morphometrics.jp/examples/danshaku_08_allSegments_para.vtp"
-) as response:
+req = urllib.request.Request(
+    "https://strata.morphometrics.jp/examples/danshaku_08_allSegments_para.vtp",
+    headers={"User-Agent": "Mozilla/5.0"},
+)
+with urllib.request.urlopen(req) as response:
     with tempfile.NamedTemporaryFile() as tmp_file:
         shutil.copyfileobj(response, tmp_file)
         reader = vtk.vtkXMLPolyDataReader()
@@ -46,9 +58,11 @@ with urllib.request.urlopen(
         obj_para = dsa.WrapDataObject(dataset)
 
 # surface
-with urllib.request.urlopen(
-    "https://strata.morphometrics.jp/examples/danshaku_08_allSegments_surf.vtp"
-) as response:
+req = urllib.request.Request(
+    "https://strata.morphometrics.jp/examples/danshaku_08_allSegments_surf.vtp",
+    headers={"User-Agent": "Mozilla/5.0"},
+)
+with urllib.request.urlopen(req) as response:
     with tempfile.NamedTemporaryFile() as tmp_file:
         shutil.copyfileobj(response, tmp_file)
         reader = vtk.vtkXMLPolyDataReader()

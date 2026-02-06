@@ -49,7 +49,7 @@ jobs:
           pip install "sphinx>=8.1,<9.0" pydata-sphinx-theme \
                       git+https://github.com/sphinx-contrib/multiversion.git \
                       sphinx-gallery sphinxcontrib-bibtex myst-nb \
-                      numpydoc matplotlib seaborn 'plotly<6.0' \
+                      numpydoc matplotlib seaborn 'plotly>=6.0' \
                       sphinx-sitemap sphinx-favicon vtk jupytext opencv-python pooch
           pip install -e .
 

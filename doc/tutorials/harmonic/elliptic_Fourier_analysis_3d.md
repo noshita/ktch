@@ -4,7 +4,7 @@ jupytext:
     extension: .md
     format_name: myst
     format_version: 0.13
-    jupytext_version: 1.18.1
+    jupytext_version: 1.19.1
 kernelspec:
   display_name: ktch
   language: python
@@ -14,7 +14,7 @@ kernelspec:
 # 3D Elliptic Fourier Analysis
 
 ```{code-cell} ipython3
-import urllib
+import urllib.request
 
 import numpy as np
 import pandas as pd
@@ -24,12 +24,24 @@ import plotly.express as px
 from ktch.harmonic import EllipticFourierAnalysis
 ```
 
+```{code-cell} ipython3
+:tags: [remove-cell]
+
+# This cell is only required for the Sphinx documentation build.
+# You do not need this setting when running in Jupyter.
+import plotly.io as pio
+
+pio.renderers.default = "sphinx_gallery"
+```
+
 ## 3D coordinate values of a leaf edge
 
 ```{code-cell} ipython3
-resp = urllib.request.urlopen(
-    "https://strata.morphometrics.jp/examples/rolling_alpha_016_nIntervals_64.csv"
+req = urllib.request.Request(
+    "https://strata.morphometrics.jp/examples/rolling_alpha_016_nIntervals_64.csv",
+    headers={"User-Agent": "Mozilla/5.0"},
 )
+resp = urllib.request.urlopen(req)
 arr_coord = np.loadtxt(resp)
 df_coord = pd.DataFrame(arr_coord, columns=["x", "y", "z"])
 ```
