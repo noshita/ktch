@@ -30,6 +30,27 @@ try:
 except ImportError:
     pooch = None
 
+DATA_MODULE = "ktch.datasets.data"
+DESCR_MODULE = "ktch.datasets.descr"
+
+
+def _resolve_data_path(dataset_name, filename):
+    """Resolve the path to a bundled data file.
+
+    Parameters
+    ----------
+    dataset_name : str
+        Subdirectory name under data/ (e.g., "landmark_mosquito_wings").
+    filename : str
+        Filename within the subdirectory.
+
+    Returns
+    -------
+    Traversable
+        Path-like object usable with pd.read_csv, open(), etc.
+    """
+    return resources.files(DATA_MODULE).joinpath(dataset_name, filename)
+
 
 def load_landmark_mosquito_wings(*, as_frame=False):
     """Load and return the mosquito wing landmark dataset used in
@@ -72,20 +93,19 @@ def load_landmark_mosquito_wings(*, as_frame=False):
     .. [Rohlf_and_Slice_1990] Rohlf, F.J., Slice, D., 1990. Extensions of the Procrustes Method for the Optimal Superimposition of Landmarks. Systematic Zoology 39, 40. https://doi.org/10.2307/2992207
 
     """
-    data_module = "ktch.datasets.data"
+    dataset_name = "landmark_mosquito_wings"
     data_file_name = "data_landmark_mosquito_wings.csv"
     metadata_file_name = "meta_landmark_mosquito_wings.csv"
-    descr_module = "ktch.datasets.descr"
     descr_file_name = "data_landmark_mosquito_wings.rst"
 
     coords = pd.read_csv(
-        resources.files(data_module).joinpath(data_file_name), index_col=[0, 1]
+        _resolve_data_path(dataset_name, data_file_name), index_col=[0, 1]
     )
     meta = pd.read_csv(
-        resources.files(data_module).joinpath(metadata_file_name), index_col=[0]
+        _resolve_data_path(dataset_name, metadata_file_name), index_col=[0]
     )
     fdescr = load_descr(
-        descr_module=descr_module,
+        descr_module=DESCR_MODULE,
         descr_file_name=descr_file_name,
     )
 
@@ -109,10 +129,10 @@ def load_landmark_trilobite_cephala(*, as_frame=False):
     `Zenodo <https://zenodo.org/records/17308187>`_.
 
     This dataset contains 2D landmark and curve semilandmark data for
-    301 trilobite cephala specimens, with 16 fixed landmarks and 4 curves.
+    300 trilobite cephala specimens, with 16 fixed landmarks and 4 curves.
 
     ============================   ============
-    Specimens                            301
+    Specimens                            300
     Landmarks per specimen                16
     Curves per specimen                    4
     Curve points              12, 20, 20, 20
@@ -131,7 +151,7 @@ def load_landmark_trilobite_cephala(*, as_frame=False):
     data : :class:`~sklearn.utils.Bunch`
         Dictionary-like object, with the following attributes.
 
-        landmarks : {ndarray, dataframe} of shape (301, 16, 2)
+        landmarks : {ndarray, dataframe} of shape (300, 16, 2)
             The landmark data. If ``as_frame=True``, returns a pandas
             DataFrame.
         curves : list of list of ndarray
@@ -153,20 +173,19 @@ def load_landmark_trilobite_cephala(*, as_frame=False):
     """
     from ktch.io import read_tps
 
-    data_module = "ktch.datasets.data"
+    dataset_name = "landmark_trilobite_cephala"
     data_file_name = "data_landmark_trilobite_cephala.tps"
     metadata_file_name = "meta_landmark_trilobite_cephala.csv"
-    descr_module = "ktch.datasets.descr"
     descr_file_name = "data_landmark_trilobite_cephala.rst"
 
-    tps_path = str(resources.files(data_module).joinpath(data_file_name))
+    tps_path = str(_resolve_data_path(dataset_name, data_file_name))
     landmarks, curves = read_tps(tps_path, as_frame=as_frame)
 
     meta = pd.read_csv(
-        resources.files(data_module).joinpath(metadata_file_name), index_col=[0]
+        _resolve_data_path(dataset_name, metadata_file_name), index_col=[0]
     )
     fdescr = load_descr(
-        descr_module=descr_module,
+        descr_module=DESCR_MODULE,
         descr_file_name=descr_file_name,
     )
 
@@ -231,20 +250,19 @@ def load_outline_mosquito_wings(*, as_frame=False):
     .. [Rohlf_and_Archie_1984] Rohlf, F.J., Archie, J.W., 1984. A Comparison of Fourier Methods for the Description of Wing Shape in Mosquitoes (Diptera: Culicidae). Syst Zool 33, 302. https://doi.org/10.2307/2413076
 
     """
-    data_module = "ktch.datasets.data"
+    dataset_name = "outline_mosquito_wings"
     data_file_name = "data_outline_mosquito_wings.csv"
     metadata_file_name = "meta_outline_mosquito_wings.csv"
-    descr_module = "ktch.datasets.descr"
     descr_file_name = "data_outline_mosquito_wings.rst"
 
     coords = pd.read_csv(
-        resources.files(data_module).joinpath(data_file_name), index_col=[0, 1]
+        _resolve_data_path(dataset_name, data_file_name), index_col=[0, 1]
     )
     meta = pd.read_csv(
-        resources.files(data_module).joinpath(metadata_file_name), index_col=[0]
+        _resolve_data_path(dataset_name, metadata_file_name), index_col=[0]
     )
     fdescr = load_descr(
-        descr_module=descr_module,
+        descr_module=DESCR_MODULE,
         descr_file_name=descr_file_name,
     )
 
@@ -291,20 +309,19 @@ def load_outline_bottles(*, as_frame=False):
             The path to the location of the data.
 
     """
-    data_module = "ktch.datasets.data"
+    dataset_name = "outline_bottles"
     data_file_name = "data_outline_bottles.csv"
     metadata_file_name = "meta_outline_bottles.csv"
-    descr_module = "ktch.datasets.descr"
     descr_file_name = "data_outline_bottles.rst"
 
     coords = pd.read_csv(
-        resources.files(data_module).joinpath(data_file_name), index_col=[0, 1]
+        _resolve_data_path(dataset_name, data_file_name), index_col=[0, 1]
     )
     meta = pd.read_csv(
-        resources.files(data_module).joinpath(metadata_file_name), index_col=[0]
+        _resolve_data_path(dataset_name, metadata_file_name), index_col=[0]
     )
     fdescr = load_descr(
-        descr_module=descr_module,
+        descr_module=DESCR_MODULE,
         descr_file_name=descr_file_name,
     )
 
@@ -350,23 +367,22 @@ def load_coefficient_bottles(*, as_frame=False, norm=True):
             The path to the location of the data.
     """
 
-    data_module = "ktch.datasets.data"
+    dataset_name = "outline_bottles"
     if norm:
         data_file_name = "test_coef_nharm_6_norm_true_outline_bottles.csv"
     else:
         data_file_name = "test_coef_nharm_6_norm_false_outline_bottles.csv"
     metadata_file_name = "meta_outline_bottles.csv"
-    descr_module = "ktch.datasets.descr"
     descr_file_name = "data_outline_bottles.rst"
 
     coef = pd.read_csv(
-        resources.files(data_module).joinpath(data_file_name), index_col=[0, 1]
+        _resolve_data_path(dataset_name, data_file_name), index_col=[0, 1]
     )
     meta = pd.read_csv(
-        resources.files(data_module).joinpath(metadata_file_name), index_col=[0]
+        _resolve_data_path(dataset_name, metadata_file_name), index_col=[0]
     )
     fdescr = load_descr(
-        descr_module=descr_module,
+        descr_module=DESCR_MODULE,
         descr_file_name=descr_file_name,
     )
 
@@ -581,7 +597,6 @@ def load_image_passiflora_leaves(*, return_paths=False, as_frame=False, version=
     if version is None:
         version = _get_default_version()
 
-    descr_module = "ktch.datasets.descr"
     descr_file_name = "data_image_passiflora_leaves.rst"
 
     # Fetch and extract the dataset
@@ -597,7 +612,7 @@ def load_image_passiflora_leaves(*, return_paths=False, as_frame=False, version=
     meta = pd.read_csv(meta_path, index_col=0, skipinitialspace=True)
 
     fdescr = load_descr(
-        descr_module=descr_module,
+        descr_module=DESCR_MODULE,
         descr_file_name=descr_file_name,
     )
 
