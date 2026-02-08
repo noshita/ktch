@@ -15,7 +15,7 @@ class TestLoadLandmarkTrilobiteCephala:
         data = load_landmark_trilobite_cephala()
 
         assert isinstance(data.landmarks, np.ndarray)
-        assert data.landmarks.shape == (301, 16, 2)
+        assert data.landmarks.shape == (300, 16, 2)
         assert isinstance(data.meta, dict)
 
     def test_curves_structure(self):
@@ -23,7 +23,7 @@ class TestLoadLandmarkTrilobiteCephala:
         data = load_landmark_trilobite_cephala()
 
         assert isinstance(data.curves, list)
-        assert len(data.curves) == 301
+        assert len(data.curves) == 300
 
         # Each specimen has 4 curves
         for curves in data.curves:

@@ -44,7 +44,7 @@ CPBA_1090,Beltella,Beltella ulrichi,Harrington Leanza 1957,Santa Victoria,Santa 
 CPBA_1195,Parabolinella,Parabolinella coelatifrons,Monti Confalonieri 2018,Iruya,NA,Stage 10,Tremadocian,xml,True
 CPBA_1231,Parabolina (Neoparabolina),Parabolina (Neoparabolina) frequens,Harrington & Leanza 1957,Iruya,NA,Stage 10,Tremadocian,xml,True
 CPBA_1689,Dolerasaphus,Dolerasaphus laevis,Harrington Leanza 1957,Quebrada del Barreal,formation unknown,Tremadocian,NA,xml,True
-CPBA_21910_1,,,,,,,,xml,True
+CPBA_21910_1,Leptoplastides,Leptoplastides granulosus,Monti Confalonieri 2018,Quebrada de Rupasca,NA,Jiangshanian,Floian,xml,True
 CPBA_2637,Plicatolina,Plicatolina scalpta,Monti Confalonieri 2018,Quebrada del Sarzo,NA,Jiangshanian,Floian,xml,True
 CPBA_3996,Parakainella,Parakainella lata,Harrington Leanza 1957,Santa Victoria,Santa Rosita Formation,Tremadocian,NA,xml,True
 CPBA_4167,Parabolinella,Parabolinella clarisae,Monti 2015 (PhD Thesis),quebradas Rupasca,Santa Rosita Formation,Tremadocian,NA,xml,True
@@ -63,7 +63,7 @@ CSGM_739_89,Parabolinina,Parabolinina fortunata,Varlamov et al 2006,Chopko River
 Cronier-etal_2015-3J,Pedinopariops,Pedinopariops insequens,Crônier et al 2015,NA,NA,Eifelian,NA,tps,True
 Cronier_2015_Fig3a_p558,Prokops,Prokops prokopi,Cronier et al 2015,Malá Chuchle,Dvorce-Prokop Limestone,Emsian,NA,xml,True
 DCP-Rest_Stk_967-100-1-7a,Dalejeproetus,Dalejeproetus scipio,Basse 2003,Erndtebruck,Loogh Formation,Givetian,NA,xml,True
-"DGM,_DNPM_78-I",,,,,,,,xml,False
+"DGM,_DNPM_78-I",Paracalmonia,Paracalmonia cuspidata,de Carvalho & Ponciano 2015,Ponta Grossa,Ponta Grossa Formation,Lochkovian,Lochkovian,xml,False
 E3653,Phillipsia,Phillipsia ornata,Owens 1990,Wexford,NA,Tournaisian,NA,xml,True
 FMNH_P11152A,Sphaerocoryphe,Sphaerocoryphe maquoketensis,Congreve Lieberman 2010,Clermont Elgin Bloomfield,Maquoketa shale,Hirnantian,Hirnantian,xml,True
 Feist-etal_2020-4d,Rabienops,Rabienops wedeckindi,Feist et al 2020,La Serre,NA,Famennian,NA,tps,True
@@ -157,7 +157,7 @@ NHMM-2016-007,Adrisiops,Adrisiops weugi,VanViersen et al 2017b,NA,NA,Emsian,NA,t
 NHMM_2011_003,Ceratarges,Ceratarges aries,Van Viersen and Prescher 2011,Zireg,El Otfal Formation,Eifelian,NA,xml,True
 NHMM_2016-055,Hottonops,Hottonops daumeriesi,VanViersen et al 2017a,NA,NA,Eifelian,NA,tps,False
 NHMM_2016-057,Loreleiops,Loreleiops suffeleersi,VanViersen et al 2017a,NA,NA,Eifelian,NA,tps,False
-NHMM_2016_006,,,,,,,,xml,True
+NHMM_2016_006,Geesops,Geesops schlotheimi,Van Viersen et al 2017,Trilobitenfelder,Ahrdorf Formation,Eifelian,NA,xml,True
 NHMUK_It_2925_6,Eskoharpes,Eskoharpes sicarius,Johnson 2024,Bouia,Achguig,Early Frasnian,Early Frasnian,xml,True
 NHM_It27126,Erbenochile,Erbenochile erbeni,Chatterton et al 2006,Jbel Gara el Zguilma,Timrhanrhart Formation,Emsian,NA,xml,True
 NHM_It_28323,Paralejurus,Paralejurus brongniarti,Feist and Lerosey-Aubril 2010,El Achane,NA,Pragian,NA,xml,True
@@ -241,10 +241,9 @@ SMF_88192,Kettneraspis,Kettneraspis elliptica,Van Viersen and Heising 2015,Gees,
 SMF_97255,Coombewoodia,Coombewoodia ruethenensis,Muller y Hahn 2023,Rhenish Massif,Hillershausen formation,visean,NA,xml,True
 SMF_RX_1316d,Rhenops,Rhenops anserinus,Basse 2003,Raum Ober-Niederstadtfeld,Gladbach-Schichten,Emsian,NA,xml,True
 SMF_X_82f,Asteropyge,Asteropyge comes,Basse 2003,Hillesheim,Ahrdorf,Eifelian,NA,xml,True
-SM_4637,,,,,,,,xml,True
 Sandford-2004-3A,Prokops,Prokops prokopi,Crônier et al 2015,NA,NA,Emsian,NA,tps,True
-TML_58_3139,,,,,,,,xml,True
-TML_985_349,,,,,,,,xml,True
+TML_58_3139,Particeps,Particeps kargini,Osmoslska 1970,Invertiel,NA,Serpukhovian,NA,xml,True
+TML_985_349,Palaeophillipsia,Palaeophillipsia kirgisica,Osmolska 1970,Karatau,NA,Upper Tournaisian,NA,xml,True
 TP_5,Piltonia,Piltonia kuehnei pauli,Muller 2003,NA,NA,Tournaisian,NA,xml,True
 Tr-229,Echinophacops,Echinophacops mirabilis,Zhou 1983,NA,NA,NA,NA,tps,True
 Tr-240,Rhinophacops,Rhinophacops schizoloma,Kaneko 1990,NA,NA,Emsian,NA,tps,False
@@ -290,7 +289,7 @@ Ulg_2011_11_16,Ohleum,Ohleum magreani,Taghon et al 2012,Couvin,Jemelle Formation
 WAM-07.266,Houseops,Houseops canningensis,Feist et al 2009,NA,NA,Famennian,NA,tps,True
 WAM-07.273,Babinops,Babinops minor,Feist et al 2009,South Lawford Range,Virgin Hills Formation,Famennian,NA,tps,True
 WAM-07.286,Acuticryphops,Acuticryphops acuticeps,Feist et al 2009,South Lawford Range,Virgin Hills Formation,Frasnian,NA,tps,True
-WAM_07.273,,,,,,,,xml,True
+WAM_07.273,Babinops,Babinops minor,Feist et al 2009,South Lawford Range,Virgin Hills Formation,Famennian,NA,xml,True
 WAM_07301,Palpebralia,Palpebralia initialis,Feist and McNamara 2013,Windy Knolls,Virgin Hills Formation,Frasnian,NA,xml,True
 WAM_11.230,Chlupaciparia,Chlupaciparia (Australoparia) australis,Feist & Mcnamara 2012,NA,Virgin Hills,Famennian,Frasnian,xml,True
 WAM_1140,Rudybole,Rudybole adorfensis,Feist and McNamara 2013,Horse Spring,Virgin Hills Formation,Frasnian,NA,xml,True
