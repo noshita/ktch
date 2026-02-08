@@ -1,10 +1,8 @@
 """Dataset registry for ktch.datasets module."""
 
-# To generate the SHA256 hash, use the command:
-# openssl sha256 <filename>
-# or in Python:
-# import hashlib
-# hashlib.sha256(open(filename, 'rb').read()).hexdigest()
+# Registry is auto-updated via:
+#   uv run python scripts/update_registry.py <version>
+# See ref/ktch-registry-update-via-manifest.md for details.
 
 # Base URL for remote datasets
 BASE_URL = "https://pub-c1d6dba6c94843f88f0fd096d19c0831.r2.dev"
@@ -12,7 +10,7 @@ BASE_URL = "https://pub-c1d6dba6c94843f88f0fd096d19c0831.r2.dev"
 # Version-specific registry: {version: {filename: sha256_hash}}
 versioned_registry = {
     "0.7.0": {
-        "image_passiflora_leaves.zip": "21bfef56b8c54e0f6274f4c344e6ad79d1414bf7ab7de6162107d667af7810b1",
+        "image_passiflora_leaves.zip": "d23b22252d0baf3b60ef1986e6518f0550e2e1aa81f677b5991938ab65e2e45b",
     },
 }
 

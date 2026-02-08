@@ -49,7 +49,20 @@ ktch requires:
 - scikit-learn
 - pandas
 
-Optional dependencies for visualization:
+### Optional Dependencies
+
+#### Visualization (`pip install ktch[plot]`)
 
 - matplotlib
 - seaborn
+- plotly
+
+#### Remote Datasets (`pip install ktch[data]`)
+
+- [pooch](https://www.fatiando.org/pooch/) — on-demand downloading and local caching of remote datasets
+
+You can install multiple extras at once:
+
+```bash
+pip install ktch[data,plot]
+```

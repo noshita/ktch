@@ -106,6 +106,9 @@ unauthorized_licenses = ["gpl v3", "gnu agplv3"]
 [tool.liccheck.authorized_packages]
 uuid = "<=1.30"
 
+[tool.pytest.ini_options]
+testpaths = ["ktch", "scripts"]
+
 [tool.ruff]
 exclude = [
   ".git",
