@@ -439,22 +439,26 @@ class TestRotationMatrix3dEulerZxz:
         """Alpha-only rotation (β=0, γ=0) is a Z-axis rotation by α."""
         alpha = np.pi / 4
         R = rotation_matrix_3d_euler_zxz(alpha, 0.0, 0.0)
-        Rz = np.array([
-            [np.cos(alpha), -np.sin(alpha), 0],
-            [np.sin(alpha), np.cos(alpha), 0],
-            [0, 0, 1],
-        ])
+        Rz = np.array(
+            [
+                [np.cos(alpha), -np.sin(alpha), 0],
+                [np.sin(alpha), np.cos(alpha), 0],
+                [0, 0, 1],
+            ]
+        )
         assert_array_almost_equal(R, Rz)
 
     def test_pure_beta_rotation(self):
         """With α=0, γ=0, β-only rotation is about the X-axis."""
         beta = np.pi / 3
         R = rotation_matrix_3d_euler_zxz(0.0, beta, 0.0)
-        Rx = np.array([
-            [1, 0, 0],
-            [0, np.cos(beta), -np.sin(beta)],
-            [0, np.sin(beta), np.cos(beta)],
-        ])
+        Rx = np.array(
+            [
+                [1, 0, 0],
+                [0, np.cos(beta), -np.sin(beta)],
+                [0, np.sin(beta), np.cos(beta)],
+            ]
+        )
         assert_array_almost_equal(R, Rx)
 
     def test_explicit_matrix_entries(self):
@@ -465,11 +469,13 @@ class TestRotationMatrix3dEulerZxz:
         cb, sb = np.cos(beta), np.sin(beta)
         cg, sg = np.cos(gamma), np.sin(gamma)
 
-        expected = np.array([
-            [ca * cg - sa * cb * sg, -ca * sg - sa * cb * cg, sa * sb],
-            [sa * cg + ca * cb * sg, -sa * sg + ca * cb * cg, -ca * sb],
-            [sb * sg, sb * cg, cb],
-        ])
+        expected = np.array(
+            [
+                [ca * cg - sa * cb * sg, -ca * sg - sa * cb * cg, sa * sb],
+                [sa * cg + ca * cb * sg, -sa * sg + ca * cb * cg, -ca * sb],
+                [sb * sg, sb * cg, cb],
+            ]
+        )
         assert_array_almost_equal(R, expected)
 
     def test_inverse_is_transpose(self):
@@ -689,8 +695,15 @@ def _make_3d_outline(n_harmonics=6, t_num=360, rng=None):
     X_coords = np.stack([x, y, z], 1)
 
     return X_coords, {
-        "a0": a0, "c0": c0, "e0": e0,
-        "an": an, "bn": bn, "cn": cn, "dn": dn, "en": en, "fn": fn,
+        "a0": a0,
+        "c0": c0,
+        "e0": e0,
+        "an": an,
+        "bn": bn,
+        "cn": cn,
+        "dn": dn,
+        "en": en,
+        "fn": fn,
     }
 
 
@@ -700,7 +713,9 @@ class TestNormalize3d:
     def test_returns_correct_structure(self):
         """_normalize_3d returns 11 values: 6 arrays + 5 floats."""
         n_harmonics = 6
-        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=np.random.default_rng(42))
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
+        )
 
         efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
         coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
@@ -718,21 +733,24 @@ class TestNormalize3d:
             assert isinstance(result[i], (float, np.floating))
 
     def test_canonical_first_harmonic(self):
-        """After normalization, 1st harmonic defines XY-plane ellipse with semi-major along X.
+        """After normalization,
+        1st harmonic defines XY-plane ellipse with semi-major along X.
 
         Canonical form: a1_norm > 0, b1_norm = 0, c1_norm = 0, d1_norm > 0,
         e1_norm = 0, f1_norm = 0 (or nearly so).
         """
         n_harmonics = 6
-        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=np.random.default_rng(42))
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
+        )
 
         efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
         coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
         arrays = coef.reshape(6, n_harmonics + 1)
         an, bn, cn, dn, en, fn = arrays
 
-        An, Bn, Cn, Dn, En, Fn, alpha, beta, gamma, phi, scale = (
-            efa._normalize_3d(an, bn, cn, dn, en, fn)
+        An, Bn, Cn, Dn, En, Fn, alpha, beta, gamma, phi, scale = efa._normalize_3d(
+            an, bn, cn, dn, en, fn
         )
 
         # 1st harmonic: semi-major along X (a1 > 0), zero b1
@@ -745,10 +763,76 @@ class TestNormalize3d:
         assert abs(En[1]) < 1e-10, f"En[1]={En[1]} should be ~0"
         assert abs(Fn[1]) < 1e-10, f"Fn[1]={Fn[1]} should be ~0"
 
+
+class TestNormMethodParameter:
+    """Tests for the norm_method parameter in EllipticFourierAnalysis."""
+
+    def test_default_norm_method_is_area(self):
+        """Default norm_method should be 'area'."""
+        efa = EllipticFourierAnalysis(n_dim=3)
+        assert efa.norm_method == "area"
+
+    def test_norm_method_area_accepted(self):
+        """norm_method='area' should be accepted without error."""
+        efa = EllipticFourierAnalysis(n_dim=3, norm_method="area")
+        assert efa.norm_method == "area"
+
+    def test_norm_method_semi_major_axis_accepted(self):
+        """norm_method='semi_major_axis' should be accepted without error."""
+        efa = EllipticFourierAnalysis(n_dim=3, norm_method="semi_major_axis")
+        assert efa.norm_method == "semi_major_axis"
+
+    def test_invalid_norm_method_raises_valueerror(self):
+        """Invalid norm_method should raise ValueError with informative message."""
+        with pytest.raises(ValueError, match="norm_method"):
+            EllipticFourierAnalysis(n_dim=3, norm_method="invalid")
+
+    def test_invalid_norm_method_lists_valid_options(self):
+        """Error message should list valid options."""
+        with pytest.raises(
+            ValueError, match="area.*semi_major_axis|semi_major_axis.*area"
+        ):
+            EllipticFourierAnalysis(n_dim=3, norm_method="foobar")
+
+    def test_get_params_includes_norm_method(self):
+        """sklearn get_params() should discover norm_method."""
+        efa = EllipticFourierAnalysis(n_dim=3, norm_method="semi_major_axis")
+        params = efa.get_params()
+        assert "norm_method" in params
+        assert params["norm_method"] == "semi_major_axis"
+
+    def test_set_params_norm_method(self):
+        """sklearn set_params() should be able to set norm_method."""
+        efa = EllipticFourierAnalysis(n_dim=3, norm_method="area")
+        efa.set_params(norm_method="semi_major_axis")
+        assert efa.norm_method == "semi_major_axis"
+
+    def test_norm_method_does_not_affect_2d(self):
+        """norm_method parameter should not affect 2D EFA behavior."""
+        X = load_outline_bottles().coords
+        n_harmonics = 6
+
+        efa_default = EllipticFourierAnalysis(n_harmonics=n_harmonics, n_dim=2)
+        efa_area = EllipticFourierAnalysis(
+            n_harmonics=n_harmonics, n_dim=2, norm_method="area"
+        )
+        efa_semi = EllipticFourierAnalysis(
+            n_harmonics=n_harmonics, n_dim=2, norm_method="semi_major_axis"
+        )
+
+        coef_default = efa_default.fit_transform(X, norm=True)
+        coef_area = efa_area.fit_transform(X, norm=True)
+        coef_semi = efa_semi.fit_transform(X, norm=True)
+
+        assert_array_almost_equal(coef_default, coef_area)
+        assert_array_almost_equal(coef_default, coef_semi)
+
     def test_scale_is_sqrt_area(self):
         """The returned scale equals sqrt(pi * a1 * b1)."""
         n_harmonics = 6
-        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=np.random.default_rng(42))
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
+        )
 
         efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
         coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
@@ -761,8 +845,8 @@ class TestNormalize3d:
         )
         expected_scale = np.sqrt(np.pi * a1 * b1)
 
-        _, _, _, _, _, _, alpha, beta, gamma, phi, scale = (
-            efa._normalize_3d(an, bn, cn, dn, en, fn)
+        _, _, _, _, _, _, alpha, beta, gamma, phi, scale = efa._normalize_3d(
+            an, bn, cn, dn, en, fn
         )
 
         assert scale == pytest.approx(expected_scale, rel=1e-10)
@@ -770,7 +854,9 @@ class TestNormalize3d:
     def test_orientation_parameters_match_geometry(self):
         """The returned alpha, beta, gamma, phi match the 1st harmonic's geometry."""
         n_harmonics = 6
-        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=np.random.default_rng(42))
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
+        )
 
         efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
         coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
@@ -781,8 +867,8 @@ class TestNormalize3d:
             _compute_ellipse_geometry_3d(an[1], bn[1], cn[1], dn[1], en[1], fn[1])
         )
 
-        _, _, _, _, _, _, alpha, beta, gamma, phi, _ = (
-            efa._normalize_3d(an, bn, cn, dn, en, fn)
+        _, _, _, _, _, _, alpha, beta, gamma, phi, _ = efa._normalize_3d(
+            an, bn, cn, dn, en, fn
         )
 
         assert alpha == pytest.approx(alpha_expected, abs=1e-10)
@@ -808,9 +894,11 @@ class TestNormalize3d:
             efa._normalize_3d(an, bn, cn, dn, en, fn)
 
     def test_dc_components_preserved(self):
-        """DC components (index 0) are preserved unchanged through normalization."""
+        """Offset (index 0) are preserved unchanged through normalization."""
         n_harmonics = 6
-        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=np.random.default_rng(42))
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
+        )
 
         efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
         coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
@@ -819,7 +907,7 @@ class TestNormalize3d:
 
         An, Bn, Cn, Dn, En, Fn, *_ = efa._normalize_3d(an, bn, cn, dn, en, fn)
 
-        # DC components should be the originals (not normalized by scale)
+        # Offset components should be the originals (not normalized by scale)
         assert An[0] == pytest.approx(an[0], abs=1e-10)
         assert Bn[0] == pytest.approx(bn[0], abs=1e-10)
         assert Cn[0] == pytest.approx(cn[0], abs=1e-10)
@@ -855,8 +943,8 @@ class TestNormalize3d:
         fn = np.array([0.0, zs1, 0, 0, 0, 0, 0])
 
         efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        An, Bn, Cn, Dn, En, Fn, alpha, beta, gamma, phi, scale = (
-            efa._normalize_3d(an, bn, cn, dn, en, fn)
+        An, Bn, Cn, Dn, En, Fn, alpha, beta, gamma, phi, scale = efa._normalize_3d(
+            an, bn, cn, dn, en, fn
         )
 
         expected_scale = np.sqrt(np.pi * a1 * b1)
@@ -874,12 +962,14 @@ class TestNormalize3d:
 
 
 class TestTransformSingle3dPipeline:
-    """Tests for 3D normalization integration into the transform pipeline (Task 4.1)."""
+    """Tests for 3D normalization integration into the transform pipeline."""
 
     def test_norm_true_returns_correct_shape(self):
         """transform with norm=True for 3D returns shape (1, 6*(n_harmonics+1))."""
         n_harmonics = 6
-        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=np.random.default_rng(10))
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(10)
+        )
 
         efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
         result = efa.fit_transform([X_coords], norm=True)
@@ -889,12 +979,12 @@ class TestTransformSingle3dPipeline:
     def test_norm_true_return_orientation_scale_shape(self):
         """transform with norm=True, return_orientation_scale=True appends 5 values."""
         n_harmonics = 6
-        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=np.random.default_rng(10))
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(10)
+        )
 
         efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        result = efa.fit_transform(
-            [X_coords], norm=True, return_orientation_scale=True
-        )
+        result = efa.fit_transform([X_coords], norm=True, return_orientation_scale=True)
 
         expected_len = 6 * (n_harmonics + 1) + 5
         assert result.shape == (1, expected_len)
@@ -902,7 +992,9 @@ class TestTransformSingle3dPipeline:
     def test_orientation_scale_values_are_correct(self):
         """The 5 appended values (alpha, beta, gamma, phi, scale) match _normalize_3d output."""
         n_harmonics = 6
-        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=np.random.default_rng(10))
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(10)
+        )
 
         efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
 
@@ -931,7 +1023,9 @@ class TestTransformSingle3dPipeline:
     def test_normalized_coefficients_match_direct_call(self):
         """Normalized coefficients from pipeline match those from _normalize_3d directly."""
         n_harmonics = 6
-        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=np.random.default_rng(10))
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(10)
+        )
 
         efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
 
@@ -963,20 +1057,24 @@ class TestTransformSingle3dPipeline:
     def test_fit_transform_equals_transform(self):
         """fit_transform and transform produce the same result for 3D norm=True."""
         n_harmonics = 6
-        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=np.random.default_rng(10))
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(10)
+        )
 
         efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        result_ft = efa.fit_transform([X_coords], norm=True, return_orientation_scale=True)
+        result_ft = efa.fit_transform(
+            [X_coords], norm=True, return_orientation_scale=True
+        )
         result_t = efa.transform([X_coords], norm=True, return_orientation_scale=True)
 
         assert_array_almost_equal(result_ft, result_t)
 
 
 class TestNormalize3dInvariance:
-    """Invariance and validation tests for 3D EFA normalization (Task 5)."""
+    """Invariance and validation tests for 3D EFA normalization."""
 
     def test_translation_invariance(self):
-        """5.1: Normalized coefficients are invariant under 3D translation."""
+        """Normalized coefficients are invariant under 3D translation."""
         n_harmonics = 6
         rng = np.random.default_rng(50)
         X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=rng)
@@ -996,7 +1094,7 @@ class TestNormalize3dInvariance:
         assert_array_almost_equal(coef_orig_harmonics, coef_trans_harmonics, decimal=5)
 
     def test_scale_invariance(self):
-        """5.2: Normalized coefficients are invariant under uniform scaling."""
+        """Normalized coefficients are invariant under uniform scaling."""
         n_harmonics = 6
         rng = np.random.default_rng(51)
         X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=rng)
@@ -1013,12 +1111,10 @@ class TestNormalize3dInvariance:
         coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
         coef_scaled_harmonics = coef_scaled.reshape(6, n_harmonics + 1)[:, 1:]
 
-        assert_array_almost_equal(
-            coef_orig_harmonics, coef_scaled_harmonics, decimal=5
-        )
+        assert_array_almost_equal(coef_orig_harmonics, coef_scaled_harmonics, decimal=5)
 
     def test_rotation_invariance(self):
-        """5.3: Normalized coefficients are invariant under 3D rotation."""
+        """Normalized coefficients are invariant under 3D rotation."""
         n_harmonics = 6
         rng = np.random.default_rng(52)
         X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=rng)
@@ -1038,12 +1134,10 @@ class TestNormalize3dInvariance:
         coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
         coef_rot_harmonics = coef_rot.reshape(6, n_harmonics + 1)[:, 1:]
 
-        assert_array_almost_equal(
-            coef_orig_harmonics, coef_rot_harmonics, decimal=4
-        )
+        assert_array_almost_equal(coef_orig_harmonics, coef_rot_harmonics, decimal=4)
 
     def test_startpoint_shift_invariance(self):
-        """5.4: Normalized shapes are approximately invariant under cyclic permutation.
+        """Normalized shapes are approximately invariant under cyclic permutation.
 
         Starting-point shift changes arc-length parameterization, which can cause
         the phase normalization to select a different canonical branch (phi jumping
@@ -1076,7 +1170,7 @@ class TestNormalize3dInvariance:
         assert wasserstein_distance_nd(X_recon_orig, X_recon_shifted) < 0.5
 
     def test_round_trip_reconstruction(self):
-        """5.5: Forward (norm=True) then inverse (norm=True) produces consistent shape.
+        """Forward (norm=True) then inverse (norm=True) produces consistent shape.
 
         After transform(norm=True) -> inverse_transform(norm=True), re-transforming
         with explicit uniform t (matching the inverse output spacing) should recover
@@ -1106,7 +1200,7 @@ class TestNormalize3dInvariance:
         assert_array_almost_equal(coef_norm_harmonics, coef_recon_harmonics, decimal=3)
 
     def test_orientation_scale_return(self):
-        """5.7: return_orientation_scale=True produces correct shape and recoverable params.
+        """return_orientation_scale=True produces correct shape and recoverable params.
 
         To reconstruct the original outline from normalized coefficients, we must
         undo normalization: evaluate the Fourier series at (t + phi) to undo the
@@ -1161,7 +1255,7 @@ class TestNormalize3dInvariance:
         assert wasserstein_distance_nd(X_coords, X_denorm) < 0.5
 
     def test_canonical_first_harmonic_via_pipeline(self):
-        """5.8: After normalization via pipeline, 1st harmonic is canonical."""
+        """After normalization via pipeline, 1st harmonic is canonical."""
         n_harmonics = 6
         rng = np.random.default_rng(56)
         X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=rng)
@@ -1179,3 +1273,399 @@ class TestNormalize3dInvariance:
         assert Dn[1] >= 0, f"Dn[1]={Dn[1]} should be non-negative"
         assert abs(En[1]) < 1e-10, f"En[1]={En[1]} should be ~0"
         assert abs(Fn[1]) < 1e-10, f"Fn[1]={Fn[1]} should be ~0"
+
+
+class TestSemiMajorAxisNormalization:
+    """Tests for semi-major axis scale factor in _normalize_3d."""
+
+    def test_scale_is_a1_when_semi_major_axis(self):
+        """When norm_method='semi_major_axis', returned scale equals a1."""
+        n_harmonics = 6
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
+        )
+
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+        )
+        coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
+        arrays = coef.reshape(6, n_harmonics + 1)
+        an, bn, cn, dn, en, fn = arrays
+
+        # Expected scale = a1
+        _, a1, _, _, _, _ = _compute_ellipse_geometry_3d(
+            an[1], bn[1], cn[1], dn[1], en[1], fn[1]
+        )
+
+        *_, scale = efa._normalize_3d(an, bn, cn, dn, en, fn)
+        assert scale == pytest.approx(a1, rel=1e-10)
+
+    def test_scale_differs_from_area_method(self):
+        """semi_major_axis scale differs from area-based scale (unless b1=a1/pi)."""
+        n_harmonics = 6
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
+        )
+
+        efa_area = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="area"
+        )
+        efa_semi = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+        )
+
+        coef = efa_area.fit_transform([X_coords], t=None, norm=False)[0]
+        arrays = coef.reshape(6, n_harmonics + 1)
+        an, bn, cn, dn, en, fn = arrays
+
+        *_, scale_area = efa_area._normalize_3d(an, bn, cn, dn, en, fn)
+        *_, scale_semi = efa_semi._normalize_3d(an, bn, cn, dn, en, fn)
+
+        assert scale_area != pytest.approx(scale_semi, rel=1e-3)
+
+    def test_canonical_first_harmonic_semi_major(self):
+        """After semi_major_axis normalization, 1st harmonic An[1] = 1.0."""
+        n_harmonics = 6
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
+        )
+
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+        )
+        coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
+        arrays = coef.reshape(6, n_harmonics + 1)
+        an, bn, cn, dn, en, fn = arrays
+
+        An, Bn, Cn, Dn, En, Fn, *_ = efa._normalize_3d(an, bn, cn, dn, en, fn)
+
+        # Semi-major axis length in canonical form = a1/scale = a1/a1 = 1.0
+        assert An[1] == pytest.approx(1.0, abs=1e-10)
+        assert abs(Bn[1]) < 1e-10
+        assert abs(Cn[1]) < 1e-10
+        assert abs(En[1]) < 1e-10
+        assert abs(Fn[1]) < 1e-10
+
+    def test_orientation_same_regardless_of_method(self):
+        """Orientation parameters (alpha, beta, gamma, phi) are identical for both methods."""
+        n_harmonics = 6
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
+        )
+
+        efa_area = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="area"
+        )
+        efa_semi = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+        )
+
+        coef = efa_area.fit_transform([X_coords], t=None, norm=False)[0]
+        arrays = coef.reshape(6, n_harmonics + 1)
+        an, bn, cn, dn, en, fn = arrays
+
+        _, _, _, _, _, _, a_a, b_a, g_a, phi_a, _ = efa_area._normalize_3d(
+            an, bn, cn, dn, en, fn
+        )
+        _, _, _, _, _, _, a_s, b_s, g_s, phi_s, _ = efa_semi._normalize_3d(
+            an, bn, cn, dn, en, fn
+        )
+
+        assert a_a == pytest.approx(a_s, abs=1e-10)
+        assert b_a == pytest.approx(b_s, abs=1e-10)
+        assert g_a == pytest.approx(g_s, abs=1e-10)
+        assert phi_a == pytest.approx(phi_s, abs=1e-10)
+
+    def test_pipeline_return_orientation_scale_semi_major(self):
+        """return_orientation_scale=True returns a1 as scale for semi_major_axis method."""
+        n_harmonics = 6
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
+        )
+
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+        )
+        result = efa.fit_transform(
+            [X_coords], norm=True, return_orientation_scale=True
+        )[0]
+
+        # Get raw coefficients for expected a1
+        raw = efa.fit_transform([X_coords], norm=False)[0]
+        arrays = raw.reshape(6, n_harmonics + 1)
+        an, bn, cn, dn, en, fn = arrays
+        _, a1, _, _, _, _ = _compute_ellipse_geometry_3d(
+            an[1], bn[1], cn[1], dn[1], en[1], fn[1]
+        )
+
+        scale_returned = result[-1]
+        assert scale_returned == pytest.approx(a1, rel=1e-10)
+
+    def test_area_method_unchanged_after_branch(self):
+        """area method still returns sqrt(pi*a1*b1) after adding the branch."""
+        n_harmonics = 6
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
+        )
+
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="area"
+        )
+        coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
+        arrays = coef.reshape(6, n_harmonics + 1)
+        an, bn, cn, dn, en, fn = arrays
+
+        _, a1, b1, _, _, _ = _compute_ellipse_geometry_3d(
+            an[1], bn[1], cn[1], dn[1], en[1], fn[1]
+        )
+        expected_scale = np.sqrt(np.pi * a1 * b1)
+
+        *_, scale = efa._normalize_3d(an, bn, cn, dn, en, fn)
+        assert scale == pytest.approx(expected_scale, rel=1e-10)
+
+
+class TestSemiMajorAxisCanonical:
+    """Tests verifying semi-major axis length = 1 after normalization."""
+
+    def test_semi_major_axis_length_is_one_via_geometry(self):
+        """Compute semi-major axis from normalized 1st harmonic via geometry function.
+
+        Uses _compute_ellipse_geometry_3d on the normalized coefficients to verify
+        that the semi-major axis length equals 1.0, not just An[1].
+        """
+        n_harmonics = 6
+        rng = np.random.default_rng(42)
+
+        for seed in range(10):
+            X_coords, _ = _make_3d_outline(
+                n_harmonics=n_harmonics, rng=np.random.default_rng(seed + 100)
+            )
+
+            efa = EllipticFourierAnalysis(
+                n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+            )
+            coef = efa.fit_transform([X_coords], norm=True)[0]
+            arrays = coef.reshape(6, n_harmonics + 1)
+            An, Bn, Cn, Dn, En, Fn = arrays
+
+            # Extract semi-major axis from normalized 1st harmonic
+            _, a1_norm, b1_norm, _, _, _ = _compute_ellipse_geometry_3d(
+                An[1], Bn[1], Cn[1], Dn[1], En[1], Fn[1]
+            )
+
+            assert a1_norm == pytest.approx(1.0, abs=1e-10), (
+                f"seed={seed}: semi-major axis length = {a1_norm}, expected 1.0"
+            )
+
+    def test_area_method_semi_major_not_one(self):
+        """With area normalization, semi-major axis length is NOT 1 (it's a/sqrt(pi*a*b))."""
+        n_harmonics = 6
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
+        )
+
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="area"
+        )
+        coef = efa.fit_transform([X_coords], norm=True)[0]
+        arrays = coef.reshape(6, n_harmonics + 1)
+        An, Bn, Cn, Dn, En, Fn = arrays
+
+        _, a1_norm, _, _, _, _ = _compute_ellipse_geometry_3d(
+            An[1], Bn[1], Cn[1], Dn[1], En[1], Fn[1]
+        )
+
+        # For area normalization, a1_norm = a1 / sqrt(pi*a1*b1), which != 1 in general
+        assert a1_norm != pytest.approx(1.0, abs=1e-3)
+
+
+class TestSemiMajorAxisInvariance:
+    """Invariance tests for semi-major axis normalization."""
+
+    def test_translation_invariance(self):
+        """Semi-major-axis normalized coefficients are invariant under translation."""
+        n_harmonics = 6
+        rng = np.random.default_rng(60)
+        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=rng)
+
+        translation = rng.uniform(-10, 10, size=3)
+        X_translated = X_coords + translation
+
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+        )
+        coef_orig = efa.fit_transform([X_coords], norm=True)[0]
+        coef_trans = efa.fit_transform([X_translated], norm=True)[0]
+
+        coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
+        coef_trans_harmonics = coef_trans.reshape(6, n_harmonics + 1)[:, 1:]
+
+        assert_array_almost_equal(coef_orig_harmonics, coef_trans_harmonics, decimal=5)
+
+    def test_scale_invariance(self):
+        """Semi-major-axis normalized coefficients are invariant under uniform scaling."""
+        n_harmonics = 6
+        rng = np.random.default_rng(61)
+        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=rng)
+
+        scale_factor = rng.uniform(0.5, 5.0)
+        X_scaled = X_coords * scale_factor
+
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+        )
+        coef_orig = efa.fit_transform([X_coords], norm=True)[0]
+        coef_scaled = efa.fit_transform([X_scaled], norm=True)[0]
+
+        coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
+        coef_scaled_harmonics = coef_scaled.reshape(6, n_harmonics + 1)[:, 1:]
+
+        assert_array_almost_equal(coef_orig_harmonics, coef_scaled_harmonics, decimal=5)
+
+    def test_rotation_invariance(self):
+        """Semi-major-axis normalized coefficients are invariant under 3D rotation."""
+        n_harmonics = 6
+        rng = np.random.default_rng(62)
+        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=rng)
+
+        alpha_r = rng.uniform(-np.pi, np.pi)
+        beta_r = rng.uniform(0, np.pi)
+        gamma_r = rng.uniform(-np.pi, np.pi)
+        R = rotation_matrix_3d_euler_zxz(alpha_r, beta_r, gamma_r)
+        X_rotated = (R @ X_coords.T).T
+
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+        )
+        coef_orig = efa.fit_transform([X_coords], norm=True)[0]
+        coef_rot = efa.fit_transform([X_rotated], norm=True)[0]
+
+        coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
+        coef_rot_harmonics = coef_rot.reshape(6, n_harmonics + 1)[:, 1:]
+
+        assert_array_almost_equal(coef_orig_harmonics, coef_rot_harmonics, decimal=4)
+
+    def test_startpoint_shift_invariance(self):
+        """Semi-major-axis normalized shapes are approx invariant under cyclic permutation.
+
+        Starting-point shift changes arc-length parameterization, which can cause
+        the phase normalization to select a different canonical branch. The tolerance
+        is set to 1.0 to account for the discrete phi ambiguity, matching the same
+        pattern as the area-based startpoint shift test.
+        """
+        n_harmonics = 20
+        t_num = 360
+        rng = np.random.default_rng(53)
+        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, t_num=t_num, rng=rng)
+
+        shift = rng.integers(1, len(X_coords))
+        X_shifted = np.roll(X_coords, shift, axis=0)
+
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+        )
+        coef_orig = efa.fit_transform([X_coords], norm=True)
+        coef_shifted = efa.fit_transform([X_shifted], norm=True)
+
+        X_recon_orig = np.array(
+            efa.inverse_transform(coef_orig, t_num=t_num, norm=True)
+        )[0]
+        X_recon_shifted = np.array(
+            efa.inverse_transform(coef_shifted, t_num=t_num, norm=True)
+        )[0]
+
+        assert wasserstein_distance_nd(X_recon_orig, X_recon_shifted) < 1.0
+
+
+class TestAreaNormalizationRegression:
+    """Regression test for area-based normalization.
+
+    Snapshot captured from the implementation at commit 59ada8f (before
+    norm_method was added). Verifies that the default area-based normalization
+    continues to produce bit-identical results.
+    """
+
+    # Snapshot: _make_3d_outline(n_harmonics=6, rng=default_rng(42)), norm=True
+    _EXPECTED_COEF = np.array(
+        [
+            1.8786552291066900e00,
+            4.4749144074020974e-01,
+            -1.6544642156530842e-01,
+            -5.7844176084800636e-02,
+            1.2527281927360465e-01,
+            -8.1717978045931713e-03,
+            2.1879616966356572e-02,
+            0.0000000000000000e00,
+            1.4945917697214952e-16,
+            4.0755449959920205e-02,
+            -5.4420755687897303e-02,
+            1.0763893995449975e-01,
+            -2.0239890553899149e-02,
+            6.8784209336682653e-02,
+            -2.8999777542514682e-01,
+            -1.0218868790537593e-16,
+            -4.5121831200360264e-02,
+            -1.0368945003274743e-01,
+            1.0579117224724620e-01,
+            -8.2438007461943325e-02,
+            -2.2932069186149713e-02,
+            0.0000000000000000e00,
+            7.1132061354573450e-01,
+            -2.7804961282323992e-01,
+            -1.4001074457204732e-01,
+            1.9123669095413721e-02,
+            2.3067476541179729e-02,
+            -4.6306646983379073e-02,
+            1.7974788536400992e00,
+            1.5565028611862309e-17,
+            -1.1242898267920341e-01,
+            -2.6487018151342823e-01,
+            -1.2318189318609840e-02,
+            -2.7094528317080840e-02,
+            3.7372943138999221e-03,
+            0.0000000000000000e00,
+            -9.6452683587244712e-17,
+            1.2092677988559994e-02,
+            1.0426053481719223e-01,
+            2.3579030949027047e-01,
+            -2.7410312241344138e-03,
+            -3.6188679879065648e-02,
+        ]
+    )
+
+    _EXPECTED_ORIENT_SCALE = np.array(
+        [
+            1.9860846551534193,
+            2.609286874902539,
+            -2.9186339492344304,
+            -0.1280600290132337,
+            6.939087475110936,
+        ]
+    )
+
+    def test_coefficients_match_snapshot(self):
+        """Default area normalization produces bit-identical coefficients."""
+        n_harmonics = 6
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
+        )
+
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
+        coef = efa.fit_transform([X_coords], norm=True)[0]
+
+        assert_array_almost_equal(coef, self._EXPECTED_COEF, decimal=12)
+
+    def test_orientation_scale_match_snapshot(self):
+        """Default area normalization returns identical orientation/scale values."""
+        n_harmonics = 6
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
+        )
+
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
+        result = efa.fit_transform(
+            [X_coords], norm=True, return_orientation_scale=True
+        )[0]
+        orient_scale = result[-5:]
+
+        assert_array_almost_equal(orient_scale, self._EXPECTED_ORIENT_SCALE, decimal=12)

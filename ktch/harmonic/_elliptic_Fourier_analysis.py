@@ -50,6 +50,16 @@ class EllipticFourierAnalysis(
         joblib.parallel_backend context. -1 means using all processors.
     verbose: int, default=0
         The verbosity level.
+    norm_method : str, default="area"
+        Normalization method for 3D EFA coefficients when ``norm=True``.
+        Only affects ``n_dim=3``.
+
+        - ``"area"``: Scale by ``sqrt(pi * a1 * b1)`` where ``a1`` and ``b1``
+          are the semi-major and semi-minor axis lengths of the 1st harmonic
+          ellipse (Godefroy et al. 2012).
+        - ``"semi_major_axis"``: Scale by the semi-major axis length ``a1``
+          of the 1st harmonic ellipse, consistent with the 2D normalization
+          convention (Kuhl & Giardina 1982).
 
     Notes
     ------------
@@ -80,7 +90,8 @@ class EllipticFourierAnalysis(
     are appended to the output: ``[alpha, beta, gamma, phi, scale]``, where
     ``(alpha, beta, gamma)`` are ZXZ Euler angles (in radians) of the 1st
     harmonic ellipse orientation, ``phi`` is the phase angle, and ``scale``
-    is ``sqrt(pi * a1 * b1)``.
+    is the normalization factor (``sqrt(pi * a1 * b1)`` for
+    ``norm_method="area"``, or ``a1`` for ``norm_method="semi_major_axis"``).
 
     References
     ------------
@@ -91,12 +102,15 @@ class EllipticFourierAnalysis(
 
     """
 
+    _VALID_NORM_METHODS = {"area", "semi_major_axis"}
+
     def __init__(
         self,
         n_harmonics: int = 20,
         n_dim: int = 2,
         n_jobs: Optional[int] = None,
         verbose: int = 0,
+        norm_method: str = "area",
     ):
         self.n_harmonics = n_harmonics
         if n_dim not in (2, 3):
@@ -105,6 +119,11 @@ class EllipticFourierAnalysis(
             self.n_dim = n_dim
         self.n_jobs = n_jobs
         self.verbose = verbose
+        if norm_method not in self._VALID_NORM_METHODS:
+            raise ValueError(
+                f"norm_method must be 'area' or 'semi_major_axis', got '{norm_method}'"
+            )
+        self.norm_method = norm_method
 
     def fit_transform(self, X, t=None, norm=True, return_orientation_scale=False):
         return self.transform(
@@ -479,8 +498,9 @@ class EllipticFourierAnalysis(
         return_orientation_scale: bool, default=False
             If True and norm=True, append 5 orientation/scale values to the
             output: [alpha, beta, gamma, phi, scale] where (alpha, beta, gamma)
-            are ZXZ Euler angles, phi is the phase angle, and scale is
-            sqrt(pi * a1 * b1).
+            are ZXZ Euler angles, phi is the phase angle, and scale is the
+            normalization factor (``sqrt(pi * a1 * b1)`` for ``norm_method="area"``,
+            or ``a1`` for ``norm_method="semi_major_axis"``).
 
         Returns
         -------
@@ -548,8 +568,8 @@ class EllipticFourierAnalysis(
 
         # Normalize
         if norm:
-            an, bn, cn, dn, en, fn, alpha, beta, gamma, phi, scale = (
-                self._normalize_3d(an, bn, cn, dn, en, fn)
+            an, bn, cn, dn, en, fn, alpha, beta, gamma, phi, scale = self._normalize_3d(
+                an, bn, cn, dn, en, fn
             )
 
         if return_orientation_scale:
@@ -562,10 +582,14 @@ class EllipticFourierAnalysis(
         return X_transformed
 
     def _normalize_3d(self, an, bn, cn, dn, en, fn):
-        """Normalize 3D EFA coefficients following Godefroy et al. (2012) §3.1.
+        """Normalize 3D EFA coefficients.
 
         Applies the 4-step normalization algorithm:
-        1. Rescaling by the 1st harmonic ellipse area
+        1. Rescaling by a scale factor determined by ``self.norm_method``:
+
+           - ``"area"``: ``scale = sqrt(pi * a1 * b1)``
+           - ``"semi_major_axis"``: ``scale = a1``
+
         2. Reorientation using the 1st harmonic's Euler angles
         3. Phase shift using the 1st harmonic's phase angle
         4. Direction correction (sign of y-sine component)
@@ -573,7 +597,7 @@ class EllipticFourierAnalysis(
         Parameters
         ----------
         an, bn, cn, dn, en, fn : np.ndarray of shape (n_harmonics+1,)
-            Raw Fourier coefficient arrays. Index 0 is the DC component.
+            Raw Fourier coefficient arrays. Index 0 is the offset.
 
         Returns
         -------
@@ -584,7 +608,8 @@ class EllipticFourierAnalysis(
         phi : float
             Phase angle of the 1st harmonic ellipse.
         scale : float
-            Scaling factor sqrt(pi * a1 * b1).
+            Scaling factor. ``sqrt(pi * a1 * b1)`` when ``norm_method="area"``,
+            or ``a1`` when ``norm_method="semi_major_axis"``.
         """
         # Extract geometric parameters of the 1st harmonic
         phi1, a1, b1, alpha1, beta1, gamma1 = _compute_ellipse_geometry_3d(
@@ -598,15 +623,18 @@ class EllipticFourierAnalysis(
                 "Cannot normalize 3D EFA coefficients."
             )
 
-        # Step 1: Rescaling
-        area1 = np.pi * a1 * b1
-        scale = np.sqrt(area1)
+        # 1. Rescaling
+        if self.norm_method == "semi_major_axis":
+            scale = a1
+        else:
+            # Default: area-based (Godefroy et al. 2012)
+            area1 = np.pi * a1 * b1
+            scale = np.sqrt(area1)
 
-        # Step 2: Reorientation matrix (Omega1_inv = Omega1^T since it's orthogonal)
+        # 2. Reorientation matrix (Omega1_inv = Omega1^T)
         Omega1 = rotation_matrix_3d_euler_zxz(alpha1, beta1, gamma1)
         Omega1_inv = Omega1.T
 
-        # Apply normalization to each harmonic (indices 1+)
         n_harmonics = len(an) - 1
         An = np.empty_like(an)
         Bn = np.empty_like(bn)
@@ -615,7 +643,6 @@ class EllipticFourierAnalysis(
         En = np.empty_like(en)
         Fn = np.empty_like(fn)
 
-        # Preserve DC components (index 0)
         An[0] = an[0]
         Bn[0] = bn[0]
         Cn[0] = cn[0]
@@ -624,14 +651,17 @@ class EllipticFourierAnalysis(
         Fn[0] = fn[0]
 
         for k in range(1, n_harmonics + 1):
-            # Build 3x2 coefficient matrix C_k = [[an_k, bn_k], [cn_k, dn_k], [en_k, fn_k]]
-            C_k = np.array([
-                [an[k], bn[k]],
-                [cn[k], dn[k]],
-                [en[k], fn[k]],
-            ])
+            # Build 3x2 coefficient matrix
+            # C_k = [[an_k, bn_k], [cn_k, dn_k], [en_k, fn_k]]
+            C_k = np.array(
+                [
+                    [an[k], bn[k]],
+                    [cn[k], dn[k]],
+                    [en[k], fn[k]],
+                ]
+            )
 
-            # Step 3: Phase rotation uses k*phi1 for harmonic k
+            # 3. Phase rotation uses k*phi1 for harmonic k
             # Removing phase phi1 means substituting t -> t + phi1:
             #   new_xc = xc*cos(k*phi1) + xs*sin(k*phi1)
             #   new_xs = -xc*sin(k*phi1) + xs*cos(k*phi1)
@@ -639,10 +669,12 @@ class EllipticFourierAnalysis(
             angle_k = k * phi1
             cos_k = np.cos(angle_k)
             sin_k = np.sin(angle_k)
-            R_phase_k = np.array([
-                [cos_k, sin_k],
-                [-sin_k, cos_k],
-            ])
+            R_phase_k = np.array(
+                [
+                    [cos_k, sin_k],
+                    [-sin_k, cos_k],
+                ]
+            )
 
             # Apply: C'_k = (1/scale) * Omega1_inv @ C_k @ R_phase_k
             C_norm = (1.0 / scale) * Omega1_inv @ C_k @ R_phase_k
@@ -654,8 +686,9 @@ class EllipticFourierAnalysis(
             En[k] = C_norm[2, 0]
             Fn[k] = C_norm[2, 1]
 
-        # Step 4: Direction correction
-        # If the y-sine coefficient of the 1st harmonic is negative, negate all sine columns
+        # 4. Direction correction
+        # If the y-sine coefficient of the 1st harmonic is negative,
+        # negate all sine columns
         if Dn[1] < 0:
             Bn = -Bn
             Dn = -Dn
@@ -767,9 +800,7 @@ def rotation_matrix_2d(theta):
     return rot_mat
 
 
-def rotation_matrix_3d_euler_zxz(
-    alpha: float, beta: float, gamma: float
-) -> np.ndarray:
+def rotation_matrix_3d_euler_zxz(alpha: float, beta: float, gamma: float) -> np.ndarray:
     """Construct 3x3 rotation matrix from ZXZ Euler angles.
 
     The rotation is composed as Omega = R_gamma @ R_beta @ R_alpha,
@@ -789,11 +820,13 @@ def rotation_matrix_3d_euler_zxz(
     cb, sb = np.cos(beta), np.sin(beta)
     cg, sg = np.cos(gamma), np.sin(gamma)
 
-    return np.array([
-        [ca * cg - sa * cb * sg, -ca * sg - sa * cb * cg, sa * sb],
-        [sa * cg + ca * cb * sg, -sa * sg + ca * cb * cg, -ca * sb],
-        [sb * sg, sb * cg, cb],
-    ])
+    return np.array(
+        [
+            [ca * cg - sa * cb * sg, -ca * sg - sa * cb * cg, sa * sb],
+            [sa * cg + ca * cb * sg, -sa * sg + ca * cb * cg, -ca * sb],
+            [sb * sg, sb * cg, cb],
+        ]
+    )
 
 
 def _compute_ellipse_geometry_3d(
@@ -806,7 +839,6 @@ def _compute_ellipse_geometry_3d(
 ) -> tuple[float, float, float, float, float, float]:
     """Compute geometric parameters of a 3D ellipse from Fourier coefficients.
 
-    Implements Godefroy et al. (2012) Section 2, Eqs. 4-12.
     Returns the unique solution satisfying:
     phi in ]-pi/4, pi/4[, a >= b > 0, beta in [0, pi].
 
@@ -830,22 +862,20 @@ def _compute_ellipse_geometry_3d(
     gamma : float
         Third Euler angle (ZXZ convention).
     """
-    # Squared sums used throughout
-    sum_c2 = xc**2 + yc**2 + zc**2  # ||cosine vector||^2
-    sum_s2 = xs**2 + ys**2 + zs**2  # ||sine vector||^2
-    dot_cs = xc * xs + yc * ys + zc * zs  # dot product of cosine and sine vectors
 
-    # Eq. 4: phase angle phi
-    # The algebraic relation is: 2*dot_cs / denom = -tan(2*phi)
-    # (derived from the Fourier coefficient structure, verified algebraically).
-    # Therefore: phi_0 = -(1/2) * arctan2(2*dot_cs, denom)
+    sum_c2 = xc**2 + yc**2 + zc**2
+    sum_s2 = xs**2 + ys**2 + zs**2
+    dot_cs = xc * xs + yc * ys + zc * zs
+
+    # phase angle phi
+    # 2*dot_cs / denom = -tan(2*phi)
+    # -> phi_0 = -(1/2) * arctan2(2*dot_cs, denom)
     denom = sum_c2 - sum_s2
     if abs(denom) < 1e-15 and abs(dot_cs) < 1e-15:
         phi_0 = 0.0
     else:
         phi_0 = -0.5 * np.arctan2(2 * dot_cs, denom)
 
-    # Compute a², b² from Eqs. 5-6
     cos_phi = np.cos(phi_0)
     sin_phi = np.sin(phi_0)
     sin_2phi = np.sin(2 * phi_0)
@@ -853,13 +883,12 @@ def _compute_ellipse_geometry_3d(
     a2 = sum_c2 * cos_phi**2 + sum_s2 * sin_phi**2 - dot_cs * sin_2phi
     b2 = sum_c2 * sin_phi**2 + sum_s2 * cos_phi**2 + dot_cs * sin_2phi
 
-    # Enforce a >= b; if not, shift phi by pi/2 (which swaps a² and b²)
+    # Enforce a >= b; if not, shift phi by pi/2
     if a2 < b2:
         a2, b2 = b2, a2
         phi_0 = phi_0 + np.pi / 2 if phi_0 < 0 else phi_0 - np.pi / 2
 
     # Normalize phi to ]-pi/4, pi/4[
-    # Shifting phi by ±pi/2 swaps a² and b² (cos↔sin), so swap them too
     phi = phi_0
     if phi > np.pi / 4:
         phi -= np.pi / 2
@@ -897,7 +926,7 @@ def _compute_ellipse_geometry_3d(
         col1 = (sin_phi * coef_c + cos_phi * coef_s) / b
         col2 = np.cross(col0, col1)
 
-    # Rotation matrix entries (columns are col0, col1, col2)
+    # Rotation matrix entries
     Omega_11, Omega_21, Omega_31 = col0
     Omega_12, Omega_22, Omega_32 = col1
     Omega_13, Omega_23, Omega_33 = col2
@@ -909,7 +938,7 @@ def _compute_ellipse_geometry_3d(
     _GIMBAL_TOL = 1e-10
 
     if abs(np.sin(beta)) < _GIMBAL_TOL:
-        # Gimbal lock: beta ≈ 0 or pi
+        # Gimbal lock
         gamma = 0.0
         if beta < np.pi / 2:
             # beta ≈ 0: R reduces to rotation about Z by (alpha+gamma)
@@ -981,5 +1010,3 @@ def _sse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
     coef = np.array(cn)
 
     return coef
-
-
