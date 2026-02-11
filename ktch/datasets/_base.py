@@ -405,6 +405,72 @@ def load_coefficient_bottles(*, as_frame=False, norm=True):
     )
 
 
+def load_outline_leaf_bending(*, as_frame=False):
+    """Load and return the synthetic 3D leaf bending outline dataset.
+
+    This dataset contains 3D outlines of synthetic wheat-like leaves
+    with bending deformation.
+
+    ========================   ===========
+    Specimens                       60
+    Points per specimen            200
+    Coordinate dimensionality        3
+    Features                      real
+    ========================   ===========
+
+    Parameters
+    ----------
+    as_frame : bool, default=False
+        If True, the data is a pandas DataFrame including columns with
+        appropriate dtypes (numeric). The target is
+        a pandas DataFrame or Series depending on the number of target columns.
+        If `as_frame` is False, `coords` will be a numpy array of shape
+        (n_specimens, n_points, 3).
+
+    Returns
+    ----------
+    data : :class:`~sklearn.utils.Bunch`
+        Dictionary-like object, with the following attributes.
+        coords : {ndarray of shape (60, 200, 3), dataframe}
+            The coordinate data. If `as_frame=True`, `coords` will be a pandas
+            DataFrame with MultiIndex (specimen_id, coord_id).
+        meta : {dict, dataframe}
+            Metadata containing bending parameters for each specimen.
+        DESCR: str
+            The full description of the dataset.
+        filename: str
+            The path to the location of the data.
+
+    """
+    dataset_name = "outline_leaf_bending"
+    data_file_name = "data_outline_leaf_bending.csv"
+    metadata_file_name = "meta_outline_leaf_bending.csv"
+    descr_file_name = "data_outline_leaf_bending.rst"
+
+    coords = pd.read_csv(
+        _resolve_data_path(dataset_name, data_file_name), index_col=[0, 1]
+    )
+    meta = pd.read_csv(
+        _resolve_data_path(dataset_name, metadata_file_name), index_col=[0]
+    )
+    fdescr = load_descr(
+        descr_module=DESCR_MODULE,
+        descr_file_name=descr_file_name,
+    )
+
+    if not as_frame:
+        n_specimens = len(meta)
+        coords = coords.to_numpy().reshape(n_specimens, -1, 3)
+        meta = meta.to_dict()
+
+    return Bunch(
+        coords=coords,
+        meta=meta,
+        DESCR=fdescr,
+        filename=data_file_name,
+    )
+
+
 ###########################################################
 #
 #   utility functions

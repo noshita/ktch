@@ -11,6 +11,7 @@ from ._base import (
     load_landmark_mosquito_wings,
     load_landmark_trilobite_cephala,
     load_outline_bottles,
+    load_outline_leaf_bending,
     load_outline_mosquito_wings,
 )
 from ._sample_generator import (
@@ -22,6 +23,7 @@ __all__ = [
     "load_landmark_trilobite_cephala",
     "load_outline_mosquito_wings",
     "load_outline_bottles",
+    "load_outline_leaf_bending",
     "load_coefficient_bottles",
     "load_image_passiflora_leaves",
     "convert_coords_df_to_list",
