@@ -32,6 +32,7 @@ from ktch.plot import explained_variance_ratio_plot
 ```
 
 ## Load mosquito wing outline dataset
+
 from Rohlf and Archie 1984 _Syst. Zool._
 
 ```{code-cell} ipython3
@@ -280,8 +281,4 @@ print("PC3-PC1 done")
 
 ax = fig.add_subplot(2, 2, 4)
 explained_variance_ratio_plot(pca, ax=ax, verbose=True)
-```
-
-```{code-cell} ipython3
-
 ```
