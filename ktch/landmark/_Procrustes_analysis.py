@@ -23,6 +23,7 @@ import numpy as np
 import numpy.typing as npt
 import scipy as sp
 from sklearn.base import BaseEstimator, OneToOneFeatureMixin, TransformerMixin
+from sklearn.utils.parallel import Parallel, delayed
 
 from ._kernels import tps_bending_energy, tps_bending_energy_matrix, tps_system_matrix
 
@@ -255,26 +256,25 @@ class GeneralizedProcrustesAnalysis(
         while diff_disp > self.tol:
             if curves is not None:
                 # GPA with semilandmarks
-                total_disp = 0.0
-                for i in range(len(X_)):
-                    R, _ = sp.linalg.orthogonal_procrustes(X_[i], mu)
-                    X_[i] = X_[i] @ R
-                    X_curve_geom[i] = X_curve_geom[i] @ R
-                    total_disp += np.sum((X_[i] - mu) ** 2)
+                if self.sliding_criterion == "procrustes_distance":
+                    slide_func = self._slide_procrustes
+                else:
+                    slide_func = self._slide_bending_energy
 
-                # Slide semilandmarks and re-project onto stored curve geometry
-                X_ = self._slide_semilandmarks(X_, mu, curves, X_curve_geom)
-
-                for i in range(len(X_)):
-                    center = np.mean(X_[i], axis=0)
-                    X_[i] -= center
-                    X_curve_geom[i] -= center
-                    cs = centroid_size(X_[i])
-                    X_[i] /= cs
-                    X_curve_geom[i] /= cs
+                results = Parallel(n_jobs=self.n_jobs)(
+                    delayed(self._iterate_single_semilandmark)(
+                        X_[i], X_curve_geom[i], mu, curves, slide_func
+                    )
+                    for i in range(len(X_))
+                )
+                X_ = np.array([r[0] for r in results])
+                X_curve_geom = np.array([r[1] for r in results])
+                total_disp = sum(r[2] for r in results)
             else:
                 # GPA (without semilandmarks)
-                results = [sp.spatial.procrustes(mu, x) for x in X_]
+                results = Parallel(n_jobs=self.n_jobs)(
+                    delayed(self._align_single_shape)(mu, x) for x in X_
+                )
                 X_ = np.array([x_aligned for _, x_aligned, _ in results])
                 total_disp = np.sum(np.array([disp for _, _, disp in results]))
 
@@ -299,9 +299,11 @@ class GeneralizedProcrustesAnalysis(
         diff_disp = np.inf
         total_disp_prev = np.inf
         while diff_disp > self.tol:
-            total_disp = 0
-            X_ = np.array([x @ sp.linalg.orthogonal_procrustes(x, mu)[0] for x in X])
-            total_disp = np.sum([(x_ - mu) ** 2 for x_ in X_])
+            results = Parallel(n_jobs=self.n_jobs)(
+                delayed(self._align_single_size_and_shape)(x, mu) for x in X_
+            )
+            X_ = np.array([r[0] for r in results])
+            total_disp = sum(r[1] for r in results)
 
             diff_disp = np.abs(total_disp_prev - total_disp)
             total_disp_prev = total_disp
@@ -312,7 +314,7 @@ class GeneralizedProcrustesAnalysis(
 
         self.mu_ = mu
 
-        return X_.reshape(self.n_specimen_, self.n_landmarks_ * self.n_dim_)
+        return X_
 
     def fit_transform(self, X):
         """GPA for shapes/size-and-shapes.
@@ -332,6 +334,35 @@ class GeneralizedProcrustesAnalysis(
         self.fit(X)
         X_ = self.transform(X)
         return X_
+
+    @staticmethod
+    def _align_single_shape(mu, x):
+        return sp.spatial.procrustes(mu, x)
+
+    @staticmethod
+    def _align_single_size_and_shape(x, mu):
+        R, _ = sp.linalg.orthogonal_procrustes(x, mu)
+        x_rotated = x @ R
+        disp = np.sum((x_rotated - mu) ** 2)
+        return x_rotated, disp
+
+    def _iterate_single_semilandmark(self, x, x_curve_geom, mu, curves, slide_func):
+        # Rotate
+        R, _ = sp.linalg.orthogonal_procrustes(x, mu)
+        x_rot = x @ R
+        x_cg_rot = x_curve_geom @ R
+        disp = np.sum((x_rot - mu) ** 2)
+        # Slide and reproject
+        x_slid = slide_func(x_rot, mu, curves)
+        x_slid = self._reproject_onto_curves(x_slid, x_cg_rot, curves)
+        # Center and scale
+        center = np.mean(x_slid, axis=0)
+        x_slid = x_slid - center
+        x_cg_rot = x_cg_rot - center
+        cs = centroid_size(x_slid)
+        x_slid = x_slid / cs
+        x_cg_rot = x_cg_rot / cs
+        return x_slid, x_cg_rot, disp
 
     def _center(self, X):
         X_centered = np.array([x - np.mean(x, axis=0) for x in X])

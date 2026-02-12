@@ -237,6 +237,93 @@ def test_gpa_backward_compatibility(semilandmark_test_data):
 
 ###########################################################
 #
+#   parallel n_jobs
+#
+###########################################################
+
+
+@pytest.mark.parametrize("n_jobs", [None, 1, 3])
+def test_gpa_semilandmark_parallel_bending(n_jobs, semilandmark_test_data):
+    """Test that parallel semilandmark GPA (bending energy) produces identical results."""
+    X_flat, curves = semilandmark_test_data
+
+    gpa_baseline = GeneralizedProcrustesAnalysis(
+        n_dim=2, curves=curves, sliding_criterion="bending_energy", n_jobs=None,
+    )
+    X_baseline = gpa_baseline.fit_transform(X_flat)
+
+    gpa = GeneralizedProcrustesAnalysis(
+        n_dim=2, curves=curves, sliding_criterion="bending_energy", n_jobs=n_jobs,
+    )
+    X_result = gpa.fit_transform(X_flat)
+
+    assert_array_almost_equal(X_result, X_baseline)
+    assert_array_almost_equal(gpa.mu_, gpa_baseline.mu_)
+
+
+@pytest.mark.parametrize("n_jobs", [None, 1, 3])
+def test_gpa_semilandmark_parallel_procrustes(n_jobs, semilandmark_test_data):
+    """Test that parallel semilandmark GPA (Procrustes distance) produces identical results."""
+    X_flat, curves = semilandmark_test_data
+
+    gpa_baseline = GeneralizedProcrustesAnalysis(
+        n_dim=2, curves=curves, sliding_criterion="procrustes_distance", n_jobs=None,
+    )
+    X_baseline = gpa_baseline.fit_transform(X_flat)
+
+    gpa = GeneralizedProcrustesAnalysis(
+        n_dim=2, curves=curves, sliding_criterion="procrustes_distance", n_jobs=n_jobs,
+    )
+    X_result = gpa.fit_transform(X_flat)
+
+    assert_array_almost_equal(X_result, X_baseline)
+    assert_array_almost_equal(gpa.mu_, gpa_baseline.mu_)
+
+
+@pytest.mark.parametrize("n_jobs", [None, 1, 3])
+def test_gpa_shape_parallel(n_jobs):
+    """Test that parallel shape alignment produces identical results."""
+    gpa_baseline = GeneralizedProcrustesAnalysis(n_dim=2, n_jobs=None)
+    X_baseline = gpa_baseline.fit_transform(X)
+
+    gpa = GeneralizedProcrustesAnalysis(n_dim=2, n_jobs=n_jobs)
+    X_result = gpa.fit_transform(X)
+
+    assert_array_almost_equal(X_result, X_baseline)
+    assert_array_almost_equal(gpa.mu_, gpa_baseline.mu_)
+
+
+###########################################################
+#
+#   size-and-shape mode
+#
+###########################################################
+
+
+def test_gpa_size_and_shape():
+    """Test GPA in size-and-shape mode (scaling=False)."""
+    gpa = GeneralizedProcrustesAnalysis(n_dim=2, scaling=False)
+    X_transformed = gpa.fit_transform(X)
+
+    assert X.shape == X_transformed.shape
+    assert gpa.mu_ is not None
+
+
+@pytest.mark.parametrize("n_jobs", [None, 1, 3])
+def test_gpa_size_and_shape_parallel(n_jobs):
+    """Test that parallel size-and-shape alignment produces identical results."""
+    gpa_baseline = GeneralizedProcrustesAnalysis(n_dim=2, scaling=False, n_jobs=None)
+    X_baseline = gpa_baseline.fit_transform(X)
+
+    gpa = GeneralizedProcrustesAnalysis(n_dim=2, scaling=False, n_jobs=n_jobs)
+    X_result = gpa.fit_transform(X)
+
+    assert_array_almost_equal(X_result, X_baseline)
+    assert_array_almost_equal(gpa.mu_, gpa_baseline.mu_)
+
+
+###########################################################
+#
 #   parameter validation
 #
 ###########################################################
