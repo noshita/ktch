@@ -461,10 +461,7 @@ nb_execution_timeout = 300
 
 # -- sphinx-multiversion configuration ---------------------------------------
 # Load version info from versions.json (single source of truth)
-#
-# NOTE: Each version's conf.py is loaded by sphinx-multiversion, so CI must
-# install all dependencies required by older versions' conf.py files.
-# - v0.6.1: requires jupytext (remove from CI when v0.6.1 is dropped)
+
 import json
 import re
 
@@ -473,7 +470,7 @@ if _versions_path.exists():
     with open(_versions_path) as f:
         _versions_data = json.load(f)
 
-    # Extract version tags (e.g., "0.6.1" -> "v0.6.1")
+    # Extract version tags (e.g., "0.7.0" -> "v0.7.0")
     # Skip "dev" version as it corresponds to the main branch
     _tag_versions = [
         f"v{entry['version']}"
