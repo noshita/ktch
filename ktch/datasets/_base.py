@@ -34,6 +34,31 @@ DATA_MODULE = "ktch.datasets.data"
 DESCR_MODULE = "ktch.datasets.descr"
 
 
+def _safe_extractall(zip_ref, target_dir):
+    """Extract zip contents with path traversal validation.
+
+    Parameters
+    ----------
+    zip_ref : zipfile.ZipFile
+        An open ZipFile object to extract.
+    target_dir : str or Path
+        The directory to extract into.
+
+    Raises
+    ------
+    ValueError
+        If any member path attempts to escape the target directory.
+    """
+    target = Path(target_dir).resolve()
+    for member in zip_ref.namelist():
+        member_path = (target / member).resolve()
+        if not member_path.is_relative_to(target):
+            raise ValueError(
+                f"Attempted path traversal in zip file: {member}"
+            )
+    zip_ref.extractall(target)
+
+
 def _resolve_data_path(dataset_name, filename):
     """Resolve the path to a bundled data file.
 
@@ -671,7 +696,7 @@ def load_image_passiflora_leaves(*, return_paths=False, as_frame=False, version=
 
     if not data_dir.exists():
         with zipfile.ZipFile(archive_path, "r") as zip_ref:
-            zip_ref.extractall(data_dir.parent)
+            _safe_extractall(zip_ref, data_dir.parent)
 
     # Load metadata and description
     meta_path = data_dir / "metadata.csv"
