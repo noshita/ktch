@@ -14,6 +14,7 @@ Examples:
 """
 
 import argparse
+import ast
 import json
 import re
 import sys
@@ -97,9 +98,14 @@ def read_current_registry():
     dict
         The current versioned_registry dict.
     """
-    namespace = {}
-    exec(REGISTRY_PATH.read_text(), namespace)
-    return dict(namespace["versioned_registry"])
+    source = REGISTRY_PATH.read_text()
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == "versioned_registry":
+                    return dict(ast.literal_eval(node.value))
+    raise ValueError("versioned_registry not found in _registry.py")
 
 
 def build_method_files_map(versioned_registry):
