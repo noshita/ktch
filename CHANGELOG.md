@@ -1,5 +1,64 @@
 # Changelog
 
+## [0.7.0](https://github.com/noshita/ktch/compare/v0.6.1...v0.7.0) (2026-02-12)
+
+
+### Features
+
+* ✨  add registry update script via R2 manifest.json ([b9d63bc](https://github.com/noshita/ktch/commit/b9d63bcf59121c109097f2e4b950aa3638bd16e1))
+* ✨ add new dataset: outline_leaf_bending ([25d9d30](https://github.com/noshita/ktch/commit/25d9d308952ffbc7c0273c9b1b78428fab07ea8f))
+* ✨ add normalization with semi-major axis for 3D EFA ([6b3440f](https://github.com/noshita/ktch/commit/6b3440f4a98175fc2b456e70d524d73d01bd92a4))
+* ✨ add Passiflora leaf image dataset ([f75cb0c](https://github.com/noshita/ktch/commit/f75cb0c97b5425a84e765000cc04c662f8deb5c1))
+* ✨ datasets trilobite cephala ([1ce07aa](https://github.com/noshita/ktch/commit/1ce07aa46134f64c914719c3034417e8be2f7899))
+* ✨ n_jobs for GPA ([679dcd2](https://github.com/noshita/ktch/commit/679dcd2954929bbfa5baed55b10ee0bcc17ae3a0))
+* ✨ Normalization for 3D EFA ([59ada8f](https://github.com/noshita/ktch/commit/59ada8fde44775e9b4722425b7027afae2d264e7))
+* ✨ semilandmark analysis ([a5e6076](https://github.com/noshita/ktch/commit/a5e6076104e5b24529e52a356f8345946d16b973))
+* ✨ tutorial for outline extraction ([3bfe708](https://github.com/noshita/ktch/commit/3bfe7084de0f083d2db09c30e8563d950a11a2d1))
+
+
+### Bug Fixes
+
+* 🐛 add jupytext for v0.6.1 build ([8e7cff2](https://github.com/noshita/ktch/commit/8e7cff25bd3ba5726a2d9949279a55f95fb28b7b))
+* 🐛 add jupytext for v0.6.1 build ([932a9ab](https://github.com/noshita/ktch/commit/932a9ab7bc6c29472c900ae2d33660a8b75ad5d8))
+* 🐛 add path traversal validation for zip extraction ([01010c4](https://github.com/noshita/ktch/commit/01010c435990252538c2f1ee5a273bf64caaf528))
+* 🐛 add version_match logging ([8e7cff2](https://github.com/noshita/ktch/commit/8e7cff25bd3ba5726a2d9949279a55f95fb28b7b))
+* 🐛 add version_match logging ([932a9ab](https://github.com/noshita/ktch/commit/932a9ab7bc6c29472c900ae2d33660a8b75ad5d8))
+* 🐛 doc ([96ff2c8](https://github.com/noshita/ktch/commit/96ff2c80be52a3d0f58840b684dedb02511eb56d))
+* 🐛 remove duplicate data and update metadata and tps data ([c979e80](https://github.com/noshita/ktch/commit/c979e80568de71a360912543929b39166423f22d))
+* 🐛 replace exec() with ast-based parsing in update_registry ([abe1973](https://github.com/noshita/ktch/commit/abe1973bcb1b39c03a210634e1ca562e140b8648))
+* 🐛 sphinx-multiversion and switcher ([932a9ab](https://github.com/noshita/ktch/commit/932a9ab7bc6c29472c900ae2d33660a8b75ad5d8))
+* 🐛 test-codecov.yml ([1bafb2b](https://github.com/noshita/ktch/commit/1bafb2b8b2cc61e8bc92d70a6f5731517aedb237))
+* 🐛 tip coordinates in outline_leaf_bending dataset ([f5a7996](https://github.com/noshita/ktch/commit/f5a7996a470bffbc94eaa90e8443794a44f83860))
+* 🐛 typo ([1fb2811](https://github.com/noshita/ktch/commit/1fb281108d0a3249adf93db46f033abbfb376d3f))
+* 🐛 use sphinx-multiversion on GitHub for env variable ([8e7cff2](https://github.com/noshita/ktch/commit/8e7cff25bd3ba5726a2d9949279a55f95fb28b7b))
+* 🐛 use sphinx-multiversion on GitHub for env variable ([932a9ab](https://github.com/noshita/ktch/commit/932a9ab7bc6c29472c900ae2d33660a8b75ad5d8))
+* 🐛 version switcher, redirect to stable ([8e7cff2](https://github.com/noshita/ktch/commit/8e7cff25bd3ba5726a2d9949279a55f95fb28b7b))
+* 🐛 version switcher, redirect to stable ([932a9ab](https://github.com/noshita/ktch/commit/932a9ab7bc6c29472c900ae2d33660a8b75ad5d8))
+* 🐛 version_match ([8e7cff2](https://github.com/noshita/ktch/commit/8e7cff25bd3ba5726a2d9949279a55f95fb28b7b))
+* 🐛 version_match ([932a9ab](https://github.com/noshita/ktch/commit/932a9ab7bc6c29472c900ae2d33660a8b75ad5d8))
+
+
+### Performance Improvements
+
+* ⚡️ enable parallel read (and execute) ([8f1f1ff](https://github.com/noshita/ktch/commit/8f1f1ff176d0c9f30651e60e94fe8d5616de5f8e))
+
+
+### Documentation
+
+* 📚  move 2D outline registration guide from tutorials to how-to ([cdb1ad3](https://github.com/noshita/ktch/commit/cdb1ad3c4c353d6d5bfd8dc4fa62d16c89088aca))
+* 📚 drop doc of v0.6.1 ([5cdb7aa](https://github.com/noshita/ktch/commit/5cdb7aafcae3dfa15af26e66091d8c76f77b6725))
+* 📚 redesign documentation with Diátaxis framework and multi-version support ([#108](https://github.com/noshita/ktch/issues/108)) ([7bc8465](https://github.com/noshita/ktch/commit/7bc8465737cc2109a7a61a3607a701435d324ea4))
+* 📚 refactor configuration_plot, use vtp files for spharm ([0db89a8](https://github.com/noshita/ktch/commit/0db89a86e0d2633ad6e666543aacb7116003d4d5))
+* 📚 reorganize contributing guides and migrate liccheck to licensecheck ([d475742](https://github.com/noshita/ktch/commit/d47574262b451f5e3aeede32a5fd9aabf9116b2e))
+* 📚 sitemap ([19a1932](https://github.com/noshita/ktch/commit/19a1932c4a0e482b6e552526dcc709691a249111))
+* 📚 Update README.md ([d0d43eb](https://github.com/noshita/ktch/commit/d0d43eb446ad6dd92e1e104d4d82d3fbbce475bd))
+* 📚 update tutorial for 3D EFA to cover morphospace reconstruction ([d63fcb3](https://github.com/noshita/ktch/commit/d63fcb3b0395169a92173e64d91c076e2c186602))
+
+
+### Miscellaneous Chores
+
+* release 0.7.0 ([e9c2476](https://github.com/noshita/ktch/commit/e9c2476ef3790c6afd687052fb39841644c74292))
+
 ## [0.6.1](https://github.com/noshita/ktch/compare/v0.6.0...v0.6.1) (2025-12-08)
 
 
