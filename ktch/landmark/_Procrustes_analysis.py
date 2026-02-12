@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+import logging
+import warnings
 from abc import ABCMeta
 from typing import Optional
 
@@ -24,6 +26,8 @@ import numpy.typing as npt
 import scipy as sp
 from sklearn.base import BaseEstimator, OneToOneFeatureMixin, TransformerMixin
 from sklearn.utils.parallel import Parallel, delayed
+
+logger = logging.getLogger(__name__)
 
 from ._kernels import tps_bending_energy, tps_bending_energy_matrix, tps_system_matrix
 
@@ -116,6 +120,14 @@ class GeneralizedProcrustesAnalysis(
     ):
         self.tol = tol
         self.scaling = scaling
+        if debug:
+            warnings.warn(
+                "The 'debug' parameter is deprecated and will be removed in "
+                "v0.9.0. Use logging.getLogger('ktch.landmark."
+                "_Procrustes_analysis').setLevel(logging.DEBUG) instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
         self.debug = debug
         self.mu_ = None
         self.n_dim_ = n_dim
@@ -241,8 +253,7 @@ class GeneralizedProcrustesAnalysis(
         X_ = self._scale(X_)
         mu = np.sum(X_, axis=0) / len(X_)
         mu = mu / centroid_size(mu)
-        if self.debug:
-            print("mu: ", mu, "centroid_size(mu): ", centroid_size(mu))
+        logger.debug("mu: %s, centroid_size(mu): %s", mu, centroid_size(mu))
 
         curves = None
         if self.curves is not None:
@@ -284,8 +295,7 @@ class GeneralizedProcrustesAnalysis(
             mu = np.sum(X_, axis=0) / len(X_)
             mu = mu / centroid_size(mu)
 
-            if self.debug:
-                print("total_disp: ", total_disp, "diff_disp: ", diff_disp)
+            logger.debug("total_disp: %s, diff_disp: %s", total_disp, diff_disp)
 
         self.mu_ = mu
 
@@ -309,8 +319,7 @@ class GeneralizedProcrustesAnalysis(
             total_disp_prev = total_disp
             mu = np.sum(X_, axis=0) / len(X_)
 
-            if self.debug:
-                print("total_disp: ", total_disp, "diff_disp: ", diff_disp)
+            logger.debug("total_disp: %s, diff_disp: %s", total_disp, diff_disp)
 
         self.mu_ = mu
 
