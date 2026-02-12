@@ -91,14 +91,14 @@ def read_tps(file_path, as_frame=False):
     """Read TPS file.
 
     Parameters
-    ==========
+    ----------
     file_path : str
         Path to the TPS file.
     as_frame : bool, default=False
         If True, return pandas.DataFrame. Otherwise, return numpy.ndarray.
 
     Returns
-    =======
+    ----------
     landmarks : ndarray
         Landmarks.
     semilandmarks: list[ndarray] or ndarray, optional

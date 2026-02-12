@@ -29,7 +29,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
     r"""Spherical Harmonic (SPHARM) Analysis
 
     Parameters
-    ------------------------
+    ----------
     n_harmonics: int, default=10
         Number of harmonics to use ($l_\mathrm{max}$).
     n_jobs: int, default=None
@@ -40,7 +40,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
 
 
     Notes
-    ------------------------
+    ----------
     [Ritche_Kemp_1999]_, [Shen_etal_2009]_
 
     .. math::
@@ -73,7 +73,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
 
 
     References
-    ------------------------
+    ----------
 
     .. [Ritche_Kemp_1999] Ritchie, D.W., Kemp, G.J.L. (1999) Fast computation, rotation, and comparison of low resolution spherical harmonic molecular surfaces. J. Comput. Chem. 20: 383–395.
     .. [Shen_etal_2009] Shen, L., Farid, H., McPeek, M.A. (2009) Modeling three-dimensional morphological structures using spherical harmonics. Evolution (N. Y). 63: 1003–1016.
@@ -109,7 +109,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
                 Parameters indicating the position on the surface.
 
         Returns
-        ------------------------
+        ----------
         X_transformed: array-like
             Returns the SPHARM coefficients.
         """
@@ -133,7 +133,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
         """Transform X to a SPHARM coefficients.
 
         Parameters
-        ------------------------
+        ----------
         X: list of array-like
             Coordinate values of n_samples.
             The i-th array-like whose shape (n_coords_i, 3) represents
@@ -144,7 +144,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
             The i-th array-like of theta and phi values whose shape is (n_coords_i, 2).
 
         Returns
-        ------------------------
+        ----------
         X_transformed: array-like of shape (n_samples, n_coefficients)
             Returns the array-like of SPHARM coefficients.
         """
@@ -173,7 +173,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
         """SPHARM
 
         Parameters
-        ------------------------
+        ----------
         lmax: int
             Degree of SPHARM to use how far
         coef_list: list
@@ -184,7 +184,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
 
 
         Returns
-        ------------------------
+        ----------
         X_coords: array-like of shape (n_theta, n_phi, 3)
             Coordinate values of SPHARM.
 
@@ -212,7 +212,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
         """Inverse SPHARM transform
 
         Parameters
-        ------------------------
+        ----------
         X_transformed: array-like of shape (n_samples, n_coefficients)
             SPHARM coefficients.
         theta_range: array_like
@@ -221,7 +221,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
             Degree of SPHARM to use how far
 
         Returns
-        ------------------------
+        ----------
         X_coords: array-like of shape (n_samples, n_theta, n_phi, 3)
             Coordinate values of reconstructed surfaces.
         """

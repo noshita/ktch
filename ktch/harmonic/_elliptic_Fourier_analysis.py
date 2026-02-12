@@ -39,7 +39,7 @@ class EllipticFourierAnalysis(
     Elliptic Fourier Analysis (EFA)
 
     Parameters
-    ------------
+    ----------
     n_harmonics: int, default=20
         Number of harmonics
     n_dim: int, default=2
@@ -62,7 +62,7 @@ class EllipticFourierAnalysis(
           convention (Kuhl & Giardina 1982).
 
     Notes
-    ------------
+    ----------
     EFA is widely applied for outline shape analysis
     in two-dimensional space [Kuhl_Giardina_1982]_.
 
@@ -94,7 +94,7 @@ class EllipticFourierAnalysis(
     ``norm_method="area"``, or ``a1`` for ``norm_method="semi_major_axis"``).
 
     References
-    ------------
+    ----------
     .. [Kuhl_Giardina_1982] Kuhl, F.P., Giardina, C.R. (1982) Elliptic Fourier features of a closed contour. Comput. Graph. Image Process. 18: 236–258. https://doi.org/10.1016/0146-664X(82)90034-X
     .. [Lestrel_1997]  Lestrel, P.E., 1997. Introduction and overview of Fourier descriptors, in: Fourier Descriptors and Their Applications in Biology. Cambridge University Press, pp. 22–44. https://doi.org/10.1017/cbo9780511529870.003
     .. [Lestrel_et_al_1997] Lestrel, P.E., Read, D.W., Wolfe, C., 1997. Size and shape of the rabbit orbit: 3-D Fourier descriptors, in: Lestrel, P.E. (Ed.), Fourier Descriptors and Their Applications in Biology. Cambridge University Press, pp. 359–378. https://doi.org/10.1017/cbo9780511529870.017
@@ -140,7 +140,7 @@ class EllipticFourierAnalysis(
         """EFA.
 
         Parameters
-        ------------
+        ----------
         X: {list of array-like, array-like} of shape (n_samples, n_coords, dim)
             Coordinate values of n_samples.
             The i-th array-like of shape (n_coords_i, 2) represents
@@ -163,7 +163,7 @@ class EllipticFourierAnalysis(
             Then, the orientation and scale are returned as the last columns of the output.
 
         Returns
-        ------------
+        ----------
         X_transformed: array-like of shape (n_samples, (1+2*n_harmonics)*n_dim)
             Returns the array-like of coefficients.
             (a_0, a_1, ..., a_n, b_0, b_1, ..., b_n, ,
@@ -229,7 +229,7 @@ class EllipticFourierAnalysis(
             If True, return pd.DataFrame.
 
         Returns
-        -------
+        ----------
         X_coords : array-like of shape (n_samples, t_num, 2) or pd.DataFrame
             Coordinate values reconstructed from the elliptic Fourier coefficients.
 
@@ -300,7 +300,7 @@ class EllipticFourierAnalysis(
             the coordinate values with the linear interpolation.
 
         Returns
-        -------
+        ----------
         X_transformed: ndarray of shape (4*(n_harmonics+1), )
             Coefficients of Fourier series.
 
@@ -503,7 +503,7 @@ class EllipticFourierAnalysis(
             or ``a1`` for ``norm_method="semi_major_axis"``).
 
         Returns
-        -------
+        ----------
         X_transformed: ndarray of shape (6*(n_harmonics+1),) or (6*(n_harmonics+1)+5,)
             Coefficients of Fourier series. When return_orientation_scale=True,
             5 additional values are appended.
@@ -600,7 +600,7 @@ class EllipticFourierAnalysis(
             Raw Fourier coefficient arrays. Index 0 is the offset.
 
         Returns
-        -------
+        ----------
         An, Bn, Cn, Dn, En, Fn : np.ndarray of shape (n_harmonics+1,)
             Normalized coefficient arrays.
         alpha, beta, gamma : float
@@ -763,7 +763,7 @@ class EllipticFourierAnalysis(
             Input feature names, by default None
 
         Returns
-        -------
+        ----------
         feature_names_out : ndarray of str objects
             Transformed feature names.
 
@@ -812,7 +812,7 @@ def rotation_matrix_3d_euler_zxz(alpha: float, beta: float, gamma: float) -> np.
         ZXZ Euler angles in radians.
 
     Returns
-    -------
+    ----------
     rotation_matrix : np.ndarray of shape (3, 3)
         Orthogonal rotation matrix with determinant +1.
     """
@@ -848,7 +848,7 @@ def _compute_ellipse_geometry_3d(
         Cosine and sine Fourier coefficients for x, y, z coordinates.
 
     Returns
-    -------
+    ----------
     phi : float
         Phase angle in ]-pi/4, pi/4[.
     a : float
@@ -966,7 +966,7 @@ def _cse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
     n_harmonics : int
         number of harmonics
 
-    Return
+    Returns
     ----------
     coef : np.ndarray
         coefficients of cos series expansion

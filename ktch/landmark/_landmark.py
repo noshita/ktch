@@ -45,7 +45,7 @@ class PositionAligner(TransformerMixin, BaseEstimator):
         It will be reset on new calls to fit, but increments across
         ``partial_fit`` calls.
     Examples
-    --------
+    ----------
     >>> from sklearn.preprocessing import MinMaxScaler
     >>> data = [[-1, 2], [-0.5, 6], [0, 10], [1, 18]]
     >>> scaler = MinMaxScaler()
@@ -61,10 +61,10 @@ class PositionAligner(TransformerMixin, BaseEstimator):
     >>> print(scaler.transform([[2, 2]]))
     [[1.5 0. ]]
     See Also
-    --------
+    ----------
     minmax_scale : Equivalent function without the estimator API.
     Notes
-    -----
+    ----------
     NaNs are treated as missing values: disregarded in fit, and maintained in
     transform.
     For a comparison of the different scalers, transformers, and normalizers,
@@ -85,7 +85,7 @@ class PositionAligner(TransformerMixin, BaseEstimator):
                 The coordinate value of the reference point to be aligned onto the origin.
                 If `reference_point` is `None`, the centroid computed from `X` is used as the reference point.
         Returns
-        -------
+        ----------
         X_tr : {ndarray, sparse matrix} of shape (n_samples, n_landmarks,n_dims)
                 Transformed array, which is removed the information about the position.
         """
@@ -109,7 +109,7 @@ class SizeScaler(TransformerMixin, BaseEstimator):
         X : {array-like, dense matrix of shape (n_samples, n_landmarks, n_dims)
                 The coordinate values used to align by the centroid position onto the origin.
         Returns
-        -------
+        ----------
         X_tr : {ndarray, sparse matrix} of shape (n_samples, n_landmarks,n_dims)
                 Transformed array, which is removed the information about the position.
         """

@@ -78,7 +78,7 @@ class ChainCodeData:
         """Get the raw chain code as a numpy array.
 
         Returns
-        -------
+        ----------
         chain_code : np.ndarray
             Raw chain code values (0-7) representing directions.
         """
@@ -99,7 +99,7 @@ class ChainCodeData:
             5 6 7
 
         Returns
-        -------
+        ----------
         coords : np.ndarray
             2D coordinates with shape (n, 2) where n is the number of points.
             The first column is the x-coordinate and the second column is the y-coordinate.
@@ -146,7 +146,7 @@ class ChainCodeData:
             5 6 7
 
         Returns
-        -------
+        ----------
         df : pd.DataFrame
             DataFrame with x and y columns for the coordinates and chain_code
             column for the direction codes. The first point has chain_code=-1
@@ -199,7 +199,7 @@ def read_chc(file_path, as_frame=False, validate=True, as_coordinates=True):
         If False, return the raw chain code values.
 
     Returns
-    -------
+    ----------
     chain_codes : list of np.ndarray or pd.DataFrame
         Chain codes or coordinates.
     """
@@ -346,7 +346,7 @@ def _read_chc(file_path, validate=True):
         If True, validate that chain code values are between 0 and 7.
 
     Returns
-    -------
+    ----------
     chc_data_list : list of ChainCodeData
         Chain code data.
     """
