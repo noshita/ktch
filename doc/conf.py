@@ -140,10 +140,14 @@ elif "dev" in version or "rc" in version or "a" in version or "b" in version:
 else:
     version_match = version
 
-# Override version/release when building specific tags with sphinx-multiversion
-# This ensures DOCUMENTATION_OPTIONS.VERSION matches the documented version,
-# which prevents the "unstable development version" banner from showing incorrectly
-if _smv_name.startswith("v"):
+# Override version/release to match version_match for sphinx-multiversion builds.
+# This ensures DOCUMENTATION_OPTIONS.VERSION reflects the documented version:
+# - For tags (v0.6.1): VERSION="0.6.1" — matches preferred version, no warning banner
+# - For main branch: VERSION="dev" — does NOT match preferred, triggers warning banner
+if _smv_name == "main":
+    version = "dev"
+    release = "dev"
+elif _smv_name.startswith("v"):
     version = version_match
     release = version_match
 
