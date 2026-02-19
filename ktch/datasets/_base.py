@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+import re
 import zipfile
 from importlib import resources
 from importlib.metadata import version as get_package_version
@@ -53,9 +56,7 @@ def _safe_extractall(zip_ref, target_dir):
     for member in zip_ref.namelist():
         member_path = (target / member).resolve()
         if not member_path.is_relative_to(target):
-            raise ValueError(
-                f"Attempted path traversal in zip file: {member}"
-            )
+            raise ValueError(f"Attempted path traversal in zip file: {member}")
     zip_ref.extractall(target)
 
 
@@ -77,7 +78,7 @@ def _resolve_data_path(dataset_name, filename):
     return resources.files(DATA_MODULE).joinpath(dataset_name, filename)
 
 
-def load_landmark_mosquito_wings(*, as_frame=False):
+def load_landmark_mosquito_wings(*, as_frame: bool = False) -> Bunch:
     """Load and return the mosquito wing landmark dataset used in
     [Rohlf_and_Slice_1990]_.
 
@@ -92,29 +93,28 @@ def load_landmark_mosquito_wings(*, as_frame=False):
     ========================   ============
 
     Parameters
-    --------------------
+    ----------
     as_frame : bool, default=False
         If True, the data is a pandas DataFrame including columns with
-        appropriate dtypes (numeric). The target is
-        a pandas DataFrame or Series depending on the number of target columns.
-        If `return_X_y` is True, then (`data`, `target`) will be pandas
-        DataFrames or Series as described below.
+        appropriate dtypes (numeric).
 
     Returns
-    --------------------
+    -------
     data : :class:`~sklearn.utils.Bunch`
         Dictionary-like object, with the following attributes.
-        coords : {ndarray, dataframe} of shape (150, 4)
-            The data matrix. If `as_frame=True`, `data` will be a pandas
-            DataFrame.
-        meta : {dataframe, list} of shape ()
-        DESCR: str
+        coords : {ndarray of shape (2286, 2), dataframe}
+            The coordinate data (127 specimens x 18 landmarks, 2D).
+            If `as_frame=True`, `coords` will be a pandas DataFrame
+            with MultiIndex (specimen_id, coord_id).
+        meta : {dict, dataframe}
+            Metadata for each specimen.
+        DESCR : str
             The full description of the dataset.
-        filename: str
+        filename : str
             The path to the location of the data.
 
     References
-    --------------------
+    ----------
     .. [Rohlf_and_Slice_1990] Rohlf, F.J., Slice, D., 1990. Extensions of the Procrustes Method for the Optimal Superimposition of Landmarks. Systematic Zoology 39, 40. https://doi.org/10.2307/2992207
 
     """
@@ -146,7 +146,7 @@ def load_landmark_mosquito_wings(*, as_frame=False):
     )
 
 
-def load_landmark_trilobite_cephala(*, as_frame=False):
+def load_landmark_trilobite_cephala(*, as_frame: bool = False) -> Bunch:
     """Load and return the trilobite cephala landmark dataset with semilandmarks
     used in [Serra_2023]_.
 
@@ -172,7 +172,7 @@ def load_landmark_trilobite_cephala(*, as_frame=False):
         appropriate dtypes (numeric).
 
     Returns
-    ----------
+    -------
     data : :class:`~sklearn.utils.Bunch`
         Dictionary-like object, with the following attributes.
 
@@ -193,7 +193,7 @@ def load_landmark_trilobite_cephala(*, as_frame=False):
             The path to the location of the data.
 
     References
-    --------------------
+    ----------
     .. [Serra_2023] Serra, F., Balseiro, D., Monnet, C., Randolfe, E., Bignon, A., Rustán, J.J., Bault, V., Muñoz, D.F., Vaccari, N.E., Martinetto, M., Crônier, C., Waisfeld, B.G., 2023. A dynamic and collaborative database for morphogeometric information of trilobites. Sci. Data 10, 841. https://doi.org/10.1038/s41597-023-02724-9
     """
     from ktch.io import read_tps
@@ -233,7 +233,7 @@ def load_landmark_trilobite_cephala(*, as_frame=False):
     )
 
 
-def load_outline_mosquito_wings(*, as_frame=False):
+def load_outline_mosquito_wings(*, as_frame: bool = False) -> Bunch:
     """Load and return the mosquito wing outline dataset used in
     [Rohlf_and_Archie_1984]_, however includes only 126 of 127 specimens
     because of missing in the original NTS file.
@@ -252,26 +252,25 @@ def load_outline_mosquito_wings(*, as_frame=False):
     ----------
     as_frame : bool, default=False
         If True, the data is a pandas DataFrame including columns with
-        appropriate dtypes (numeric). The target is
-        a pandas DataFrame or Series depending on the number of target columns.
-        If `return_X_y` is True, then (`data`, `target`) will be pandas
-        DataFrames or Series as described below.
+        appropriate dtypes (numeric).
 
     Returns
-    ----------
+    -------
     data : :class:`~sklearn.utils.Bunch`
         Dictionary-like object, with the following attributes.
-        coords : {ndarray, dataframe} of shape (150, 4)
-            The data matrix. If `as_frame=True`, `data` will be a pandas
-            DataFrame.
-        meta : {dataframe, list} of shape ()
-        DESCR: str
+        coords : {ndarray of shape (12600, 2), dataframe}
+            The coordinate data (126 specimens x 100 points, 2D).
+            If `as_frame=True`, `coords` will be a pandas DataFrame
+            with MultiIndex (specimen_id, coord_id).
+        meta : {dict, dataframe}
+            Metadata for each specimen.
+        DESCR : str
             The full description of the dataset.
-        filename: str
+        filename : str
             The path to the location of the data.
 
     References
-    --------------------
+    ----------
     .. [Rohlf_and_Archie_1984] Rohlf, F.J., Archie, J.W., 1984. A Comparison of Fourier Methods for the Description of Wing Shape in Mosquitoes (Diptera: Culicidae). Syst Zool 33, 302. https://doi.org/10.2307/2413076
 
     """
@@ -303,7 +302,7 @@ def load_outline_mosquito_wings(*, as_frame=False):
     )
 
 
-def load_outline_bottles(*, as_frame=False):
+def load_outline_bottles(*, as_frame: bool = False) -> Bunch:
     """Load and return the Momocs bottle outline dataset
     (outline-based morphometrics).
 
@@ -327,10 +326,11 @@ def load_outline_bottles(*, as_frame=False):
         coords : {list of ndarray, dataframe} of shape (40, n_coords, 2)
             The data matrix. If `as_frame=True`, `coords` will be a pandas
             DataFrame.
-        meta : {dataframe, list} of shape ()
-        DESCR: str
+        meta : {dict, dataframe}
+            Metadata for each specimen.
+        DESCR : str
             The full description of the dataset.
-        filename: str
+        filename : str
             The path to the location of the data.
 
     """
@@ -365,30 +365,30 @@ def load_outline_bottles(*, as_frame=False):
     )
 
 
-def load_coefficient_bottles(*, as_frame=False, norm=True):
+def load_coefficient_bottles(*, as_frame: bool = False, norm: bool = True) -> Bunch:
     """Load and return the coefficients of  Momocs bottle outline datasets
     for testing the EFA.
 
     Parameters
     ----------
-    as_frame (bool, optional):
-        If True, the data is a pandas DataFrame
-        including columns with appropriate dtypes (numeric).
-        The target is a pandas DataFrame or Series
-        depending on the number of target columns.
-    norm: bool, optional
+    as_frame : bool, default=False
+        If True, the data is a pandas DataFrame including columns with
+        appropriate dtypes (numeric).
+    norm : bool, default=True
+        If True, load the normalized EFA coefficients.
 
     Returns
     -------
     data : :class:`~sklearn.utils.Bunch`
         Dictionary-like object, with the following attributes.
         coef : {list of ndarray, dataframe} of shape (40, 6, 4)
-            The data matrix. If `as_frame=True`, `coords` will be a pandas
+            The data matrix. If `as_frame=True`, `coef` will be a pandas
             DataFrame.
-        meta : {dataframe, list} of shape ()
-        DESCR: str
+        meta : {dict, dataframe}
+            Metadata for each specimen.
+        DESCR : str
             The full description of the dataset.
-        filename: str
+        filename : str
             The path to the location of the data.
     """
 
@@ -430,7 +430,7 @@ def load_coefficient_bottles(*, as_frame=False, norm=True):
     )
 
 
-def load_outline_leaf_bending(*, as_frame=False):
+def load_outline_leaf_bending(*, as_frame: bool = False) -> Bunch:
     """Load and return the synthetic 3D leaf bending outline dataset.
 
     This dataset contains 3D outlines of synthetic wheat-like leaves
@@ -453,7 +453,7 @@ def load_outline_leaf_bending(*, as_frame=False):
         (n_specimens, n_points, 3).
 
     Returns
-    ----------
+    -------
     data : :class:`~sklearn.utils.Bunch`
         Dictionary-like object, with the following attributes.
         coords : {ndarray of shape (60, 200, 3), dataframe}
@@ -461,9 +461,9 @@ def load_outline_leaf_bending(*, as_frame=False):
             DataFrame with MultiIndex (specimen_id, coord_id).
         meta : {dict, dataframe}
             Metadata containing bending parameters for each specimen.
-        DESCR: str
+        DESCR : str
             The full description of the dataset.
-        filename: str
+        filename : str
             The path to the location of the data.
 
     """
@@ -503,7 +503,7 @@ def load_outline_leaf_bending(*, as_frame=False):
 ###########################################################
 
 
-def convert_coords_df_to_list(df_coords):
+def convert_coords_df_to_list(df_coords: pd.DataFrame) -> list[np.ndarray]:
     """Convert a dataframe of coordinates to a list of numpy arrays.
 
     Parameters
@@ -524,7 +524,7 @@ def convert_coords_df_to_list(df_coords):
     return coords_list
 
 
-def convert_coords_df_to_df_sklearn_transform(df_coords):
+def convert_coords_df_to_df_sklearn_transform(df_coords: pd.DataFrame) -> pd.DataFrame:
     """Convert a dataframe of coordinates to a dataframe of coordinates
     for sklearn transformers.
 
@@ -563,8 +563,9 @@ def _get_default_version():
     # Extract major.minor.patch (e.g., "0.7.0" from "0.7.0.dev1")
     parts = pkg_version.split(".")
     if len(parts) >= 3:
-        # Handle dev/rc versions: "0.7.0.dev1" -> "0.7.0"
-        patch = parts[2].split("dev")[0].split("rc")[0].split("a")[0].split("b")[0]
+        # Strip pre/post/dev/local suffixes (PEP 440):
+        # e.g., "0.7.0.dev1" -> "0.7.0", "0.7.0+local" -> "0.7.0"
+        patch = re.split(r"[^0-9]", parts[2])[0]
         return f"{parts[0]}.{parts[1]}.{patch if patch else '0'}"
     return pkg_version
 
@@ -593,7 +594,7 @@ def _fetch_remote_data(dataset_name, version):
     """
     if pooch is None:
         raise ImportError(
-            "Missing optional dependency 'pooch' for downloading remote datasets."
+            "Missing optional dependency 'pooch' for downloading remote datasets. "
             "Please install it using: pip install ktch[data]"
         )
 
@@ -612,11 +613,13 @@ def _fetch_remote_data(dataset_name, version):
     )
 
 
-def load_image_passiflora_leaves(*, return_paths=False, as_frame=False, version=None):
+def load_image_passiflora_leaves(
+    *, return_paths: bool = False, as_frame: bool = False, version: str | None = None
+) -> Bunch:
     """Load and return the Passiflora leaf image dataset.
 
     This dataset contains leaf images of Passiflora species from GigaDB
-    [Chitwood_et_al_2014]_.
+    [Chitwood_et_al_2016]_.
 
     The data is downloaded from a remote server on first use and cached locally.
 
@@ -694,6 +697,9 @@ def load_image_passiflora_leaves(*, return_paths=False, as_frame=False, version=
     archive_path = _fetch_remote_data("image_passiflora_leaves.zip", version)
     data_dir = Path(archive_path).parent / "image_passiflora_leaves"
 
+    # NOTE: This check-then-extract has a TOCTOU race if multiple processes
+    # call this function concurrently.  For typical single-user desktop usage
+    # this is acceptable; concurrent extraction would produce the same files.
     if not data_dir.exists():
         with zipfile.ZipFile(archive_path, "r") as zip_ref:
             _safe_extractall(zip_ref, data_dir.parent)

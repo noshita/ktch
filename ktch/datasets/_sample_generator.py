@@ -14,21 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
-
 from sklearn.utils import check_random_state
 
 
 def make_landmarks_from_reference(
-    reference,
-    n_samples=30,
-    sd=1.0,
-    random_state=None,
-    allow_collinearity=False,
-    allow_dup=False,
-    as_frame=False,
-):
+    reference: np.ndarray,
+    n_samples: int = 30,
+    sd: float = 1.0,
+    random_state: int | np.random.RandomState | None = None,
+    allow_collinearity: bool = False,
+    allow_dup: bool = False,
+    as_frame: bool = False,
+) -> np.ndarray | pd.DataFrame:
     """Generate landmark dataset around a reference configuration.
 
     Parameters
@@ -59,14 +60,13 @@ def make_landmarks_from_reference(
     rand_size = (n_samples,) + ref.shape
     X = ref + sd * generator.standard_normal(rand_size)
 
-    num = 0
-    while n_samples > num:
-        rand_size = (n_samples - X.shape[0],) + ref.shape
-        X_comp = ref + sd * generator.standard_normal(rand_size)
-        X = np.concatenate([X, X_comp])
-        if not allow_dup:
+    if not allow_dup:
+        X = _remove_duplicated_configurations(X)
+        while X.shape[0] < n_samples:
+            rand_size = (n_samples - X.shape[0],) + ref.shape
+            X_comp = ref + sd * generator.standard_normal(rand_size)
+            X = np.concatenate([X, X_comp])
             X = _remove_duplicated_configurations(X)
-            num = X.shape[0]
 
     if as_frame:
         n_landmarks = X.shape[1]
@@ -89,6 +89,6 @@ def _remove_duplicated_configurations(X):
     """Remove duplicated configurations in a dataset."""
 
     X_flatten = np.unique(X.reshape(X.shape[0], -1), axis=0)
-    X_new = X_flatten.reshape(X.shape)
+    X_new = X_flatten.reshape(-1, *X.shape[1:])
 
     return X_new
