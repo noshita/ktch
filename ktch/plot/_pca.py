@@ -14,12 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import matplotlib.pyplot as plt
+from __future__ import annotations
+
+from collections.abc import Sequence
+from typing import Any
+
 import numpy as np
-import seaborn as sns
+
+from ._base import require_dependencies
 
 
-def explained_variance_ratio_plot(pca, n_components=None, ax=None, verbose=False):
+def explained_variance_ratio_plot(
+    pca: Any,
+    n_components: int | None = None,
+    ax: object | None = None,
+    verbose: bool = False,
+) -> object:
     """Plot explained variance ratio of PCA components.
 
     Parameters
@@ -38,11 +48,26 @@ def explained_variance_ratio_plot(pca, n_components=None, ax=None, verbose=False
     ax : matplotlib.axes.Axes
         Axes object with the plot.
 
+    Raises
+    ------
+    ImportError
+        If matplotlib or seaborn are not installed.
     """
+    require_dependencies("matplotlib", "seaborn")
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
     if ax is None:
         fig, ax = plt.subplots(figsize=(6, 4))
     if n_components is None:
         n_components = pca.n_components_
+
+    max_components = len(pca.explained_variance_ratio_)
+    if n_components > max_components:
+        raise ValueError(
+            f"n_components ({n_components}) exceeds the number of fitted "
+            f"components ({max_components})."
+        )
 
     pc_evr = pca.explained_variance_ratio_[0:n_components]
     pc_cum = np.cumsum(pc_evr)
@@ -76,19 +101,24 @@ def explained_variance_ratio_plot(pca, n_components=None, ax=None, verbose=False
 
 
 def plot_shapes_along_pcs(
-    descriptor_inverse_transform,
-    pca,
-    n_dim=2,
-    n_PCs=(0, 1, 2),
-    sd_values=(-2, -1, 0, 1, 2),
-    morph_color="gray",
-    morph_alpha=1.0,
-    fig=None,
-    dpi=150,
-    figscale=3.0,
-):
+    descriptor_inverse_transform: Any,
+    pca: Any,
+    n_dim: int = 2,
+    n_pcs: Sequence[int] = (0, 1, 2),
+    sd_values: Sequence[float] = (-2, -1, 0, 1, 2),
+    morph_color: str = "gray",
+    morph_alpha: float = 1.0,
+    fig: object | None = None,
+    dpi: int = 150,
+    figscale: float = 3.0,
+) -> None:
     """Plot reconstructed shapes along principal components.
 
     This function is a placeholder for the actual implementation.
+
+    Raises
+    ------
+    NotImplementedError
+        This function is not yet implemented.
     """
-    pass
+    raise NotImplementedError("plot_shapes_along_pcs is not yet implemented.")

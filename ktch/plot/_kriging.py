@@ -14,14 +14,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import numpy as np
+import numpy.typing as npt
 
 from ..landmark._kernels import tps_coefficients, tps_warp
+from ._base import require_dependencies
 
 
 def tps_grid_2d_plot(
-    x_reference, x_target, grid_size="auto", outer=0.1, n_grid_inner=10, ax=None
-):
+    x_reference: npt.ArrayLike,
+    x_target: npt.ArrayLike,
+    grid_size: str | float = "auto",
+    outer: float = 0.1,
+    n_grid_inner: int = 10,
+    ax: object | None = None,
+) -> object:
     """Plot the thin-plate spline 2D warped grid.
 
     Parameters
@@ -37,21 +46,27 @@ def tps_grid_2d_plot(
     n_grid_inner : int, optional
         Number of inner points on each grid, by default 10
     ax : :class:`matplotlib.axes.Axes`, optional
-        Pre-existing axes for the plot. Otherwise, uses ``plt.gca()``.
+        Pre-existing axes for the plot. Otherwise, a new figure and axes
+        are created.
 
     Returns
     -------
     ax : :class:`matplotlib.axes.Axes`
         Matplotlib axes.
-    """
 
+    Raises
+    ------
+    ImportError
+        If matplotlib is not installed.
+    """
+    require_dependencies("matplotlib")
     import matplotlib.pyplot as plt
 
     x_reference = np.asarray(x_reference)
     W, c, A = tps_coefficients(x_reference, x_target)
 
     if ax is None:
-        ax = plt.gca()
+        _, ax = plt.subplots()
 
     x_min, y_min = (1 + outer) * np.min(x_reference, axis=0)
     x_max, y_max = (1 + outer) * np.max(x_reference, axis=0)
@@ -66,7 +81,7 @@ def tps_grid_2d_plot(
     if w > h:
         w = w - w % grid_size_ + grid_size_
     else:
-        h = h - w % grid_size + grid_size_
+        h = h - h % grid_size_ + grid_size_
     n_grid_x = np.rint(w / grid_size_)
     n_grid_y = np.rint(h / grid_size_)
 

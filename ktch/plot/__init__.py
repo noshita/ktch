@@ -39,7 +39,13 @@ def __getattr__(name: str):
             DeprecationWarning,
             stacklevel=2,
         )
-        return globals()[new_name]
+        try:
+            return globals()[new_name]
+        except KeyError:
+            raise AttributeError(
+                f"module {__name__!r} has no attribute {new_name!r} "
+                f"(rename target for deprecated {name!r})"
+            ) from None
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
