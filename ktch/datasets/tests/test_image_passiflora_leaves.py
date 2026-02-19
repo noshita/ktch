@@ -79,30 +79,20 @@ class TestRegistry:
     """Tests for the dataset registry."""
 
     def test_default_version_in_registry(self):
-        """Test that the default version exists and has required datasets."""
-        from ktch.datasets._base import _get_default_version
-        from ktch.datasets._registry import (
-            get_registry,
-            get_url,
-            method_files_map,
-            versioned_registry,
-        )
+        """Test that the default version resolves to a valid registry entry."""
+        from ktch.datasets._base import _get_default_version, _resolve_data_version
+        from ktch.datasets._registry import get_registry, get_url, method_files_map
 
         version = _get_default_version()
+        data_version = _resolve_data_version(version)
 
-        # Default version exists in registry
-        assert version in versioned_registry, (
-            f"Default version '{version}' not found. "
-            f"Available: {list(versioned_registry.keys())}"
-        )
-
-        # Required dataset exists
-        registry = get_registry(version)
+        # Resolved version exists in registry
+        registry = get_registry(data_version)
         assert "image_passiflora_leaves.zip" in registry
 
-        # URL is correctly formed
-        url = get_url("image_passiflora_leaves.zip", version)
-        assert f"releases/v{version}/image_passiflora_leaves.zip" in url
+        # URL is correctly formed with data version
+        url = get_url("image_passiflora_leaves.zip", data_version)
+        assert f"releases/v{data_version}/image_passiflora_leaves.zip" in url
 
         # Method mapping exists
         assert "image_passiflora_leaves" in method_files_map
@@ -154,3 +144,62 @@ class TestVersionDetection:
         default_version = _get_default_version()
 
         assert pkg_version.startswith(default_version) or default_version in pkg_version
+
+
+class TestResolveDataVersion:
+    """Tests for _resolve_data_version fallback logic."""
+
+    def test_exact_match(self):
+        """Test that an exact registry version is returned as-is."""
+        from ktch.datasets._base import _resolve_data_version
+        from ktch.datasets._registry import versioned_registry
+
+        for version in versioned_registry:
+            assert _resolve_data_version(version) == version
+
+    def test_fallback_to_older(self):
+        """Test fallback to the latest compatible version."""
+        from unittest.mock import patch
+
+        from ktch.datasets._base import _resolve_data_version
+
+        mock_registry = {"0.7.0": {"file.zip": "abc123"}}
+        with patch("ktch.datasets._base.versioned_registry", mock_registry):
+            assert _resolve_data_version("0.7.1") == "0.7.0"
+
+    def test_fallback_picks_latest(self):
+        """Test that the latest compatible version is selected."""
+        from unittest.mock import patch
+
+        from ktch.datasets._base import _resolve_data_version
+
+        mock_registry = {
+            "0.7.0": {"file.zip": "abc123"},
+            "0.8.0": {"file.zip": "def456"},
+        }
+        with patch("ktch.datasets._base.versioned_registry", mock_registry):
+            assert _resolve_data_version("0.9.0") == "0.8.0"
+
+    def test_no_compatible_version(self):
+        """Test that ValueError is raised when no compatible version exists."""
+        from unittest.mock import patch
+
+        from ktch.datasets._base import _resolve_data_version
+
+        mock_registry = {"0.7.0": {"file.zip": "abc123"}}
+        with patch("ktch.datasets._base.versioned_registry", mock_registry):
+            with pytest.raises(ValueError, match="No compatible dataset version"):
+                _resolve_data_version("0.6.0")
+
+    def test_data_version_used_in_url(self):
+        """Test that the resolved version is used for URL construction."""
+        from unittest.mock import patch
+
+        from ktch.datasets._base import _resolve_data_version
+        from ktch.datasets._registry import get_url
+
+        mock_registry = {"0.7.0": {"file.zip": "abc123"}}
+        with patch("ktch.datasets._base.versioned_registry", mock_registry):
+            data_version = _resolve_data_version("0.7.1")
+            url = get_url("image_passiflora_leaves.zip", data_version)
+            assert f"releases/v{data_version}/" in url

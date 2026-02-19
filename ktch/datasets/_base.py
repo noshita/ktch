@@ -26,7 +26,7 @@ import pandas as pd
 from sklearn.datasets._base import load_descr
 from sklearn.utils import Bunch
 
-from ._registry import get_registry, get_url
+from ._registry import get_registry, get_url, versioned_registry
 
 try:
     import pooch
@@ -570,6 +570,49 @@ def _get_default_version():
     return pkg_version
 
 
+def _resolve_data_version(version):
+    """Resolve the dataset version to use for a given package version.
+
+    If the exact version exists in the registry, return it as-is.
+    Otherwise, fall back to the latest registered version that is
+    less than or equal to the requested version.
+
+    Parameters
+    ----------
+    version : str
+        Requested version string in "X.Y.Z" format.
+
+    Returns
+    -------
+    str
+        The resolved dataset version.
+
+    Raises
+    ------
+    ValueError
+        If no compatible version is found in the registry.
+    """
+    if version in versioned_registry:
+        return version
+
+    def _version_tuple(v):
+        return tuple(int(x) for x in v.split("."))
+
+    requested = _version_tuple(version)
+    compatible = [
+        v for v in versioned_registry if _version_tuple(v) <= requested
+    ]
+
+    if not compatible:
+        available = ", ".join(sorted(versioned_registry.keys()))
+        raise ValueError(
+            f"No compatible dataset version found for '{version}'. "
+            f"Available versions: {available}"
+        )
+
+    return max(compatible, key=_version_tuple)
+
+
 def _fetch_remote_data(dataset_name, version):
     """Fetch remote dataset file using pooch.
 
@@ -690,6 +733,7 @@ def load_image_passiflora_leaves(
     """
     if version is None:
         version = _get_default_version()
+    version = _resolve_data_version(version)
 
     descr_file_name = "data_image_passiflora_leaves.rst"
 

@@ -263,8 +263,10 @@ Do not manually edit `pyproject.toml` version — let Release Please manage it.
    so that the tagged commit includes the correct version switcher
    configuration.
 
-3. If remote datasets were added or updated, ensure
-   the [dataset registry](#updating-the-dataset-registry) is up to date.
+3. If remote datasets were added or changed, update the
+   [dataset registry](#updating-the-dataset-registry).
+   When data is unchanged, no registry update is needed — the loader
+   falls back to the latest compatible version automatically.
 
 ### Merging the Release Please PR
 
