@@ -35,12 +35,16 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
           cache-dependency-glob: "**/pyproject.toml"
-          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
         run: |
