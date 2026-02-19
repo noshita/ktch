@@ -114,6 +114,239 @@ docs: update CONTRIBUTING.md
 - Tests: co-located at `ktch/<module>/tests/test_<name>.py`
 - API design: scikit-learn compatible (`fit`, `transform`, `fit_transform`)
 
+## Releasing
+
+This project uses [release-please](https://github.com/googleapis/release-please)
+to automate versioning, changelog generation, and GitHub Release creation.
+The release flow is driven by Conventional Commits on `main`.
+
+### Overview
+
+```txt
+Conventional Commits on main
+  -> Release Please creates/updates a release PR
+    (bumps pyproject.toml, CHANGELOG.md, .release-please-manifest.json)
+  -> Maintainer merges the PR (merge commit)
+    -> Release Please creates v0.X.Y tag + GitHub Release
+      -> documentation.yml triggers (release: published)
+      -> sphinx-multiversion builds /stable/ and /dev/
+  -> Maintainer publishes to PyPI
+    -> conda-forge feedstock auto-creates a PR
+      -> Maintainer reviews and merges feedstock PR(s)
+```
+
+### Version Numbering
+
+Release Please determines the next version from Conventional Commits
+automatically. The current config (`bump-patch-for-minor-pre-major: true`,
+`bump-minor-pre-major: true`) produces the following bumps while
+the version is below 1.0.0:
+
+| Commit type | Version bump |
+|-------------|-------------|
+| `fix:` | patch (0.7.0 → 0.7.1) |
+| `feat:` | patch (0.7.0 → 0.7.1) |
+| `feat!:` / `BREAKING CHANGE` | minor (0.7.0 → 0.8.0) |
+| `docs:`, `chore:`, etc. | no bump |
+
+Since `feat:` only produces a patch bump in this configuration, a minor
+version bump for feature releases requires explicit specification via
+`Release-As`. The recommended workflow is:
+
+1. Develop normally — `feat:` and `fix:` commits trigger Release Please
+   to create a release PR with an automatic patch bump
+2. Before merging the release PR, if a minor bump is intended,
+   add a `Release-As` footer to a commit on `main`:
+
+   ```txt
+   feat: add some feature
+
+   Release-As: 0.8.0
+   ```
+
+3. Release Please updates the existing PR to target the specified version
+
+Adding `Release-As` just before merging (rather than immediately after the
+previous release) keeps the version flexible — e.g., if an urgent patch
+release is needed in the meantime, the automatic patch bump can be merged
+without conflict.
+
+Do not manually edit `pyproject.toml` version — let Release Please manage it.
+
+### Pre-release Checklist
+
+1. Verify CI is green on `main`
+2. Update `doc/_static/versions.json` for the new stable version:
+
+   ```bash
+   uv run python scripts/update_versions_json.py <version>
+   ```
+
+   For example:
+
+   ```bash
+   uv run python scripts/update_versions_json.py 0.8.0
+   ```
+
+   Use `--dry-run` to preview changes without modifying the file.
+   Commit this change to `main` before merging the release PR,
+   so that the tagged commit includes the correct version switcher
+   configuration.
+
+3. If remote datasets were added or updated, ensure
+   the [dataset registry](#updating-the-dataset-registry) is up to date.
+
+### Merging the Release Please PR
+
+1. Review the auto-generated CHANGELOG in the PR
+2. Approve and merge with a merge commit:
+
+   ```bash
+   gh pr merge <PR_NUMBER> --merge
+   ```
+
+   After merge, Release Please automatically:
+   - Creates a `v0.X.Y` tag
+   - Creates a GitHub Release with the changelog
+   - Triggers the documentation workflow via `release: published`
+
+### Publishing to PyPI
+
+After the GitHub Release is created:
+
+```bash
+uv build
+uv publish
+```
+
+> Note: PyPI publishing could be automated using
+> [Trusted Publishers](https://docs.pypi.org/trusted-publishers/)
+> with GitHub Actions in the future.
+
+### Updating conda-forge
+
+The [ktch-feedstock](https://github.com/conda-forge/ktch-feedstock) produces
+the following packages:
+
+| Package | Description |
+|---------|-------------|
+| `ktch` | Core package |
+| `ktch-data` | `[data]` extra (pooch) |
+| `ktch-plot` | `[plot]` extra (matplotlib, plotly, seaborn) |
+| `ktch-all` | Metapackage depending on all extras |
+
+See the conda-forge
+[Maintaining packages](https://conda-forge.org/docs/maintainer/updating_pkgs/)
+guide for general reference.
+
+#### Version update (routine)
+
+After the PyPI package is published:
+
+1. The regro-cf-autotick-bot typically creates a version update PR
+   in the feedstock repository within a few hours
+2. The bot updates the source URL, version, and SHA256 hash in `meta.yaml`
+   automatically
+3. Review the PR — the bot does not update dependency version
+   constraints, so check `pyproject.toml` against `meta.yaml` and
+   fix any mismatches. To apply fixes, close the bot PR and create
+   a new one from a personal fork:
+
+   ```bash
+   cd ktch-feedstock   # conda-forge/ktch-feedstock clone
+   gh pr checkout <PR_NUMBER>
+   # Edit and commit
+   git checkout -b <new-branch-name>
+   git push fork <new-branch-name>
+   gh pr create --repo conda-forge/ktch-feedstock \
+     --head noshita:<new-branch-name>
+   gh pr close <PR_NUMBER> --repo conda-forge/ktch-feedstock
+   ```
+
+4. Merge the feedstock PR after CI passes
+
+If the bot PR does not appear, check that the feedstock does not already
+have 3+ open version update PRs (the bot stops after 3).
+
+For changes independent of a bot PR (e.g., recipe-only fixes),
+create a PR from a personal fork. Do not create branches directly
+on the feedstock repository, as pushes to the main repo trigger CI
+and may cause unintended package publishing.
+
+#### Adding a new output
+
+When a new optional dependency group is added to `pyproject.toml`
+(e.g., `[data]`), a new output must be registered before the feedstock
+can publish it.
+
+1. Add the new output to the version update PR. Push the following
+   changes to the bot's branch (or create a new feedstock PR if the
+   version update is already merged — in that case, bump the build
+   number):
+
+   ```yaml
+   - name: {{ name }}-data
+     build:
+       noarch: python
+     requirements:
+       run:
+         - {{ pin_subpackage(name, exact=True) }}
+         - pooch >=1.3
+     test:
+       imports:
+         - ktch.datasets
+   ```
+
+   Update `ktch-all` to depend on the new output. This PR will not
+   pass CI until step 3 is complete, but it serves as context for the
+   registration request.
+
+2. Create a PR to
+   [conda-forge/admin-requests](https://github.com/conda-forge/admin-requests)
+   to register the new output name. Fork the repository and add a YAML
+   file in the `requests/` directory following the
+   [example template](https://github.com/conda-forge/admin-requests/blob/main/examples/example-add-feedstock-output.yml):
+
+   ```yaml
+   action: add_feedstock_output
+   feedstock_to_output_mapping:
+     ktch:
+       - ktch-data
+   ```
+
+   Link the feedstock PR from step 1 in the description.
+
+3. After the admin-requests PR is merged, the feedstock PR's CI will
+   pass. Review and merge it
+
+### Post-release Verification
+
+- [ ] <https://doc.ktch.dev/stable/> shows the new version
+- [ ] Version switcher works correctly
+- [ ] <https://pypi.org/project/ktch/> shows the new version
+- [ ] conda-forge feedstock PR is created (may take a few hours)
+
+### Troubleshooting
+
+#### Documentation shows 404 at /stable/
+
+`versions.json` was not updated before the release, or the version listed
+does not match any tag. Verify that `doc/_static/versions.json` contains
+the released version and that the corresponding `v0.X.Y` tag exists.
+A `workflow_dispatch` run of the Docs workflow can rebuild without a new release.
+
+#### Release Please PR not appearing
+
+Ensure recent commits on `main` include at least one `feat:` or `fix:` commit.
+Commits with types like `docs:`, `chore:`, or `refactor:` alone do not trigger
+a version bump.
+
+#### Release Please picks the wrong version
+
+If the automatic version bump does not match the intended release version,
+add `Release-As: X.Y.Z` to a commit footer on `main`. This overrides
+the automatic calculation for the next release PR.
+
 ## Remote Datasets (Cloudflare R2)
 
 Large datasets are hosted on Cloudflare R2 and downloaded on demand via
