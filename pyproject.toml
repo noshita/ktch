@@ -38,7 +38,6 @@ Repository = "https://github.com/noshita/ktch"
 
 [dependency-groups]
 dev = [
-  "invoke>=2.2",
   "jupyter>=1.1",
   "jupyterlab>=4.3",
   "licensecheck>=2025.1",
@@ -49,7 +48,6 @@ dev = [
   "numba>=0.61",
   "opencv-python>=4.11",
   "plotly>=6.0",
-  "poetry2conda>=0.3.0,<0.4",
   "pytest>=8.3",
   "pytest-benchmark>=5.1.0",
   "pytest-cov>=6.0",
@@ -79,11 +77,8 @@ doc = [
 default-groups = ["dev", "doc"]
 
 [build-system]
-requires = ["hatchling", "hatch-conda-build"]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.poetry2conda]
-name = "ktch"
 
 [tool.licensecheck]
 fail_licenses = ["GPL-3.0-ONLY", "GNU AGPLV3"]

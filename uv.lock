@@ -850,15 +850,6 @@ wheels = [
 ]
 
 [[package]]
-name = "invoke"
-version = "2.2.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/de/bd/b461d3424a24c80490313fd77feeb666ca4f6a28c7e72713e3d9095719b4/invoke-2.2.1.tar.gz", hash = "sha256:515bf49b4a48932b79b024590348da22f39c4942dff991ad1fb8b8baea1be707", size = 304762, upload-time = "2025-10-11T00:36:35.172Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/32/4b/b99e37f88336009971405cbb7630610322ed6fbfa31e1d7ab3fbf3049a2d/invoke-2.2.1-py3-none-any.whl", hash = "sha256:2413bc441b376e5cd3f55bb5d364f973ad8bdd7bf87e53c79de3c11bf3feecc8", size = 160287, upload-time = "2025-10-11T00:36:33.703Z" },
-]
-
-[[package]]
 name = "ipykernel"
 version = "7.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1345,7 +1336,7 @@ wheels = [
 
 [[package]]
 name = "ktch"
-version = "0.7.0"
+version = "0.7.1"
 source = { editable = "." }
 dependencies = [
     { name = "numpy" },
@@ -1366,7 +1357,6 @@ plot = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "invoke" },
     { name = "jupyter" },
     { name = "jupyterlab" },
     { name = "licensecheck" },
@@ -1377,7 +1367,6 @@ dev = [
     { name = "numba" },
     { name = "opencv-python" },
     { name = "plotly" },
-    { name = "poetry2conda" },
     { name = "pytest" },
     { name = "pytest-benchmark" },
     { name = "pytest-cov" },
@@ -1418,7 +1407,6 @@ provides-extras = ["data", "docs", "plot"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "invoke", specifier = ">=2.2" },
     { name = "jupyter", specifier = ">=1.1" },
     { name = "jupyterlab", specifier = ">=4.3" },
     { name = "licensecheck", specifier = ">=2025.1" },
@@ -1429,7 +1417,6 @@ dev = [
     { name = "numba", specifier = ">=0.61" },
     { name = "opencv-python", specifier = ">=4.11" },
     { name = "plotly", specifier = ">=6.0" },
-    { name = "poetry2conda", specifier = ">=0.3.0,<0.4" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-benchmark", specifier = ">=5.1.0" },
     { name = "pytest-cov", specifier = ">=6.0" },
@@ -2271,28 +2258,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
-]
-
-[[package]]
-name = "poetry-semver"
-version = "0.1.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/4e/99/8eb3c69b9bd2ee3e834a8dbd425bd95884c8bef1afd11bf4502c44e0e733/poetry-semver-0.1.0.tar.gz", hash = "sha256:d809b612aa27b39bf2d0fc9d31b4f4809b0e972646c5f19cfa46c725b7638810", size = 11985, upload-time = "2019-12-02T20:30:15.215Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/71/6cb8e63fec841c55da4aaf53746ee00bea49d810c07c53d53d90910e27e0/poetry_semver-0.1.0-py2.py3-none-any.whl", hash = "sha256:4e6349bd7231cc657f0e1930f7b204e87e33dfd63eef5cac869363969515083a", size = 10554, upload-time = "2019-12-02T20:30:17.54Z" },
-]
-
-[[package]]
-name = "poetry2conda"
-version = "0.3.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "poetry-semver" },
-    { name = "toml" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/9b/9e/0a6613830ca6ba96c4d6b243dd8a142aad5aa481e8ee0e744fb30a669b97/poetry2conda-0.3.0.tar.gz", hash = "sha256:574b6295ff877ff8fb56fe2034160ff9ee9db55a3f3c2faec65458e69125491b", size = 10722, upload-time = "2020-06-02T07:56:16.034Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5a/62/87aae5a3192ea232597f3b767df4f02885850f4cc7e66f043a0c63c787bf/poetry2conda-0.3.0-py3-none-any.whl", hash = "sha256:218618d37331bd6d3d3007edcf21d71802990a0ce9c27e8bb23f739cfa82ed03", size = 10109, upload-time = "2020-06-02T07:56:14.529Z" },
 ]
 
 [[package]]
@@ -3446,15 +3411,6 @@ wheels = [
 ]
 
 [[package]]
-name = "toml"
-version = "0.10.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/be/ba/1f744cdc819428fc6b5084ec34d9b30660f6f9daaf70eead706e3203ec3c/toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f", size = 22253, upload-time = "2020-11-01T01:40:22.204Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/6f/7120676b6d73228c96e17f1f794d8ab046fc910d781c8d151120c3f1569e/toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b", size = 16588, upload-time = "2020-11-01T01:40:20.672Z" },
-]
-
-[[package]]
 name = "tomli"
 version = "2.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3550,7 +3506,7 @@ wheels = [
 
 [[package]]
 name = "tslearn"
-version = "0.7.0"
+version = "0.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "joblib" },
@@ -3559,9 +3515,9 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0b/f9/629cfe25220a3bbcae2c6f08150b5352f92a1aa091d48feb1a57d6458877/tslearn-0.7.0.tar.gz", hash = "sha256:2598920b60e374ea7d890f2e3b39aa13c7ec77417b7691dcb38ef9ca74545a14", size = 9587846, upload-time = "2025-11-13T08:18:11.316Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b5/f0/6324c89636f1b130ba94149091539788745102386ff8964ab5c9442c449b/tslearn-0.8.0.tar.gz", hash = "sha256:ee911b851859e0a3fe17ceba2bb3263e5ddafd7e581f41f6570c90339f2cf582", size = 9602065, upload-time = "2026-02-19T09:09:05.784Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/7b/b786e19205a6bf412819e7147c1a68f01c9ed52c0f2549478e43d62ac647/tslearn-0.7.0-py3-none-any.whl", hash = "sha256:573826c0cda1cf802e3be737bb4426711086eabeca1b1d4d7c6690a2ec20da61", size = 372713, upload-time = "2025-11-13T08:18:08.647Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/6c/366727503b862f391e89f8a8179580fffa65a260bc448ec44392e763f2d8/tslearn-0.8.0-py3-none-any.whl", hash = "sha256:2320f428e6e41c59f5ea695ae062147d58fc755b9b0131cff49181b76d62f2d3", size = 387878, upload-time = "2026-02-19T09:09:03.217Z" },
 ]
 
 [[package]]
