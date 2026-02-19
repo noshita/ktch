@@ -463,6 +463,17 @@ myst_enable_extensions = [
 myst_url_schemes = ("http", "https", "mailto")
 nb_execution_timeout = 300
 
+# Use jupyter-cache to avoid re-executing unchanged notebooks.
+# With sphinx-multiversion, all version builds share the same parent outdir
+# (_build/html/), so the default cache path (_build/html/.jupyter_cache) is
+# shared across versions automatically. An explicit absolute path ensures
+# stability regardless of sphinx-build's cwd (which SMV sets to a temp dir).
+nb_execution_mode = "cache"
+nb_execution_cache_path = os.environ.get(
+    "JUPYTER_CACHE_PATH",
+    str(Path(__file__).resolve().parent.parent / "_build" / ".jupyter_cache"),
+)
+
 # -- sphinx-multiversion configuration ---------------------------------------
 # Load version info from versions.json (single source of truth)
 

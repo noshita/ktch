@@ -35,22 +35,32 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
+          enable-cache: true
+          cache-dependency-glob: "**/pyproject.toml"
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           # NOTE: sphinx-multiversion from GitHub (not PyPI) is required for
           # SPHINX_MULTIVERSION_NAME environment variable support
-          pip install "sphinx>=8.1,<9.0" pydata-sphinx-theme \
-                      git+https://github.com/sphinx-contrib/multiversion.git \
-                      sphinx-gallery sphinxcontrib-bibtex myst-nb \
-                      numpydoc matplotlib seaborn 'plotly>=6.0' \
-                      sphinx-sitemap sphinx-favicon vtk opencv-python pooch
-          pip install -e .
+          uv pip install --system \
+            "sphinx>=8.1,<9.0" pydata-sphinx-theme \
+            git+https://github.com/sphinx-contrib/multiversion.git \
+            sphinx-gallery sphinxcontrib-bibtex myst-nb \
+            numpydoc matplotlib seaborn 'plotly>=6.0' \
+            sphinx-sitemap sphinx-favicon vtk opencv-python pooch
+          uv pip install --system -e .
+
+      - name: Restore notebook execution cache
+        uses: actions/cache@v4
+        with:
+          path: _build/.jupyter_cache
+          key: jupyter-cache-${{ runner.os }}-${{ hashFiles('doc/**/*.md', 'ktch/**/*.py') }}
+          restore-keys: |
+            jupyter-cache-${{ runner.os }}-
 
       - name: Build multi-version docs
         run: |
@@ -141,6 +151,10 @@ jobs:
         uses: actions/upload-pages-artifact@v4
         with:
           path: doc/_build/html
+
+      - name: Minimize uv cache
+        if: always()
+        run: uv cache prune --ci
 
   deploy:
     needs: build
