@@ -114,6 +114,76 @@ docs: update CONTRIBUTING.md
 - Tests: co-located at `ktch/<module>/tests/test_<name>.py`
 - API design: scikit-learn compatible (`fit`, `transform`, `fit_transform`)
 
+### Optional Dependencies
+
+ktch splits optional dependencies into extras so that the core package
+stays lightweight:
+
+| Extra | Packages | conda-forge package |
+|-------|----------|---------------------|
+| `plot` | matplotlib, seaborn, plotly | `ktch-plot` |
+| `data` | pooch | `ktch-data` |
+
+Because `ktch/__init__.py` eagerly imports all submodules (including `plot`),
+optional packages must never be imported at module level. Doing so would
+break installations that do not have the extra installed (e.g., `ktch-data`
+without matplotlib).
+
+#### Pattern: `plot` module
+
+The `plot` module centralizes optional imports in `ktch/plot/_base.py`.
+Other modules in the package use it as follows:
+
+```python
+# ktch/plot/_new_module.py
+from ._base import require_dependencies
+
+def my_plot_function(data, ax=None):
+    require_dependencies("matplotlib")
+
+    from ._base import plt  # lazy — resolved on access via __getattr__
+
+    if ax is None:
+        fig, ax = plt.subplots()
+    # ... plot logic ...
+    return ax
+```
+
+Key rules:
+
+1. Import `require_dependencies` at the top of the file
+2. Call `require_dependencies()` at the start of every public function
+   that needs optional packages — this gives users a clear error message
+   with install instructions
+3. Import library aliases (`plt`, `sns`, `go`, `px`) from `_base` when
+   needed — these are lazily resolved via `__getattr__`
+
+To add a new optional dependency to `_base.py`, update `_VALID_DEPS`,
+`_IMPORT_TARGETS`, and `_ATTR_TO_DEP`.
+
+#### Pattern: `datasets` module
+
+The `datasets` module uses a simpler try/except since it only has one
+optional dependency:
+
+```python
+# ktch/datasets/_base.py
+try:
+    import pooch
+except ImportError:
+    pooch = None
+```
+
+Functions check `if pooch is None` and raise `ImportError` with install
+instructions.
+
+#### General guidelines
+
+- Never add optional packages to the top-level imports in `__init__.py`
+- Always provide an actionable error message showing both `pip` and `conda`
+  install commands
+- Test that `import ktch` succeeds without any optional dependency installed
+
 ## Releasing
 
 This project uses [release-please](https://github.com/googleapis/release-please)
