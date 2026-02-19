@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.7.1](https://github.com/noshita/ktch/compare/v0.7.0...v0.7.1) (2026-02-19)
+
+
+### Features
+
+* ✨ lazy import in plot module ([94de8cc](https://github.com/noshita/ktch/commit/94de8cc6c3b2f1c4704047ccc400d34accf9a851))
+
+
+### Bug Fixes
+
+* 🐛 .release-please-manifest.json ([ab0e443](https://github.com/noshita/ktch/commit/ab0e443e38358ce44c55603070baec7f51b7e9ee))
+* 🐛 release-please workflow ([6c751a9](https://github.com/noshita/ktch/commit/6c751a96c3590dd8390b2aec38b1c7d800baf16f))
+* 🐛 setup-uv ([31e1b51](https://github.com/noshita/ktch/commit/31e1b51e4e3c0f51e25a6591f53951c6c87f7b38))
+* 🐛 sphinx multiversion switcher ([93e1ef3](https://github.com/noshita/ktch/commit/93e1ef369404db9035cb467c199c65698145134b))
+
+
+### Performance Improvements
+
+* ⚡️ doc build ([2281da7](https://github.com/noshita/ktch/commit/2281da7578d70fcfbe63419e876383897a199826))
+
+
+### Documentation
+
+* 📚 add guidelines for optional dependencies ([b7628f3](https://github.com/noshita/ktch/commit/b7628f3e62fde9ec394217884cfb250f3d765dda))
+
+
+### Miscellaneous Chores
+
+* 🔧 change trigger for documentation build ([57f0321](https://github.com/noshita/ktch/commit/57f0321ddde15ea77cd715deb0615f297c6ba692))
+* 🔧 scipy &gt;= 1.15 ([0ef8844](https://github.com/noshita/ktch/commit/0ef8844e167059d9f8d4d8f1868c0dc3da888133))
+* 🔧 script for doc versions ([641fc97](https://github.com/noshita/ktch/commit/641fc97dd2b02ec9daeba40ef227810dd4273732))
+* 🔧 update doc versions ([8b18c47](https://github.com/noshita/ktch/commit/8b18c4797d67630cb000bc54477214794174e1c9))
+
+
+### Code Refactoring
+
+* ♻️ datasets module ([4b09555](https://github.com/noshita/ktch/commit/4b09555b448feb152f979e4b49b47476294f566f))
+
 ## [0.7.0](https://github.com/noshita/ktch/compare/v0.6.1...v0.7.0) (2026-02-12)
 
 
