@@ -16,17 +16,16 @@
 
 from __future__ import annotations
 
-import re
 import zipfile
 from importlib import resources
-from importlib.metadata import version as get_package_version
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from sklearn.datasets._base import load_descr
 from sklearn.utils import Bunch
 
-from ._registry import get_registry, get_url, versioned_registry
+from ._registry import BASE_URL, dataset_registry, default_versions
 
 try:
     import pooch
@@ -35,6 +34,31 @@ except ImportError:
 
 DATA_MODULE = "ktch.datasets.data"
 DESCR_MODULE = "ktch.datasets.descr"
+
+
+def _sort_versions(version_keys):
+    """Sort version key strings numerically.
+
+    Parameters
+    ----------
+    version_keys : iterable of str
+        Version strings that should be parseable as integers.
+
+    Returns
+    -------
+    list of str
+        Sorted version strings.
+
+    Raises
+    ------
+    ValueError
+        If any version key cannot be parsed as an integer.
+    """
+    keys = list(version_keys)
+    try:
+        return sorted(keys, key=int)
+    except ValueError:
+        raise ValueError(f"Version keys must be integer strings, got {keys}") from None
 
 
 def _safe_extractall(zip_ref, target_dir):
@@ -551,89 +575,178 @@ def convert_coords_df_to_df_sklearn_transform(df_coords: pd.DataFrame) -> pd.Dat
 ###########################################################
 
 
-def _get_default_version():
-    """Get the default dataset version based on the package version.
-
-    Returns
-    -------
-    str
-        The major.minor.patch version string (e.g., "0.7.0").
-    """
-    pkg_version = get_package_version("ktch")
-    # Extract major.minor.patch (e.g., "0.7.0" from "0.7.0.dev1")
-    parts = pkg_version.split(".")
-    if len(parts) >= 3:
-        # Strip pre/post/dev/local suffixes (PEP 440):
-        # e.g., "0.7.0.dev1" -> "0.7.0", "0.7.0+local" -> "0.7.0"
-        patch = re.split(r"[^0-9]", parts[2])[0]
-        return f"{parts[0]}.{parts[1]}.{patch if patch else '0'}"
-    return pkg_version
-
-
-def _resolve_data_version(version):
-    """Resolve the dataset version to use for a given package version.
-
-    If the exact version exists in the registry, return it as-is.
-    Otherwise, fall back to the latest registered version that is
-    less than or equal to the requested version.
-
-    Parameters
-    ----------
-    version : str
-        Requested version string in "X.Y.Z" format.
-
-    Returns
-    -------
-    str
-        The resolved dataset version.
-
-    Raises
-    ------
-    ValueError
-        If no compatible version is found in the registry.
-    """
-    if version in versioned_registry:
-        return version
-
-    def _version_tuple(v):
-        return tuple(int(x) for x in v.split("."))
-
-    requested = _version_tuple(version)
-    compatible = [
-        v for v in versioned_registry if _version_tuple(v) <= requested
-    ]
-
-    if not compatible:
-        available = ", ".join(sorted(versioned_registry.keys()))
-        raise ValueError(
-            f"No compatible dataset version found for '{version}'. "
-            f"Available versions: {available}"
-        )
-
-    return max(compatible, key=_version_tuple)
-
-
-def _fetch_remote_data(dataset_name, version):
-    """Fetch remote dataset file using pooch.
+def get_dataset_hash(dataset_name, version, filename):
+    """Get the SHA256 hash for a specific dataset file.
 
     Parameters
     ----------
     dataset_name : str
-        Name of the dataset file to fetch.
+        Dataset name (e.g., "image_passiflora_leaves").
     version : str
-        The dataset version to fetch (e.g., "0.7.0").
+        Dataset version (e.g., "1").
+    filename : str
+        Filename within the dataset (e.g., "image_passiflora_leaves.zip").
 
     Returns
     -------
     str
-        Path to the downloaded file.
+        SHA256 hash string.
+
+    Raises
+    ------
+    ValueError
+        If dataset, version, or file is not found.
+    """
+    if dataset_name not in dataset_registry:
+        raise ValueError(f"Unknown dataset: '{dataset_name}'")
+
+    versions = dataset_registry[dataset_name]
+    if version not in versions:
+        available = ", ".join(_sort_versions(versions.keys()))
+        raise ValueError(
+            f"Version '{version}' not found for dataset '{dataset_name}'. "
+            f"Available versions: {available}"
+        )
+
+    files = versions[version]
+    if filename not in files:
+        available = ", ".join(sorted(files.keys()))
+        raise ValueError(
+            f"File '{filename}' not found in dataset '{dataset_name}' "
+            f"version '{version}'. Available files: {available}"
+        )
+
+    return files[filename]
+
+
+def get_dataset_url(dataset_name, version, filename):
+    """Get the download URL for a specific dataset file.
+
+    Parameters
+    ----------
+    dataset_name : str
+        Dataset name (e.g., "image_passiflora_leaves").
+    version : str
+        Dataset version (e.g., "1").
+    filename : str
+        Filename within the dataset.
+
+    Returns
+    -------
+    str
+        The full download URL.
+    """
+    return f"{BASE_URL}/datasets/{dataset_name}/v{version}/{filename}"
+
+
+def get_default_version(dataset_name):
+    """Get the default version for a dataset.
+
+    Parameters
+    ----------
+    dataset_name : str
+        Dataset name (e.g., "image_passiflora_leaves").
+
+    Returns
+    -------
+    str
+        The default version string.
+
+    Raises
+    ------
+    KeyError
+        If dataset is not registered in default_versions.
+    """
+    if dataset_name not in default_versions:
+        raise KeyError(f"No default version configured for dataset '{dataset_name}'")
+    return default_versions[dataset_name]
+
+
+def get_available_versions(dataset_name):
+    """List all available versions for a dataset.
+
+    Versions are sorted numerically (by integer value).
+
+    Parameters
+    ----------
+    dataset_name : str
+        Dataset name (e.g., "image_passiflora_leaves").
+
+    Returns
+    -------
+    list of str
+        Sorted version strings.
+
+    Raises
+    ------
+    ValueError
+        If dataset is not found in the registry.
+    """
+    if dataset_name not in dataset_registry:
+        raise ValueError(f"Unknown dataset: '{dataset_name}'")
+    return _sort_versions(dataset_registry[dataset_name].keys())
+
+
+def _resolve_dataset_version(dataset_name, version=None):
+    """Resolve the dataset version to use.
+
+    Parameters
+    ----------
+    dataset_name : str
+        The dataset name (e.g., "image_passiflora_leaves").
+    version : str or None
+        Explicit version string (e.g., "2"). If None, uses the default
+        from default_versions.
+
+    Returns
+    -------
+    str
+        Resolved version string.
+
+    Raises
+    ------
+    ValueError
+        If the dataset is not registered or the version does not exist.
+    """
+    if version is None:
+        return get_default_version(dataset_name)
+
+    if dataset_name not in dataset_registry:
+        raise ValueError(f"Unknown dataset: '{dataset_name}'")
+
+    if version not in dataset_registry[dataset_name]:
+        available = ", ".join(_sort_versions(dataset_registry[dataset_name].keys()))
+        raise ValueError(
+            f"Version '{version}' not found for dataset '{dataset_name}'. "
+            f"Available versions: {available}"
+        )
+
+    return version
+
+
+def _fetch_remote_dataset(dataset_name, version, filename):
+    """Fetch a remote dataset file using pooch.
+
+    Parameters
+    ----------
+    dataset_name : str
+        Dataset name (e.g., "image_passiflora_leaves").
+    version : str
+        Dataset version string (e.g., "1").
+    filename : str
+        Filename within the dataset (e.g., "image_passiflora_leaves.zip").
+
+    Returns
+    -------
+    str
+        Local path to the downloaded file.
 
     Raises
     ------
     ImportError
         If pooch is not installed.
     ValueError
-        If the version is not found in the registry.
+        If the dataset, version, or file is not found in the registry.
     """
     if pooch is None:
         raise ImportError(
@@ -641,18 +754,15 @@ def _fetch_remote_data(dataset_name, version):
             "Please install it using: pip install ktch[data]"
         )
 
-    registry = get_registry(version)
-    url = get_url(dataset_name, version)
-    known_hash = registry.get(dataset_name)
-
-    if known_hash is None:
-        raise ValueError(f"Dataset '{dataset_name}' not found in version '{version}'")
+    known_hash = get_dataset_hash(dataset_name, version, filename)
+    url = get_dataset_url(dataset_name, version, filename)
+    cache_path = pooch.os_cache("ktch-data") / dataset_name / f"v{version}"
 
     return pooch.retrieve(
         url=url,
         known_hash=f"sha256:{known_hash}",
-        path=pooch.os_cache("ktch-data") / version,
-        fname=dataset_name,
+        path=cache_path,
+        fname=filename,
     )
 
 
@@ -666,10 +776,12 @@ def load_image_passiflora_leaves(
 
     The data is downloaded from a remote server on first use and cached locally.
 
-    ========================   ============
-    Specimens                      TBD
-    Image format                   PNG
-    ========================   ============
+    ========================   ==================================
+    Species                    10
+    Scan images                25
+    Image size                 1268 x 1748 pixels, RGB
+    Image format               PNG
+    ========================   ==================================
 
     Parameters
     ----------
@@ -681,8 +793,8 @@ def load_image_passiflora_leaves(
         If True, the metadata is returned as a pandas DataFrame.
         Otherwise, it is returned as a dict.
     version : str, optional
-        The dataset version to load (e.g., "0.7.0"). If None, uses the
-        version corresponding to the installed ktch package.
+        The dataset version to load (e.g., "1"). If None, uses the
+        default version for the current ktch release.
 
     Returns
     -------
@@ -729,28 +841,25 @@ def load_image_passiflora_leaves(
     >>> data.meta['species']  # doctest: +SKIP
     ...
     >>> # Load a specific version
-    >>> data = load_image_passiflora_leaves(version="0.7.0")  # doctest: +SKIP
+    >>> data = load_image_passiflora_leaves(version="1")  # doctest: +SKIP
     """
-    if version is None:
-        version = _get_default_version()
-    version = _resolve_data_version(version)
+    dataset_name = "image_passiflora_leaves"
+    version = _resolve_dataset_version(dataset_name, version)
 
     descr_file_name = "data_image_passiflora_leaves.rst"
 
-    # Fetch and extract the dataset
-    archive_path = _fetch_remote_data("image_passiflora_leaves.zip", version)
+    archive_path = _fetch_remote_dataset(
+        dataset_name, version, "image_passiflora_leaves.zip"
+    )
     data_dir = Path(archive_path).parent / "image_passiflora_leaves"
 
-    # NOTE: This check-then-extract has a TOCTOU race if multiple processes
-    # call this function concurrently.  For typical single-user desktop usage
-    # this is acceptable; concurrent extraction would produce the same files.
     if not data_dir.exists():
         with zipfile.ZipFile(archive_path, "r") as zip_ref:
             _safe_extractall(zip_ref, data_dir.parent)
 
     # Load metadata and description
     meta_path = data_dir / "metadata.csv"
-    meta = pd.read_csv(meta_path, index_col=0, skipinitialspace=True)
+    meta = pd.read_csv(meta_path, index_col=0)
 
     fdescr = load_descr(
         descr_module=DESCR_MODULE,
@@ -760,11 +869,24 @@ def load_image_passiflora_leaves(
     # Image paths/numpy arrays
     image_paths = [data_dir / "images" / f"{image_id}.png" for image_id in meta.index]
 
+    missing = [p for p in image_paths if not p.exists()]
+    if missing:
+        raise FileNotFoundError(
+            f"{len(missing)} image file(s) not found in '{data_dir}'. "
+            f"The archive may be incomplete or corrupted. "
+            f"First missing: {missing[0].name}"
+        )
+
     if return_paths:
         images = [str(p) for p in image_paths]
     else:
-        import numpy as np
-        from PIL import Image
+        try:
+            from PIL import Image
+        except ImportError:
+            raise ImportError(
+                "Missing optional dependency 'pillow' for loading images as arrays. "
+                "Please install it using: pip install ktch[data]"
+            ) from None
 
         images = [np.array(Image.open(p)) for p in image_paths]
 

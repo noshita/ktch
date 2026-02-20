@@ -18,10 +18,15 @@ This tutorial shows how to extract outlines from images based on conventional im
 ## Prerequisites
 
 ```{code-cell} ipython3
-# !pip install opencv-python  # Uncomment if needed
+# !pip install ktch[data] opencv-python  # Uncomment if needed
 ```
 
 ## Step 1: Load Images
+
+We use the Passiflora leaf scan dataset bundled with ktch: 25 flatbed scan images
+of 10 *Passiflora* species spanning simple elliptical to deeply lobed leaf forms.
+Each image contains multiple leaves from one plant individual, arranged from tip
+(youngest) to base (oldest). See `data.DESCR` for full details.
 
 ```{code-cell} ipython3
 import numpy as np
@@ -37,7 +42,7 @@ from ktch.datasets import load_image_passiflora_leaves
 :  code_prompt_show: "Show definition: plot_images()"
 :  code_prompt_hide: "Hide definition: plot_images()"
 
-def plot_images(images, title_suffix="", cmap=None, outlines_per_image=None, n_cols=2):
+def plot_images(images, title_suffix="", cmap=None, outlines_per_image=None, labels=None, n_cols=2):
     """Plot images in a grid, optionally with outlines overlaid."""
     n_images = len(images)
     n_rows = (n_images + n_cols - 1) // n_cols
@@ -47,16 +52,17 @@ def plot_images(images, title_suffix="", cmap=None, outlines_per_image=None, n_c
 
     for i, ax in enumerate(axes):
         if i < n_images:
+            label = labels[i] if labels is not None else f"Image {i+1}"
             if outlines_per_image is not None:
                 ax.imshow(images[i])
                 outlines = outlines_per_image[i]
                 colors = plt.cm.tab10(np.linspace(0, 1, max(len(outlines), 1)))
                 for j, outline in enumerate(outlines):
                     ax.plot(outline[:, 0], outline[:, 1], "-", linewidth=2, color=colors[j])
-                ax.set_title(f"Image {i+1}: {len(outlines)} leaves")
+                ax.set_title(f"{label}: {len(outlines)} leaves")
             else:
                 ax.imshow(images[i], cmap=cmap)
-                title = f"Image {i+1}"
+                title = label
                 if title_suffix:
                     title += f" ({title_suffix})"
                 ax.set_title(title)
@@ -65,12 +71,20 @@ def plot_images(images, title_suffix="", cmap=None, outlines_per_image=None, n_c
 ```
 
 ```{code-cell} ipython3
-data = load_image_passiflora_leaves()
+data = load_image_passiflora_leaves(as_frame=True)
+
 print(f"Number of images: {len(data.images)}")
+print(f"Species: {data.meta['species'].nunique()}")
+print()
+print(data.meta[["abbreviation", "species"]].value_counts().sort_index())
 ```
 
 ```{code-cell} ipython3
-plot_images(data.images)
+labels = [
+    f"{row.abbreviation} ({row.species})"
+    for _, row in data.meta.iterrows()
+]
+plot_images(data.images, labels=labels)
 ```
 
 ## Step 2: Convert to Grayscale
@@ -162,6 +176,17 @@ plot_images(images_opened, "Opened", cmap="gray")
 
 Extract contours and filter by area and color.
 
+:::{warning}
+This simple pipeline does not work perfectly for all images.
+
+For example, deeply lobed species like *P. cincinnata* may have individual
+leaflets detected as separate leaves, and pale-colored leaves in *P. edulis*
+scans may be partially merged with the background, producing jagged outlines.
+
+These cases require species-specific tuning or more advanced segmentation
+methods, but are left as-is here to illustrate typical failure cases.
+:::
+
 ### Color filter function
 
 ```{code-cell} ipython3
@@ -218,7 +243,7 @@ print(f"Total: {len(all_outlines)} outlines")
 ```
 
 ```{code-cell} ipython3
-plot_images(data.images, outlines_per_image=outlines_per_image)
+plot_images(data.images, outlines_per_image=outlines_per_image, labels=labels)
 ```
 
 ```{code-cell} ipython3

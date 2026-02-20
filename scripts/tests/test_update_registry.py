@@ -1,7 +1,4 @@
-"""Tests for scripts/update_registry.py.
-
-Covers render_registry(), build_method_files_map(), and validate_manifest().
-"""
+"""Tests for scripts/update_registry.py."""
 
 import importlib.util
 import sys
@@ -20,9 +17,10 @@ spec = importlib.util.spec_from_file_location("update_registry", _SCRIPT_PATH)
 update_registry = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(update_registry)
 
+read_registry_toml = update_registry.read_registry_toml
 render_registry = update_registry.render_registry
-build_method_files_map = update_registry.build_method_files_map
 validate_manifest = update_registry.validate_manifest
+RegistryError = update_registry.RegistryError
 
 
 # ---------------------------------------------------------------------------
@@ -51,202 +49,146 @@ class TestRenderRegistry:
 
     def test_output_is_valid_python(self):
         """Rendered content should be valid Python without syntax errors."""
-        registry = {"0.7.0": {"data.zip": SAMPLE_HASH_A}}
-        mfm = {"data": ["data.zip"]}
-        content = render_registry(registry, mfm)
+        registry = {"ds": {"1": {"data.zip": SAMPLE_HASH_A}}}
+        defaults = {"ds": "1"}
+        content = render_registry(registry, defaults)
         # Should not raise
         compile(content, "_registry.py", "exec")
 
-    def test_roundtrip_single_version(self):
-        """versioned_registry should survive render -> exec roundtrip."""
-        registry = {"0.7.0": {"image_passiflora_leaves.zip": SAMPLE_HASH_A}}
-        mfm = {"image_passiflora_leaves": ["image_passiflora_leaves.zip"]}
-
-        content = render_registry(registry, mfm)
-        ns = _exec_rendered(content)
-
-        assert ns["versioned_registry"] == registry
-        assert ns["method_files_map"] == mfm
-
-    def test_roundtrip_multiple_versions(self):
-        """Multiple versions should all be preserved in roundtrip."""
+    def test_roundtrip_single_dataset(self):
+        """dataset_registry should survive render -> exec roundtrip."""
         registry = {
-            "0.7.0": {"data_a.zip": SAMPLE_HASH_A},
-            "0.8.0": {"data_a.zip": SAMPLE_HASH_B},
-        }
-        mfm = {"data_a": ["data_a.zip"]}
-
-        content = render_registry(registry, mfm)
-        ns = _exec_rendered(content)
-
-        assert ns["versioned_registry"] == registry
-
-    def test_roundtrip_multiple_datasets(self):
-        """Multiple datasets in a single version should be preserved."""
-        registry = {
-            "0.7.0": {
-                "image_passiflora_leaves.zip": SAMPLE_HASH_A,
-                "outline_passiflora_leaves.zip": SAMPLE_HASH_B,
+            "image_passiflora_leaves": {
+                "1": {"image_passiflora_leaves.zip": SAMPLE_HASH_A},
             },
         }
-        mfm = {
-            "image_passiflora_leaves": ["image_passiflora_leaves.zip"],
-            "outline_passiflora_leaves": ["outline_passiflora_leaves.zip"],
-        }
+        defaults = {"image_passiflora_leaves": "1"}
 
-        content = render_registry(registry, mfm)
+        content = render_registry(registry, defaults)
         ns = _exec_rendered(content)
 
-        assert ns["versioned_registry"] == registry
-        assert ns["method_files_map"] == mfm
+        assert ns["dataset_registry"] == registry
+        assert ns["default_versions"] == defaults
+
+    def test_roundtrip_multiple_versions(self):
+        """Multiple versions of a dataset should all be preserved."""
+        registry = {
+            "ds": {
+                "1": {"data.zip": SAMPLE_HASH_A},
+                "2": {"data.zip": SAMPLE_HASH_B},
+            },
+        }
+        defaults = {"ds": "2"}
+
+        content = render_registry(registry, defaults)
+        ns = _exec_rendered(content)
+
+        assert ns["dataset_registry"] == registry
+        assert ns["default_versions"] == defaults
+
+    def test_roundtrip_multiple_datasets(self):
+        """Multiple datasets should be preserved in roundtrip."""
+        registry = {
+            "image_passiflora_leaves": {
+                "1": {"image_passiflora_leaves.zip": SAMPLE_HASH_A},
+            },
+            "outline_passiflora_leaves": {
+                "1": {"outline_passiflora_leaves.zip": SAMPLE_HASH_B},
+            },
+        }
+        defaults = {
+            "image_passiflora_leaves": "1",
+            "outline_passiflora_leaves": "1",
+        }
+
+        content = render_registry(registry, defaults)
+        ns = _exec_rendered(content)
+
+        assert ns["dataset_registry"] == registry
+        assert ns["default_versions"] == defaults
 
     def test_empty_registry(self):
         """Empty registry should produce valid Python with empty dicts."""
         content = render_registry({}, {})
         ns = _exec_rendered(content)
 
-        assert ns["versioned_registry"] == {}
-        assert ns["method_files_map"] == {}
+        assert ns["dataset_registry"] == {}
+        assert ns["default_versions"] == {}
 
-    def test_versions_sorted(self):
-        """Versions should appear in sorted order in the rendered output."""
+    def test_versions_sorted_numerically(self):
+        """Versions should appear in numerically sorted order."""
         registry = {
-            "0.10.0": {"a.zip": SAMPLE_HASH_A},
-            "0.7.0": {"a.zip": SAMPLE_HASH_B},
-            "0.8.0": {"a.zip": SAMPLE_HASH_C},
+            "ds": {
+                "10": {"a.zip": SAMPLE_HASH_A},
+                "2": {"a.zip": SAMPLE_HASH_B},
+                "1": {"a.zip": SAMPLE_HASH_C},
+            },
         }
-        mfm = {"a": ["a.zip"]}
+        defaults = {"ds": "10"}
 
-        content = render_registry(registry, mfm)
+        content = render_registry(registry, defaults)
+        ns = _exec_rendered(content)
 
-        # Find positions of version strings in output
-        pos_070 = content.index('"0.7.0"')
-        pos_080 = content.index('"0.8.0"')
-        pos_0100 = content.index('"0.10.0"')
-        assert pos_0100 < pos_070 < pos_080  # lexicographic: "0.10.0" < "0.7.0" < "0.8.0"
+        # dict preserves insertion order (Python 3.7+); verify numeric sort
+        assert list(ns["dataset_registry"]["ds"].keys()) == ["1", "2", "10"]
+
+    def test_datasets_sorted_alphabetically(self):
+        """Datasets should appear in alphabetically sorted order."""
+        registry = {
+            "z_data": {"1": {"z_data.zip": SAMPLE_HASH_A}},
+            "a_data": {"1": {"a_data.zip": SAMPLE_HASH_B}},
+        }
+        defaults = {"a_data": "1", "z_data": "1"}
+
+        content = render_registry(registry, defaults)
+
+        pos_a = content.index('"a_data"')
+        pos_z = content.index('"z_data"')
+        assert pos_a < pos_z
 
     def test_filenames_sorted_within_version(self):
         """Filenames within a version should be sorted."""
         registry = {
-            "0.7.0": {
-                "z_data.zip": SAMPLE_HASH_A,
-                "a_data.zip": SAMPLE_HASH_B,
+            "ds": {
+                "1": {
+                    "z_data.zip": SAMPLE_HASH_A,
+                    "a_data.zip": SAMPLE_HASH_B,
+                },
             },
         }
-        mfm = {"a_data": ["a_data.zip"], "z_data": ["z_data.zip"]}
+        defaults = {"ds": "1"}
 
-        content = render_registry(registry, mfm)
+        content = render_registry(registry, defaults)
 
         pos_a = content.index('"a_data.zip"')
         pos_z = content.index('"z_data.zip"')
         assert pos_a < pos_z
 
-    def test_functions_present(self):
-        """Rendered content should include get_registry and get_url functions."""
-        registry = {"0.7.0": {"data.zip": SAMPLE_HASH_A}}
-        mfm = {"data": ["data.zip"]}
+    def test_no_functions_in_output(self):
+        """Rendered content should be pure data with no function definitions."""
+        registry = {"ds": {"1": {"data.zip": SAMPLE_HASH_A}}}
+        defaults = {"ds": "1"}
 
-        content = render_registry(registry, mfm)
+        content = render_registry(registry, defaults)
+
+        assert "def " not in content
+
+    def test_base_url_present(self):
+        """Rendered content should include BASE_URL."""
+        registry = {"ds": {"1": {"data.zip": SAMPLE_HASH_A}}}
+        defaults = {"ds": "1"}
+
+        content = render_registry(registry, defaults)
         ns = _exec_rendered(content)
 
-        assert callable(ns["get_registry"])
-        assert callable(ns["get_url"])
+        assert "BASE_URL" in ns
+        assert ns["BASE_URL"].startswith("https://")
 
-    def test_get_registry_works_after_render(self):
-        """get_registry() should work correctly in rendered output."""
-        registry = {"0.7.0": {"data.zip": SAMPLE_HASH_A}}
-        mfm = {"data": ["data.zip"]}
-
-        content = render_registry(registry, mfm)
-        ns = _exec_rendered(content)
-
-        result = ns["get_registry"]("0.7.0")
-        assert result == {"data.zip": SAMPLE_HASH_A}
-
-        with pytest.raises(ValueError, match="not found"):
-            ns["get_registry"]("99.99.99")
-
-    def test_get_url_works_after_render(self):
-        """get_url() should produce correct URLs in rendered output."""
-        registry = {"0.7.0": {"data.zip": SAMPLE_HASH_A}}
-        mfm = {"data": ["data.zip"]}
-
-        content = render_registry(registry, mfm)
-        ns = _exec_rendered(content)
-
-        url = ns["get_url"]("data.zip", "0.7.0")
-        assert url == (
-            "https://pub-c1d6dba6c94843f88f0fd096d19c0831.r2.dev"
-            "/releases/v0.7.0/data.zip"
-        )
-
-
-# ---------------------------------------------------------------------------
-# Tests for build_method_files_map
-# ---------------------------------------------------------------------------
-
-
-class TestBuildMethodFilesMap:
-    """Tests for build_method_files_map()."""
-
-    def test_single_dataset(self):
-        """Single dataset across one version."""
-        registry = {"0.7.0": {"image_passiflora_leaves.zip": SAMPLE_HASH_A}}
-        result = build_method_files_map(registry)
-        assert result == {"image_passiflora_leaves": ["image_passiflora_leaves.zip"]}
-
-    def test_deduplication_across_versions(self):
-        """Same filename in multiple versions should not duplicate."""
-        registry = {
-            "0.7.0": {"data.zip": SAMPLE_HASH_A},
-            "0.8.0": {"data.zip": SAMPLE_HASH_B},
-        }
-        result = build_method_files_map(registry)
-        assert result == {"data": ["data.zip"]}
-
-    def test_multiple_datasets(self):
-        """Multiple different datasets should yield multiple entries."""
-        registry = {
-            "0.7.0": {
-                "image_passiflora_leaves.zip": SAMPLE_HASH_A,
-                "outline_passiflora_leaves.zip": SAMPLE_HASH_B,
-            },
-        }
-        result = build_method_files_map(registry)
-        assert result == {
-            "image_passiflora_leaves": ["image_passiflora_leaves.zip"],
-            "outline_passiflora_leaves": ["outline_passiflora_leaves.zip"],
-        }
-
-    def test_sorted_by_method_name(self):
-        """Output should be sorted by method name."""
-        registry = {
-            "0.7.0": {
-                "z_data.zip": SAMPLE_HASH_A,
-                "a_data.zip": SAMPLE_HASH_B,
-            },
-        }
-        result = build_method_files_map(registry)
-        assert list(result.keys()) == ["a_data", "z_data"]
-
-    def test_empty_registry(self):
-        """Empty registry should return empty map."""
-        assert build_method_files_map({}) == {}
-
-    def test_new_dataset_added_in_later_version(self):
-        """A dataset appearing only in a later version should be included."""
-        registry = {
-            "0.7.0": {"data_a.zip": SAMPLE_HASH_A},
-            "0.8.0": {
-                "data_a.zip": SAMPLE_HASH_B,
-                "data_b.zip": SAMPLE_HASH_C,
-            },
-        }
-        result = build_method_files_map(registry)
-        assert result == {
-            "data_a": ["data_a.zip"],
-            "data_b": ["data_b.zip"],
-        }
+    def test_auto_generated_comment(self):
+        """Rendered content should include auto-generation comment."""
+        content = render_registry({}, {})
+        assert "auto-generated" in content
+        assert "registry.toml" in content
 
 
 # ---------------------------------------------------------------------------
@@ -264,23 +206,155 @@ class TestValidateManifest:
         validate_manifest(manifest)
 
     def test_invalid_hash_too_short(self):
-        """Hash shorter than 64 chars should cause SystemExit."""
+        """Hash shorter than 64 chars should raise RegistryError."""
         manifest = {"data.zip": "abc123"}
-        with pytest.raises(SystemExit):
+        with pytest.raises(RegistryError):
             validate_manifest(manifest)
 
     def test_invalid_hash_uppercase(self):
         """Uppercase hex should be rejected (SHA256 hashes are lowercase)."""
         manifest = {"data.zip": "A" * 64}
-        with pytest.raises(SystemExit):
+        with pytest.raises(RegistryError):
             validate_manifest(manifest)
 
     def test_invalid_hash_non_hex(self):
         """Non-hex characters should be rejected."""
         manifest = {"data.zip": "g" * 64}
-        with pytest.raises(SystemExit):
+        with pytest.raises(RegistryError):
+            validate_manifest(manifest)
+
+    def test_non_string_hash_raises(self):
+        """Non-string hash value should raise RegistryError."""
+        manifest = {"data.zip": None}
+        with pytest.raises(RegistryError, match="expected string hash"):
+            validate_manifest(manifest)
+
+    def test_integer_hash_raises(self):
+        """Integer hash value should raise RegistryError."""
+        manifest = {"data.zip": 12345}
+        with pytest.raises(RegistryError, match="expected string hash"):
             validate_manifest(manifest)
 
     def test_empty_manifest(self):
         """Empty manifest should pass validation."""
         validate_manifest({})
+
+
+# ---------------------------------------------------------------------------
+# Tests for read_registry_toml
+# ---------------------------------------------------------------------------
+
+
+def _write_toml(tmp_path, content, monkeypatch):
+    """Write a TOML file and patch the module to read from it."""
+    toml_path = tmp_path / "registry.toml"
+    toml_path.write_text(content, encoding="utf-8")
+    monkeypatch.setattr(update_registry, "REGISTRY_TOML_PATH", toml_path)
+
+
+class TestReadRegistryToml:
+    """Tests for read_registry_toml() validation logic."""
+
+    def test_valid_config(self, tmp_path, monkeypatch):
+        """Valid TOML should parse without errors."""
+        _write_toml(
+            tmp_path,
+            '[my_dataset]\ndefault = "1"\nversions = ["1", "2"]\n',
+            monkeypatch,
+        )
+        datasets, defaults = read_registry_toml()
+        assert datasets == {"my_dataset": ["1", "2"]}
+        assert defaults == {"my_dataset": "1"}
+
+    def test_invalid_dataset_name_raises(self, tmp_path, monkeypatch):
+        """Dataset name with uppercase or special chars should raise."""
+        _write_toml(
+            tmp_path,
+            '[InvalidName]\nversions = ["1"]\n',
+            monkeypatch,
+        )
+        with pytest.raises(RegistryError, match="invalid dataset name"):
+            read_registry_toml()
+
+    def test_invalid_version_string_raises(self, tmp_path, monkeypatch):
+        """Non-integer version string should raise."""
+        _write_toml(
+            tmp_path,
+            '[my_dataset]\nversions = ["v1"]\n',
+            monkeypatch,
+        )
+        with pytest.raises(RegistryError, match="invalid version"):
+            read_registry_toml()
+
+    def test_default_not_in_versions_raises(self, tmp_path, monkeypatch):
+        """Default version not in versions list should raise."""
+        _write_toml(
+            tmp_path,
+            '[my_dataset]\ndefault = "3"\nversions = ["1", "2"]\n',
+            monkeypatch,
+        )
+        with pytest.raises(RegistryError, match="not in versions list"):
+            read_registry_toml()
+
+    def test_empty_versions_skipped(self, tmp_path, monkeypatch, capsys):
+        """Dataset with no versions should be skipped with a warning."""
+        _write_toml(
+            tmp_path,
+            '[my_dataset]\nversions = []\n',
+            monkeypatch,
+        )
+        datasets, defaults = read_registry_toml()
+        assert datasets == {}
+        assert defaults == {}
+        assert "no versions listed" in capsys.readouterr().err
+
+    def test_no_default_uses_none(self, tmp_path, monkeypatch):
+        """Dataset without default key should have no entry in defaults."""
+        _write_toml(
+            tmp_path,
+            '[my_dataset]\nversions = ["1"]\n',
+            monkeypatch,
+        )
+        datasets, defaults = read_registry_toml()
+        assert datasets == {"my_dataset": ["1"]}
+        assert defaults == {}
+
+
+# ---------------------------------------------------------------------------
+# Registry sync check (registry.toml vs _registry.py)
+# ---------------------------------------------------------------------------
+
+
+class TestRegistrySync:
+    """Verify that registry.toml and _registry.py are structurally in sync."""
+
+    def test_datasets_and_versions_match(self):
+        """Dataset names and version sets in TOML must match _registry.py."""
+        from ktch.datasets._registry import (
+            dataset_registry,
+            default_versions,
+        )
+
+        toml_datasets, toml_defaults = read_registry_toml()
+
+        # Dataset names must match
+        assert set(toml_datasets.keys()) == set(dataset_registry.keys()), (
+            "Dataset names in registry.toml and _registry.py differ. "
+            "Run: uv run python scripts/update_registry.py"
+        )
+
+        # Versions per dataset must match
+        for ds_name, toml_versions in toml_datasets.items():
+            registry_versions = set(dataset_registry[ds_name].keys())
+            assert set(toml_versions) == registry_versions, (
+                f"Versions for '{ds_name}' differ between registry.toml "
+                f"{sorted(toml_versions)} and _registry.py "
+                f"{sorted(registry_versions)}. "
+                "Run: uv run python scripts/update_registry.py"
+            )
+
+        # Default versions must match
+        assert toml_defaults == default_versions, (
+            "Default versions differ between registry.toml and _registry.py. "
+            "Run: uv run python scripts/update_registry.py"
+        )

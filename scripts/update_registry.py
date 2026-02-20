@@ -1,31 +1,97 @@
 #!/usr/bin/env python
-"""Update ktch dataset registry from R2 manifest.json.
+"""Update ktch dataset registry from R2 manifest.json files.
 
-Fetches the manifest.json for a given version from R2 and updates
+Reads registry.toml for the list of datasets and versions, fetches the
+manifest.json for each version from R2, and regenerates
 ktch/datasets/_registry.py accordingly.
 
 Usage:
-    uv run python scripts/update_registry.py <version>
-    uv run python scripts/update_registry.py --dry-run <version>
+    uv run python scripts/update_registry.py
+    uv run python scripts/update_registry.py --dry-run
 
 Examples:
-    uv run python scripts/update_registry.py 0.8.0
-    uv run python scripts/update_registry.py --dry-run 0.8.0
+    uv run python scripts/update_registry.py
+    uv run python scripts/update_registry.py --dry-run
 """
 
 import argparse
-import ast
+import difflib
 import json
+import os
 import re
 import sys
+import tomllib
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 R2_BASE_URL = "https://pub-c1d6dba6c94843f88f0fd096d19c0831.r2.dev"
-REGISTRY_PATH = (
-    Path(__file__).resolve().parent.parent / "ktch" / "datasets" / "_registry.py"
-)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+REGISTRY_TOML_PATH = PROJECT_ROOT / "ktch" / "datasets" / "registry.toml"
+REGISTRY_PY_PATH = PROJECT_ROOT / "ktch" / "datasets" / "_registry.py"
+
+_DATASET_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+_VERSION_RE = re.compile(r"^(0|[1-9]\d*)$")
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+class RegistryError(Exception):
+    """Raised when registry operations fail (invalid data, network errors, etc.)."""
+###########################################################
+# TOML reading
+###########################################################
+
+
+def read_registry_toml():
+    """Read registry.toml and return (datasets, default_versions).
+
+    Returns
+    -------
+    tuple of (dict, dict)
+        datasets: {dataset_name: [version, ...]}
+        default_versions: {dataset_name: version}
+    """
+    with open(REGISTRY_TOML_PATH, "rb") as f:
+        config = tomllib.load(f)
+
+    datasets = {}
+    default_versions = {}
+
+    for ds_name, ds_config in config.items():
+        if not _DATASET_NAME_RE.match(ds_name):
+            raise RegistryError(
+                f"invalid dataset name {ds_name!r}: "
+                "must match [a-z][a-z0-9_]*"
+            )
+
+        versions = ds_config.get("versions", [])
+        default = ds_config.get("default")
+
+        for v in versions:
+            if not _VERSION_RE.match(v):
+                raise RegistryError(
+                    f"invalid version {v!r} for {ds_name}: "
+                    "must be a non-negative integer string"
+                )
+
+        if not versions:
+            print(
+                f"Warning: {ds_name} has no versions listed, skipping.",
+                file=sys.stderr,
+            )
+            continue
+
+        datasets[ds_name] = versions
+
+        if default is not None:
+            if default not in versions:
+                raise RegistryError(
+                    f"default version '{default}' for {ds_name} "
+                    f"is not in versions list {versions}"
+                )
+            default_versions[ds_name] = default
+
+    return datasets, default_versions
 
 
 ###########################################################
@@ -33,33 +99,39 @@ REGISTRY_PATH = (
 ###########################################################
 
 
-def fetch_manifest(version):
-    """Fetch manifest.json from R2 for the given version.
+def fetch_manifest(dataset_name, version):
+    """Fetch manifest.json from R2 for the given dataset and version.
 
     Parameters
     ----------
+    dataset_name : str
+        Dataset name (e.g., "image_passiflora_leaves").
     version : str
-        Version string (e.g., "0.8.0").
+        Version string (e.g., "2").
 
     Returns
     -------
     dict
         Mapping of filename to SHA256 hash.
     """
-    url = f"{R2_BASE_URL}/releases/v{version}/manifest.json"
+    url = f"{R2_BASE_URL}/datasets/{dataset_name}/v{version}/manifest.json"
     req = Request(url, headers={"User-Agent": "ktch-registry-updater/1.0"})
     try:
-        with urlopen(req) as resp:
+        with urlopen(req, timeout=30) as resp:
             return json.loads(resp.read())
     except HTTPError as exc:
         if exc.code == 404:
-            print(f"Error: manifest.json not found at {url}", file=sys.stderr)
+            raise RegistryError(
+                f"manifest.json not found at {url}"
+            ) from exc
         else:
-            print(f"Error: HTTP {exc.code} fetching {url}", file=sys.stderr)
-        sys.exit(1)
+            raise RegistryError(
+                f"HTTP {exc.code} fetching {url}"
+            ) from exc
     except URLError as exc:
-        print(f"Error: network error fetching {url}: {exc.reason}", file=sys.stderr)
-        sys.exit(1)
+        raise RegistryError(
+            f"network error fetching {url}: {exc.reason}"
+        ) from exc
 
 
 def validate_manifest(manifest):
@@ -72,67 +144,19 @@ def validate_manifest(manifest):
 
     Raises
     ------
-    SystemExit
+    RegistryError
         If any entry is invalid.
     """
-    hex_pattern = re.compile(r"^[0-9a-f]{64}$")
     for filename, hash_value in manifest.items():
-        if not hex_pattern.match(hash_value):
-            print(
-                f"Error: invalid SHA256 hash for '{filename}': '{hash_value}'",
-                file=sys.stderr,
+        if not isinstance(hash_value, str):
+            raise RegistryError(
+                f"invalid manifest entry for '{filename}': "
+                f"expected string hash, got {type(hash_value).__name__}"
             )
-            sys.exit(1)
-
-
-###########################################################
-# Registry reading & updating
-###########################################################
-
-
-def read_current_registry():
-    """Read the current _registry.py and extract versioned_registry.
-
-    Returns
-    -------
-    dict
-        The current versioned_registry dict.
-    """
-    source = REGISTRY_PATH.read_text()
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == "versioned_registry":
-                    return dict(ast.literal_eval(node.value))
-    raise ValueError("versioned_registry not found in _registry.py")
-
-
-def build_method_files_map(versioned_registry):
-    """Build method_files_map from all filenames across all versions.
-
-    Derives method names by stripping the file extension from each filename.
-    For example, ``"image_passiflora_leaves.zip"`` yields method name
-    ``"image_passiflora_leaves"`` with file list ``["image_passiflora_leaves.zip"]``.
-
-    Parameters
-    ----------
-    versioned_registry : dict
-        ``{version: {filename: hash, ...}, ...}``
-
-    Returns
-    -------
-    dict
-        ``{method_name: [filename, ...], ...}`` sorted by method name.
-    """
-    method_files = {}
-    for version_entries in versioned_registry.values():
-        for filename in version_entries:
-            method_name = Path(filename).stem
-            if method_name not in method_files:
-                method_files[method_name] = set()
-            method_files[method_name].add(filename)
-    return {k: sorted(v) for k, v in sorted(method_files.items())}
+        if not _SHA256_RE.match(hash_value):
+            raise RegistryError(
+                f"invalid SHA256 hash for '{filename}': '{hash_value}'"
+            )
 
 
 ###########################################################
@@ -140,15 +164,15 @@ def build_method_files_map(versioned_registry):
 ###########################################################
 
 
-def render_registry(versioned_registry, method_files_map):
-    """Render the full content of _registry.py.
+def render_registry(dataset_registry, default_versions):
+    """Render the full content of _registry.py (pure data, no functions).
 
     Parameters
     ----------
-    versioned_registry : dict
-        ``{version: {filename: hash, ...}, ...}``
-    method_files_map : dict
-        ``{method_name: [filename, ...], ...}``
+    dataset_registry : dict
+        ``{dataset_name: {version: {filename: hash, ...}, ...}, ...}``
+    default_versions : dict
+        ``{dataset_name: version, ...}``
 
     Returns
     -------
@@ -158,82 +182,62 @@ def render_registry(versioned_registry, method_files_map):
     lines = []
     lines.append('"""Dataset registry for ktch.datasets module."""')
     lines.append("")
-    lines.append("# Registry is auto-updated via:")
-    lines.append("#   uv run python scripts/update_registry.py <version>")
-    lines.append("# See ref/ktch-registry-update-via-manifest.md for details.")
+    lines.append("# This file is auto-generated by:")
+    lines.append("#   uv run python scripts/update_registry.py")
+    lines.append("# Do not edit manually. Edit registry.toml instead.")
     lines.append("")
     lines.append("# Base URL for remote datasets")
-    lines.append('BASE_URL = "https://pub-c1d6dba6c94843f88f0fd096d19c0831.r2.dev"')
+    lines.append(f"BASE_URL = {json.dumps(R2_BASE_URL)}")
     lines.append("")
-    lines.append("# Version-specific registry: {version: {filename: sha256_hash}}")
-    lines.append("versioned_registry = {")
-    for version in sorted(versioned_registry.keys()):
-        entries = versioned_registry[version]
-        lines.append(f'    "{version}": {{')
-        for filename in sorted(entries.keys()):
-            hash_value = entries[filename]
-            lines.append(f'        "{filename}": "{hash_value}",')
+    lines.append(
+        "# Per-dataset registry: {dataset_name: {version: {filename: sha256_hash}}}"
+    )
+    lines.append("dataset_registry = {")
+    for ds_name in sorted(dataset_registry.keys()):
+        versions = dataset_registry[ds_name]
+        lines.append(f"    {json.dumps(ds_name)}: {{")
+        for version in sorted(versions.keys(), key=int):
+            entries = versions[version]
+            lines.append(f"        {json.dumps(version)}: {{")
+            for filename in sorted(entries.keys()):
+                hash_value = entries[filename]
+                lines.append(
+                    f"            {json.dumps(filename)}: {json.dumps(hash_value)},"
+                )
+            lines.append("        },")
         lines.append("    },")
     lines.append("}")
     lines.append("")
-    lines.append("# dataset method mapping with their associated filenames")
-    lines.append('# <method_name> : ["filename1", "filename2", ...]')
-    lines.append("method_files_map = {")
-    for method_name, filenames in sorted(method_files_map.items()):
-        files_str = ", ".join(f'"{f}"' for f in filenames)
-        lines.append(f'    "{method_name}": [{files_str}],')
+    lines.append("# Default dataset versions for the current ktch release.")
+    lines.append(
+        "# Updated at ktch release time to pin the recommended dataset version."
+    )
+    lines.append("default_versions = {")
+    for ds_name in sorted(default_versions.keys()):
+        version = default_versions[ds_name]
+        lines.append(f"    {json.dumps(ds_name)}: {json.dumps(version)},")
     lines.append("}")
     lines.append("")
-    lines.append("")
-    lines.append(_FUNCTIONS_SOURCE)
 
     return "\n".join(lines)
 
 
-_FUNCTIONS_SOURCE = '''\
-def get_registry(version):
-    """Get the registry for a specific version.
-
-    Parameters
-    ----------
-    version : str
-        The version string (e.g., "0.7.0").
-
-    Returns
-    -------
-    dict
-        Registry mapping filename to SHA256 hash.
-
-    Raises
-    ------
-    ValueError
-        If the version is not found in the registry.
-    """
-    if version not in versioned_registry:
-        available = ", ".join(sorted(versioned_registry.keys()))
-        raise ValueError(
-            f"Dataset version \'{version}\' not found. Available versions: {available}"
-        )
-    return versioned_registry[version]
+###########################################################
+# Diff display
+###########################################################
 
 
-def get_url(filename, version):
-    """Get the download URL for a specific file and version.
-
-    Parameters
-    ----------
-    filename : str
-        The filename to download.
-    version : str
-        The version string (e.g., "0.7.0").
-
-    Returns
-    -------
-    str
-        The full download URL.
-    """
-    return f"{BASE_URL}/releases/v{version}/{filename}"
-'''
+def _show_diff(old_content, new_content):
+    """Show a unified diff between old and new content."""
+    old_lines = old_content.splitlines(keepends=True)
+    new_lines = new_content.splitlines(keepends=True)
+    diff = difflib.unified_diff(
+        old_lines, new_lines, fromfile="_registry.py (old)", tofile="_registry.py (new)"
+    )
+    diff_str = "".join(diff)
+    if diff_str:
+        print("\nDiff:")
+        print(diff_str)
 
 
 ###########################################################
@@ -243,9 +247,8 @@ def get_url(filename, version):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Update ktch dataset registry from R2 manifest.json."
+        description="Update ktch dataset registry from R2 manifest.json files."
     )
-    parser.add_argument("version", help="Version to update (e.g., 0.8.0)")
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -253,30 +256,39 @@ def main():
     )
     args = parser.parse_args()
 
-    version = args.version
+    try:
+        # Read TOML config
+        print(f"Reading {REGISTRY_TOML_PATH}...")
+        datasets, default_versions = read_registry_toml()
+        print(f"  Found {len(datasets)} dataset(s)")
 
-    # Fetch and validate manifest
-    print(f"Fetching manifest.json for v{version}...")
-    manifest = fetch_manifest(version)
-    validate_manifest(manifest)
-    print(f"  Found {len(manifest)} dataset(s): {', '.join(sorted(manifest.keys()))}")
+        # Fetch and validate manifests for all datasets/versions
+        dataset_registry = {}
+        for ds_name in sorted(datasets.keys()):
+            versions = datasets[ds_name]
+            dataset_registry[ds_name] = {}
+            for version in versions:
+                print(f"Fetching manifest for {ds_name} v{version}...")
+                manifest = fetch_manifest(ds_name, version)
+                validate_manifest(manifest)
+                dataset_registry[ds_name][version] = manifest
+                print(
+                    f"  Found {len(manifest)} file(s): "
+                    f"{', '.join(sorted(manifest.keys()))}"
+                )
 
-    # Read current registry and update
-    current_registry = read_current_registry()
-
-    if version in current_registry:
-        print(f"  Warning: version '{version}' already exists, will be overwritten.")
-
-    current_registry[version] = manifest
-
-    # Build method_files_map from all versions
-    method_files_map = build_method_files_map(current_registry)
-
-    # Render new content
-    new_content = render_registry(current_registry, method_files_map)
+        # Render new content
+        new_content = render_registry(dataset_registry, default_versions)
+    except RegistryError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     # Show diff
-    old_content = REGISTRY_PATH.read_text()
+    if REGISTRY_PY_PATH.exists():
+        old_content = REGISTRY_PY_PATH.read_text(encoding="utf-8")
+    else:
+        old_content = ""
+
     if old_content == new_content:
         print("No changes needed.")
         return
@@ -287,24 +299,15 @@ def main():
         print("\n--dry-run: no files modified.")
         return
 
-    # Write
-    REGISTRY_PATH.write_text(new_content)
-    print(f"\nUpdated {REGISTRY_PATH}")
-
-
-def _show_diff(old_content, new_content):
-    """Show a unified diff between old and new content."""
-    import difflib
-
-    old_lines = old_content.splitlines(keepends=True)
-    new_lines = new_content.splitlines(keepends=True)
-    diff = difflib.unified_diff(
-        old_lines, new_lines, fromfile="_registry.py (old)", tofile="_registry.py (new)"
-    )
-    diff_str = "".join(diff)
-    if diff_str:
-        print("\nDiff:")
-        print(diff_str)
+    # Write atomically: write to temp file, then rename
+    tmp_path = REGISTRY_PY_PATH.with_suffix(".py.tmp")
+    try:
+        tmp_path.write_text(new_content, encoding="utf-8")
+        os.replace(tmp_path, REGISTRY_PY_PATH)
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
+    print(f"\nUpdated {REGISTRY_PY_PATH}")
 
 
 if __name__ == "__main__":

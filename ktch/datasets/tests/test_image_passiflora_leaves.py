@@ -1,8 +1,14 @@
 """Tests for the Passiflora leaf image dataset."""
 
+import os
 from unittest.mock import patch
 
 import pytest
+
+_skip_network = pytest.mark.skipif(
+    os.environ.get("KTCH_NETWORK_TESTS") != "1",
+    reason="Set KTCH_NETWORK_TESTS=1 to run network tests",
+)
 
 
 class TestLoadImagePassifloraLeaves:
@@ -11,12 +17,14 @@ class TestLoadImagePassifloraLeaves:
     def test_import_error_without_pooch(self):
         """Test that ImportError is raised when pooch is not installed."""
         with patch("ktch.datasets._base.pooch", None):
-            from ktch.datasets._base import _fetch_remote_data
+            from ktch.datasets._base import _fetch_remote_dataset
 
             with pytest.raises(
                 ImportError, match="Missing optional dependency 'pooch'"
             ):
-                _fetch_remote_data("test.zip", "0.7.0")
+                _fetch_remote_dataset(
+                    "image_passiflora_leaves", "1", "image_passiflora_leaves.zip"
+                )
 
     def test_function_signature(self):
         """Test that the function exists and has the expected parameters."""
@@ -33,7 +41,7 @@ class TestLoadImagePassifloraLeaves:
         assert "as_frame" in params
         assert "version" in params
 
-    @pytest.mark.skip(reason="Requires actual data on remote server")
+    @_skip_network
     def test_load_with_return_paths(self):
         """Test loading with return_paths=True."""
         from ktch.datasets import load_image_passiflora_leaves
@@ -47,7 +55,7 @@ class TestLoadImagePassifloraLeaves:
         assert hasattr(data, "version")
         assert all(isinstance(p, str) for p in data.images)
 
-    @pytest.mark.skip(reason="Requires actual data on remote server")
+    @_skip_network
     def test_load_as_numpy(self):
         """Test loading images as numpy arrays."""
         import numpy as np
@@ -59,7 +67,7 @@ class TestLoadImagePassifloraLeaves:
         assert hasattr(data, "images")
         assert all(isinstance(img, np.ndarray) for img in data.images)
 
-    @pytest.mark.skip(reason="Requires actual data on remote server")
+    @_skip_network
     def test_metadata_formats(self):
         """Test metadata is returned in correct format based on as_frame."""
         import pandas as pd
@@ -80,126 +88,123 @@ class TestRegistry:
 
     def test_default_version_in_registry(self):
         """Test that the default version resolves to a valid registry entry."""
-        from ktch.datasets._base import _get_default_version, _resolve_data_version
-        from ktch.datasets._registry import get_registry, get_url, method_files_map
+        from ktch.datasets._base import (
+            get_dataset_hash,
+            get_dataset_url,
+            get_default_version,
+        )
+        from ktch.datasets._registry import (
+            dataset_registry,
+            default_versions,
+        )
 
-        version = _get_default_version()
-        data_version = _resolve_data_version(version)
+        ds_name = "image_passiflora_leaves"
+        version = get_default_version(ds_name)
 
-        # Resolved version exists in registry
-        registry = get_registry(data_version)
-        assert "image_passiflora_leaves.zip" in registry
+        # Default version exists in dataset_registry
+        assert ds_name in dataset_registry
+        assert version in dataset_registry[ds_name]
 
-        # URL is correctly formed with data version
-        url = get_url("image_passiflora_leaves.zip", data_version)
-        assert f"releases/v{data_version}/image_passiflora_leaves.zip" in url
+        # Hash is retrievable
+        hash_value = get_dataset_hash(
+            ds_name, version, "image_passiflora_leaves.zip"
+        )
+        assert len(hash_value) == 64
 
-        # Method mapping exists
-        assert "image_passiflora_leaves" in method_files_map
+        # URL is correctly formed
+        url = get_dataset_url(ds_name, version, "image_passiflora_leaves.zip")
+        assert f"datasets/{ds_name}/v{version}/" in url
 
-    def test_get_registry_invalid_version(self):
-        """Test that get_registry raises ValueError for invalid version."""
-        from ktch.datasets._registry import get_registry
+        # All datasets in default_versions exist in dataset_registry
+        for name, ver in default_versions.items():
+            assert name in dataset_registry
+            assert ver in dataset_registry[name]
+
+    def test_get_dataset_hash_invalid_dataset(self):
+        """Test that get_dataset_hash raises ValueError for unknown dataset."""
+        from ktch.datasets._base import get_dataset_hash
+
+        with pytest.raises(ValueError, match="Unknown dataset"):
+            get_dataset_hash("nonexistent", "1", "file.zip")
+
+    def test_get_dataset_hash_invalid_version(self):
+        """Test that get_dataset_hash raises ValueError for invalid version."""
+        from ktch.datasets._base import get_dataset_hash
 
         with pytest.raises(ValueError, match="not found"):
-            get_registry("99.99.99")
+            get_dataset_hash("image_passiflora_leaves", "999", "file.zip")
 
     def test_all_registered_versions_valid(self):
         """Test that all registered versions have valid entries."""
-        from ktch.datasets._registry import get_registry, get_url, versioned_registry
+        from ktch.datasets._base import get_dataset_url
+        from ktch.datasets._registry import dataset_registry
 
-        for version in versioned_registry:
-            registry = get_registry(version)
-            assert isinstance(registry, dict)
-            assert len(registry) > 0
+        for ds_name, versions in dataset_registry.items():
+            for version, files in versions.items():
+                assert isinstance(files, dict)
+                assert len(files) > 0
 
-            for filename, hash_value in registry.items():
-                assert len(hash_value) == 64, f"Invalid SHA256 hash for {filename}"
-                url = get_url(filename, version)
-                assert url.startswith("https://")
+                for filename, hash_value in files.items():
+                    assert len(hash_value) == 64, (
+                        f"Invalid SHA256 hash for {ds_name}/v{version}/{filename}"
+                    )
+                    url = get_dataset_url(ds_name, version, filename)
+                    assert url.startswith("https://")
+
+    def test_get_available_versions(self):
+        """Test that get_available_versions returns sorted versions."""
+        from ktch.datasets._base import get_available_versions
+
+        versions = get_available_versions("image_passiflora_leaves")
+        assert isinstance(versions, list)
+        assert len(versions) > 0
+        # Should be sorted numerically
+        assert versions == sorted(versions, key=int)
 
 
-class TestVersionDetection:
-    """Tests for version detection logic."""
+class TestResolveDatasetVersion:
+    """Tests for _resolve_dataset_version."""
 
-    def test_get_default_version_format(self):
-        """Test that _get_default_version returns a valid X.Y.Z format."""
-        from ktch.datasets._base import _get_default_version
+    def test_default_version(self):
+        """Test that None resolves to the default version."""
+        from ktch.datasets._base import _resolve_dataset_version
+        from ktch.datasets._registry import default_versions
 
-        version = _get_default_version()
-        parts = version.split(".")
+        ds_name = "image_passiflora_leaves"
+        result = _resolve_dataset_version(ds_name)
+        assert result == default_versions[ds_name]
 
-        assert len(parts) == 3, f"Expected 'X.Y.Z' format, got '{version}'"
-        assert all(part.isdigit() for part in parts), (
-            f"Expected numeric version parts, got '{version}'"
+    def test_explicit_version(self):
+        """Test that an explicit valid version is returned as-is."""
+        from ktch.datasets._base import _resolve_dataset_version
+        from ktch.datasets._registry import dataset_registry
+
+        ds_name = "image_passiflora_leaves"
+        for version in dataset_registry[ds_name]:
+            assert _resolve_dataset_version(ds_name, version) == version
+
+    def test_unknown_dataset(self):
+        """Test that ValueError is raised for unknown dataset."""
+        from ktch.datasets._base import _resolve_dataset_version
+
+        with pytest.raises(ValueError, match="Unknown dataset"):
+            _resolve_dataset_version("nonexistent", "1")
+
+    def test_invalid_version(self):
+        """Test that ValueError is raised for non-existent version."""
+        from ktch.datasets._base import _resolve_dataset_version
+
+        with pytest.raises(ValueError, match="not found"):
+            _resolve_dataset_version("image_passiflora_leaves", "999")
+
+    def test_url_uses_dataset_version(self):
+        """Test that the URL uses the dataset-specific version path."""
+        from ktch.datasets._base import (
+            _resolve_dataset_version,
+            get_dataset_url,
         )
 
-    def test_get_default_version_matches_package(self):
-        """Test that _get_default_version derives from package version."""
-        from importlib.metadata import version as get_package_version
-
-        from ktch.datasets._base import _get_default_version
-
-        pkg_version = get_package_version("ktch")
-        default_version = _get_default_version()
-
-        assert pkg_version.startswith(default_version) or default_version in pkg_version
-
-
-class TestResolveDataVersion:
-    """Tests for _resolve_data_version fallback logic."""
-
-    def test_exact_match(self):
-        """Test that an exact registry version is returned as-is."""
-        from ktch.datasets._base import _resolve_data_version
-        from ktch.datasets._registry import versioned_registry
-
-        for version in versioned_registry:
-            assert _resolve_data_version(version) == version
-
-    def test_fallback_to_older(self):
-        """Test fallback to the latest compatible version."""
-        from unittest.mock import patch
-
-        from ktch.datasets._base import _resolve_data_version
-
-        mock_registry = {"0.7.0": {"file.zip": "abc123"}}
-        with patch("ktch.datasets._base.versioned_registry", mock_registry):
-            assert _resolve_data_version("0.7.1") == "0.7.0"
-
-    def test_fallback_picks_latest(self):
-        """Test that the latest compatible version is selected."""
-        from unittest.mock import patch
-
-        from ktch.datasets._base import _resolve_data_version
-
-        mock_registry = {
-            "0.7.0": {"file.zip": "abc123"},
-            "0.8.0": {"file.zip": "def456"},
-        }
-        with patch("ktch.datasets._base.versioned_registry", mock_registry):
-            assert _resolve_data_version("0.9.0") == "0.8.0"
-
-    def test_no_compatible_version(self):
-        """Test that ValueError is raised when no compatible version exists."""
-        from unittest.mock import patch
-
-        from ktch.datasets._base import _resolve_data_version
-
-        mock_registry = {"0.7.0": {"file.zip": "abc123"}}
-        with patch("ktch.datasets._base.versioned_registry", mock_registry):
-            with pytest.raises(ValueError, match="No compatible dataset version"):
-                _resolve_data_version("0.6.0")
-
-    def test_data_version_used_in_url(self):
-        """Test that the resolved version is used for URL construction."""
-        from unittest.mock import patch
-
-        from ktch.datasets._base import _resolve_data_version
-        from ktch.datasets._registry import get_url
-
-        mock_registry = {"0.7.0": {"file.zip": "abc123"}}
-        with patch("ktch.datasets._base.versioned_registry", mock_registry):
-            data_version = _resolve_data_version("0.7.1")
-            url = get_url("image_passiflora_leaves.zip", data_version)
-            assert f"releases/v{data_version}/" in url
+        ds_name = "image_passiflora_leaves"
+        version = _resolve_dataset_version(ds_name)
+        url = get_dataset_url(ds_name, version, "image_passiflora_leaves.zip")
+        assert f"datasets/{ds_name}/v{version}/" in url

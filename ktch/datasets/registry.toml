@@ -1,0 +1,7 @@
+# Dataset registry configuration for ktch.
+# Source of truth for which datasets and versions are registered.
+# Run `uv run python scripts/update_registry.py` to regenerate _registry.py.
+
+[image_passiflora_leaves]
+default = "2"
+versions = ["1", "2"]

@@ -86,9 +86,9 @@ def make_landmarks_from_reference(
 
 
 def _remove_duplicated_configurations(X):
-    """Remove duplicated configurations in a dataset."""
+    """Remove duplicated configurations in a dataset.
 
-    X_flatten = np.unique(X.reshape(X.shape[0], -1), axis=0)
-    X_new = X_flatten.reshape(-1, *X.shape[1:])
-
-    return X_new
+    The original row order is preserved (first occurrence kept).
+    """
+    _, idx = np.unique(X.reshape(X.shape[0], -1), axis=0, return_index=True)
+    return X[np.sort(idx)]
