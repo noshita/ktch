@@ -18,9 +18,9 @@
    datasets.load_landmark_mosquito_wings
    datasets.load_landmark_trilobite_cephala
    datasets.load_outline_mosquito_wings
+   datasets.load_outline_leaf_bending
    datasets.load_image_passiflora_leaves
    datasets.convert_coords_df_to_list
    datasets.convert_coords_df_to_df_sklearn_transform
-   .. datasets.load_outline_bottles
-   .. datasets.load_coefficient_bottles
+   datasets.make_landmarks_from_reference
 ```

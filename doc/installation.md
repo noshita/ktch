@@ -60,6 +60,7 @@ ktch requires:
 #### Remote Datasets (`pip install ktch[data]`)
 
 - [pooch](https://www.fatiando.org/pooch/) — on-demand downloading and local caching of remote datasets
+- [Pillow](https://python-pillow.org/) — image loading for image-type datasets
 
 You can install multiple extras at once:
 
