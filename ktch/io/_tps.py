@@ -224,7 +224,7 @@ PTN_LM = re.compile(
     flags=re.MULTILINE,
 )
 PTN_CURVES = re.compile(
-    r"^(?P<CURVES>CURVES\s*=\s*[0-9]+\s+(?:POINTS\s*=\s*[0-9]+\s+(?:[-0-9\.\s]+?))+)(?=^[A-Z]|\Z)",
+    r"^(?P<CURVES>CURVES\s*=\s*[0-9]+\s+(?:POINTS\s*=\s*[0-9]+(?:\s+[-0-9\.]+)+\s*)+)(?=^[A-Z]|\Z)",
     flags=re.MULTILINE,
 )
 PTN_POINTS = re.compile(

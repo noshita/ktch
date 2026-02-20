@@ -361,6 +361,7 @@ doc/api/generated/
 doc/datasets/generated/
 
 # ktch specific
+_build/
 playground/*
 
 ## Autodoc
