@@ -26,7 +26,10 @@ This tutorial shows how to extract outlines from images based on conventional im
 We use the Passiflora leaf scan dataset bundled with ktch: 25 flatbed scan images
 of 10 *Passiflora* species spanning simple elliptical to deeply lobed leaf forms.
 Each image contains multiple leaves from one plant individual, arranged from tip
-(youngest) to base (oldest). See `data.DESCR` for full details.
+(youngest) to base (oldest). This dataset is a subset of the *Passiflora* leaf scan data from
+[Chitwood & Otoni (2017)](https://doi.org/10.1093/gigascience/giw008)
+(data: [Chitwood & Otoni, 2016](https://doi.org/10.5524/100251)).
+See `data.DESCR` for full details.
 
 ```{code-cell} ipython3
 import numpy as np
