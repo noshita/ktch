@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.7.2](https://github.com/noshita/ktch/compare/v0.7.1...v0.7.2) (2026-02-20)
+
+
+### Features
+
+* ✨ update image_passiflora_leaves dataset ([9aae743](https://github.com/noshita/ktch/commit/9aae74366066b24b234202297376cad43d35a342))
+
+
+### Bug Fixes
+
+* 🐛 fix ReDoS vulnerability in TPS CURVES regex (code-scanning[#14](https://github.com/noshita/ktch/issues/14)) ([a913d89](https://github.com/noshita/ktch/commit/a913d89ff026a9cca5e8d4125dd6d88c4d14d654))
+
+
+### Documentation
+
+* 📚 dump version ([0aea7ec](https://github.com/noshita/ktch/commit/0aea7ec9b9f4fe0a7a56c42d68e982c3ee852184))
+* 📚 update image_passiflora_leaves dataset ([71ce0d3](https://github.com/noshita/ktch/commit/71ce0d3de296d9baa7321131f249ae5a2af1caee))
+
+
+### Miscellaneous Chores
+
+* 🔧 remove obsolete Poetry-era and conda-related config ([8e72be4](https://github.com/noshita/ktch/commit/8e72be47ea7237819f49d2b0bfe523c939644c52))
+
 ## [0.7.1](https://github.com/noshita/ktch/compare/v0.7.0...v0.7.1) (2026-02-19)
 
 
