@@ -34,9 +34,19 @@ conda install -c conda-forge ktch
 
 ### Optional Dependencies
 
+Via PyPI:
+
 ```sh
 pip install ktch[plot]  # matplotlib, plotly, seaborn for visualization
 pip install ktch[data]  # pooch for remote dataset downloads
+```
+
+Via conda-forge:
+
+```sh
+conda install -c conda-forge ktch-plot  # matplotlib, plotly, seaborn for visualization
+conda install -c conda-forge ktch-data  # pooch for remote dataset downloads
+conda install -c conda-forge ktch-all   # all optional dependencies
 ```
 
 ### Development Installation

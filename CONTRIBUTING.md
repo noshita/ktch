@@ -246,25 +246,32 @@ Do not manually edit `pyproject.toml` version — let Release Please manage it.
 ### Pre-release Checklist
 
 1. Verify CI is green on `main`
-2. Update `doc/_static/versions.json` for the new stable version:
+2. Update `doc/_static/versions.json` for the new stable version.
+   Edit the `"name"` and `"version"` fields in the stable entry:
 
-   ```bash
-   uv run python scripts/update_versions_json.py <version>
+   ```json
+   [
+     {
+       "name": "0.8.0 (stable)",
+       "version": "0.8.0",
+       "url": "https://doc.ktch.dev/stable/",
+       "preferred": true
+     },
+     {
+       "name": "dev",
+       "version": "dev",
+       "url": "https://doc.ktch.dev/dev/"
+     }
+   ]
    ```
 
-   For example:
-
-   ```bash
-   uv run python scripts/update_versions_json.py 0.8.0
-   ```
-
-   Use `--dry-run` to preview changes without modifying the file.
    Commit this change to `main` before merging the release PR,
    so that the tagged commit includes the correct version switcher
    configuration.
 
-3. If remote datasets were added or changed, update the
-   [dataset registry](#updating-the-dataset-registry).
+3. If remote datasets were added or changed, update
+   [`registry.toml`](#registrytoml) and run the
+   [registry update script](#updating-the-dataset-registry).
    When data is unchanged, no registry update is needed — the loader
    falls back to the latest compatible version automatically.
 
@@ -324,12 +331,17 @@ After the PyPI package is published:
    fix any mismatches. To apply fixes, close the bot PR and create
    a new one from a personal fork:
 
+   The local clone used here is `noshita/ktch-feedstock` (personal fork),
+   with `origin` pointing to the personal fork. The `--repo` flag tells
+   `gh` to fetch the PR from the upstream `conda-forge/ktch-feedstock`
+   even though `origin` is the personal fork.
+
    ```bash
-   cd ktch-feedstock   # conda-forge/ktch-feedstock clone
-   gh pr checkout <PR_NUMBER>
-   # Edit and commit
+   cd ktch-feedstock   # local clone of noshita/ktch-feedstock (personal fork)
+   gh pr checkout <PR_NUMBER> --repo conda-forge/ktch-feedstock
+   # Edit meta.yaml and commit
    git checkout -b <new-branch-name>
-   git push fork <new-branch-name>
+   git push origin <new-branch-name>
    gh pr create --repo conda-forge/ktch-feedstock \
      --head noshita:<new-branch-name>
    gh pr close <PR_NUMBER> --repo conda-forge/ktch-feedstock
@@ -349,12 +361,47 @@ and may cause unintended package publishing.
 
 When a new optional dependency group is added to `pyproject.toml`
 (e.g., `[data]`), a new output must be registered before the feedstock
-can publish it.
+can publish it. The process requires two separate PRs: one to
+`conda-forge/admin-requests` to register the output name, and one to
+the feedstock to add the output definition.
 
-1. Add the new output to the version update PR. Push the following
-   changes to the bot's branch (or create a new feedstock PR if the
-   version update is already merged — in that case, bump the build
-   number):
+Note: you cannot push directly to the bot's branch. Instead, check out
+the bot PR locally, add your changes on a new branch, and open a new PR
+from your personal fork. The bot PR is then closed.
+
+1. Register the new output name via
+   [conda-forge/admin-requests](https://github.com/conda-forge/admin-requests).
+   Fork the repository and add a YAML file in the `requests/` directory
+   following the
+   [example template](https://github.com/conda-forge/admin-requests/blob/main/examples/example-add-feedstock-output.yml):
+
+   ```yaml
+   action: add_feedstock_output
+   feedstock_to_output_mapping:
+     ktch:
+       - ktch-data
+   ```
+
+   Link the feedstock PR (step 2) in the description. The feedstock PR's
+   CI will not pass until this admin-requests PR is merged.
+
+2. Add the new output to the feedstock. If a bot version-update PR
+   exists, base your work on it (so the version bump is included).
+   If the bot PR is already merged, create a standalone PR and bump
+   the build number instead.
+
+   ```bash
+   cd ktch-feedstock   # local clone of noshita/ktch-feedstock (personal fork)
+
+   # Check out the bot PR from the upstream conda-forge repo.
+   # --repo is required because origin points to the personal fork.
+   gh pr checkout <BOT_PR_NUMBER> --repo conda-forge/ktch-feedstock
+
+   # Create a new branch on the personal fork
+   git checkout -b add-ktch-data-output
+   ```
+
+   Edit `meta.yaml` to add the new output block and update `ktch-all`:
 
    ```yaml
    - name: {{ name }}-data
@@ -369,24 +416,21 @@ can publish it.
          - ktch.datasets
    ```
 
-   Update `ktch-all` to depend on the new output. This PR will not
-   pass CI until step 3 is complete, but it serves as context for the
-   registration request.
+   Then commit, push, and open a PR:
 
-2. Create a PR to
-   [conda-forge/admin-requests](https://github.com/conda-forge/admin-requests)
-   to register the new output name. Fork the repository and add a YAML
-   file in the `requests/` directory following the
-   [example template](https://github.com/conda-forge/admin-requests/blob/main/examples/example-add-feedstock-output.yml):
+   ```bash
+   git add meta.yaml
+   git commit -m "add ktch-data output"
+   git push origin add-ktch-data-output
 
-   ```yaml
-   action: add_feedstock_output
-   feedstock_to_output_mapping:
-     ktch:
-       - ktch-data
+   gh pr create --repo conda-forge/ktch-feedstock \
+     --head noshita:add-ktch-data-output \
+     --title "add ktch-data output" \
+     --body "Add ktch-data output for [data] extra. Closes #<BOT_PR_NUMBER>"
+
+   # Close the original bot PR
+   gh pr close <BOT_PR_NUMBER> --repo conda-forge/ktch-feedstock
    ```
-
-   Link the feedstock PR from step 1 in the description.
 
 3. After the admin-requests PR is merged, the feedstock PR's CI will
    pass. Review and merge it
@@ -439,14 +483,19 @@ procedures for adding or updating remote datasets.
 
 ```txt
 ktch-datasets/
-└── releases/
-    └── v0.7.0/
-        ├── manifest.json
-        └── image_passiflora_leaves.zip
+└── datasets/
+    └── image_passiflora_leaves/
+        ├── v1/
+        │   ├── manifest.json
+        │   └── image_passiflora_leaves.zip
+        └── v2/
+            ├── manifest.json
+            └── image_passiflora_leaves.zip
 ```
 
-Versions correspond to ktch package versions. When releasing a new version,
-place files under `releases/vX.Y.Z/`.
+Each dataset has its own numeric version sequence (v1, v2, ...) independent
+of the ktch package version. When adding or updating a dataset, place files
+under `datasets/{dataset_name}/v{N}/`.
 
 ### Zip Archive Layout
 
@@ -475,33 +524,54 @@ filenames to their SHA256 hashes:
 This file is used by `scripts/update_registry.py` to automatically update
 the local registry without manual hash computation.
 
+### registry.toml
+
+`ktch/datasets/registry.toml` is the source of truth for dataset
+configuration. It defines which datasets and versions the registry
+update script should fetch manifests for:
+
+```toml
+[image_passiflora_leaves]
+default = "2"
+versions = ["1", "2"]
+```
+
+When adding a new dataset or version, update this file first.
+
 ### Updating the Dataset Registry
 
 Once the zip archive(s) and `manifest.json` are uploaded to R2 under
-`releases/vX.Y.Z/`, update the local registry with the following steps:
+`datasets/{dataset_name}/v{N}/`, update the local registry with the
+following steps:
 
-#### 1. Run the registry update script
+#### 1. Update `registry.toml`
 
- ```bash
- uv run python scripts/update_registry.py <version>
+ Add the new version to `ktch/datasets/registry.toml`. For example,
+ to add version 3 of `image_passiflora_leaves`:
+
+ ```toml
+ [image_passiflora_leaves]
+ default = "3"
+ versions = ["1", "2", "3"]
  ```
 
- For example,
+#### 2. Run the registry update script
 
  ```bash
- uv run python scripts/update_registry.py 0.8.0
+ uv run python scripts/update_registry.py
  ```
 
- This fetches `manifest.json` from R2, validates the SHA256 hashes, and
- updates `ktch/datasets/_registry.py` automatically.
+ This reads `registry.toml`, fetches `manifest.json` for each
+ dataset/version from R2, validates the SHA256 hashes, and updates
+ `ktch/datasets/_registry.py` automatically.
 
  Use `--dry-run` to preview changes without modifying the file:
 
  ```bash
- uv run python scripts/update_registry.py --dry-run 0.8.0
+ uv run python scripts/update_registry.py --dry-run
  ```
 
-#### 2. Run tests to verify the registry update
+#### 3. Run tests to verify the registry update
 
  ```bash
  uv run pytest --benchmark-skip
@@ -509,11 +579,11 @@ Once the zip archive(s) and `manifest.json` are uploaded to R2 under
 
  `test_default_version_in_registry` will automatically verify the new entry.
 
-#### 3. Commit the registry change
+#### 4. Commit the registry change
 
  ```bash
- git add ktch/datasets/_registry.py
- git commit -m "feat: update dataset registry for v0.8.0"
+ git add ktch/datasets/registry.toml ktch/datasets/_registry.py
+ git commit -m "feat: update dataset registry"
  ```
 
 ### pooch Dependency Policy
