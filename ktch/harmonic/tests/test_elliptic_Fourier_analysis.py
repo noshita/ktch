@@ -8,42 +8,33 @@ from numpy.testing import assert_array_almost_equal
 from scipy.interpolate import BSpline, make_interp_spline
 from scipy.stats import wasserstein_distance_nd
 
-from ktch.datasets import load_coefficient_bottles, load_outline_bottles
+from ktch.datasets import load_outline_mosquito_wings
 from ktch.harmonic import EllipticFourierAnalysis
 from ktch.harmonic._elliptic_Fourier_analysis import (
     _compute_ellipse_geometry_3d,
     rotation_matrix_3d_euler_zxz,
 )
 
-bottles = load_outline_bottles()
-bottles_frame = load_outline_bottles(as_frame=True)
-
 EXPORT_DIR_FIGS = Path("tests/figures/")
 EXPORT_DIR_FIGS.mkdir(exist_ok=True, parents=True)
 
 
-def test_data_prep_length():
-    X_frame = bottles_frame.coords.unstack().sort_index(axis=1)
-    X_list = bottles.coords
-
-    assert len(X_frame) == len(X_list)
-
-
-def test_data_prep_align():
-    X_frame = bottles_frame.coords.unstack().sort_index(axis=1)
-    X_list = bottles.coords
-
-    for i in range(len(X_frame)):
-        x_frame = X_frame.iloc[i].dropna().to_numpy().reshape(2, -1).T
-        x_list = np.array(X_list[i])
-        assert_array_almost_equal(x_frame, x_list)
+def _load_wings_as_list(n_specimens=None):
+    """Load mosquito wing outlines as a list of arrays for EFA input."""
+    wings = load_outline_mosquito_wings()
+    n_total = 126
+    n_points = 100
+    coords = wings.coords.reshape(n_total, n_points, 2)
+    if n_specimens is not None:
+        coords = coords[:n_specimens]
+    return [coords[i] for i in range(len(coords))]
 
 
 @pytest.mark.parametrize("norm", [False, True])
 def test_efa_shape(norm):
     n_harmonics = 6
 
-    X = bottles.coords
+    X = _load_wings_as_list(n_specimens=10)
     efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
     X_transformed = efa.fit_transform(X, norm=norm)
 
@@ -54,56 +45,54 @@ def test_efa_shape(norm):
 @pytest.mark.parametrize("set_output", [None, "pandas"])
 def test_transform(norm, set_output):
     n_harmonics = 6
+    t_num = 360
 
-    bottles_coef = load_coefficient_bottles(norm=norm)
-
-    if set_output == "pandas":
-        X = bottles_frame.coords.unstack().sort_index(axis=1)
-    else:
-        X = bottles.coords
+    X = _load_wings_as_list(n_specimens=10)
 
     efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
     efa.set_output(transform=set_output)
-    X_transformed = efa.fit_transform(
-        X,
-        norm=norm,
-    )
+    coef1 = efa.fit_transform(X, norm=norm)
 
+    # round-trip: inverse_transform -> re-fit_transform
     if set_output == "pandas":
-        coef = (
-            X_transformed.to_numpy()
-            .reshape(-1, 4, n_harmonics + 1)[:, :, 1:]
-            .reshape(-1, n_harmonics * 4)
-        )
-        coef_val = bottles_coef.coef
+        coef1_arr = coef1.to_numpy()
     else:
-        coef = X_transformed.reshape(-1, 4, n_harmonics + 1)[:, :, 1:].reshape(
-            -1, n_harmonics * 4
-        )
-        coef_val = bottles_coef.coef
+        coef1_arr = coef1
 
-    assert_array_almost_equal(coef, coef_val)
+    X_reconstructed = np.array(
+        efa.inverse_transform(coef1_arr, t_num=t_num, norm=norm)
+    )
+    T = [np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)] * len(X)
+
+    efa2 = EllipticFourierAnalysis(n_harmonics=n_harmonics)
+    coef2 = efa2.fit_transform(X_reconstructed, t=T, norm=norm)
+
+    if norm:
+        # DC offsets (a0, c0) change because inverse_transform centers the
+        # output; compare only the harmonic coefficients.
+        n_cols = n_harmonics + 1
+        # harmonic columns: skip a0 (col 0) and c0 (col 2*n_cols)
+        mask = np.ones(coef1_arr.shape[1], dtype=bool)
+        mask[0] = False
+        mask[2 * n_cols] = False
+        assert_array_almost_equal(coef1_arr[:, mask], coef2[:, mask], decimal=4)
+    else:
+        assert_array_almost_equal(coef1_arr, coef2, decimal=4)
 
 
 @pytest.mark.parametrize("n_jobs", [None, 1, 3])
 def test_transform_parallel(benchmark, n_jobs, norm=True):
-    n_iter = 10
     n_harmonics = 6
 
-    bottles_coef = load_coefficient_bottles(norm=norm)
+    X = _load_wings_as_list(n_specimens=10)
 
-    X = bottles.coords * n_iter
+    efa_serial = EllipticFourierAnalysis(n_harmonics=n_harmonics, n_jobs=None)
+    coef_serial = efa_serial.fit_transform(X, norm=norm)
 
     efa = EllipticFourierAnalysis(n_harmonics=n_harmonics, n_jobs=n_jobs, verbose=1)
+    coef_parallel = benchmark(efa.fit_transform, X, norm=norm)
 
-    X_transformed = benchmark(efa.fit_transform, X, norm=norm)
-
-    coef = X_transformed.reshape(-1, 4, n_harmonics + 1)[:, :, 1:].reshape(
-        -1, n_harmonics * 4
-    )
-    coef_val = np.tile(bottles_coef.coef, (n_iter, 1))
-
-    assert_array_almost_equal(coef, coef_val)
+    assert_array_almost_equal(coef_parallel, coef_serial)
 
 
 def test_transform_exact():
@@ -301,13 +290,11 @@ def test_inverse_transform():
     n_harmonics = 6
     t_num = 360
 
-    X = bottles.coords
+    X = _load_wings_as_list(n_specimens=10)
     efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
     X_transformed = efa.fit_transform(X, norm=True)
     X_adj = np.array(efa.inverse_transform(X_transformed, t_num=t_num))
     T = [np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num) for i in range(len(X))]
-
-    print(X_adj.shape, T[0].shape)
 
     X_transformed = efa.fit_transform(
         X_adj,
@@ -317,11 +304,6 @@ def test_inverse_transform():
     X_reconstructed = np.array(
         efa.inverse_transform(X_transformed, t_num=t_num, norm=False)
     )
-
-    # fig, ax = plt.subplots()
-    # ax.plot(X_adj[0][:, 0], X_adj[0][:, 1])
-    # ax.plot(X_reconstructed[0][:, 0], X_reconstructed[0][:, 1])
-    # fig.savefig("X_inv.png")
 
     assert_array_almost_equal(X_adj, X_reconstructed, decimal=4)
 
@@ -809,7 +791,7 @@ class TestNormMethodParameter:
 
     def test_norm_method_does_not_affect_2d(self):
         """norm_method parameter should not affect 2D EFA behavior."""
-        X = load_outline_bottles().coords
+        X = _load_wings_as_list(n_specimens=10)
         n_harmonics = 6
 
         efa_default = EllipticFourierAnalysis(n_harmonics=n_harmonics, n_dim=2)

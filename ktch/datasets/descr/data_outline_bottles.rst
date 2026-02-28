@@ -1,2 +1,0 @@
-Momocs Bottle Outline Dataset
-======================================
