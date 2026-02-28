@@ -372,7 +372,7 @@ doc/notebooks/
 pytest.xml
 pytest-coverage.txt
 
-tests/figures/
+.pytest_artifacts/
 
 ## Jupytext
 *.ipynb

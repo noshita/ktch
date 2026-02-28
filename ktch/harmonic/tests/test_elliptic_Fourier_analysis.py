@@ -15,7 +15,7 @@ from ktch.harmonic._elliptic_Fourier_analysis import (
     rotation_matrix_3d_euler_zxz,
 )
 
-EXPORT_DIR_FIGS = Path("tests/figures/")
+EXPORT_DIR_FIGS = Path(".pytest_artifacts/figures/")
 EXPORT_DIR_FIGS.mkdir(exist_ok=True, parents=True)
 
 
