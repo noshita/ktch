@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.3](https://github.com/noshita/ktch/compare/v0.7.2...v0.7.3) (2026-02-28)
+
+
+### Miscellaneous Chores
+
+* 🔧 clean up test directories ([f9897ea](https://github.com/noshita/ktch/commit/f9897ea15c15916590a5121043410e9707cabe89))
+* 🔧 remove bottle dataset ([839b595](https://github.com/noshita/ktch/commit/839b595538c67cfa005560008712bdd32246a0ea))
+* 🔧 remove update_versions_json.py script ([1ef2f4c](https://github.com/noshita/ktch/commit/1ef2f4cb125a47ac3be8301852caef13f6f3a02e))
+
 ## [0.7.2](https://github.com/noshita/ktch/compare/v0.7.1...v0.7.2) (2026-02-20)
 
 

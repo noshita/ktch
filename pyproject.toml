@@ -1,6 +1,6 @@
 [project]
 name = "ktch"
-version = "0.7.2"
+version = "0.7.3"
 description = "ktch is a python package for model-based morphometrics."
 authors = [{ name = "Noshita, Koji", email = "noshita@morphometrics.jp" }]
 requires-python = ">=3.11"
