@@ -772,16 +772,20 @@ class TestNormMethodParameter:
         assert efa.norm_method == "semi_major_axis"
 
     def test_invalid_norm_method_raises_valueerror(self):
-        """Invalid norm_method should raise ValueError with informative message."""
+        """Invalid norm_method should raise ValueError at transform time."""
+        X = _load_wings_as_list(n_specimens=1)
+        efa = EllipticFourierAnalysis(n_dim=2, norm_method="invalid")
         with pytest.raises(ValueError, match="norm_method"):
-            EllipticFourierAnalysis(n_dim=3, norm_method="invalid")
+            efa.transform(X)
 
     def test_invalid_norm_method_lists_valid_options(self):
         """Error message should list valid options."""
+        X = _load_wings_as_list(n_specimens=1)
+        efa = EllipticFourierAnalysis(n_dim=2, norm_method="foobar")
         with pytest.raises(
             ValueError, match="area.*semi_major_axis|semi_major_axis.*area"
         ):
-            EllipticFourierAnalysis(n_dim=3, norm_method="foobar")
+            efa.transform(X)
 
     def test_get_params_includes_norm_method(self):
         """sklearn get_params() should discover norm_method."""

@@ -113,16 +113,9 @@ class EllipticFourierAnalysis(
         norm_method: str = "area",
     ):
         self.n_harmonics = n_harmonics
-        if n_dim not in (2, 3):
-            raise ValueError("n_dim must be 2 or 3")
-        else:
-            self.n_dim = n_dim
+        self.n_dim = n_dim
         self.n_jobs = n_jobs
         self.verbose = verbose
-        if norm_method not in self._VALID_NORM_METHODS:
-            raise ValueError(
-                f"norm_method must be 'area' or 'semi_major_axis', got '{norm_method}'"
-            )
         self.norm_method = norm_method
 
     def fit_transform(self, X, t=None, norm=True, return_orientation_scale=False):
@@ -185,6 +178,13 @@ class EllipticFourierAnalysis(
 
         """
         n_dim = self.n_dim
+
+        if n_dim not in (2, 3):
+            raise ValueError("n_dim must be 2 or 3")
+        if self.norm_method not in self._VALID_NORM_METHODS:
+            raise ValueError(
+                f"norm_method must be 'area' or 'semi_major_axis', got '{self.norm_method}'"
+            )
 
         if return_orientation_scale and not norm:
             raise ValueError("return_orientation_scale requires norm=True.")
