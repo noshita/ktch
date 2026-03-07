@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.7.3](https://github.com/noshita/ktch/compare/v0.7.2...v0.7.3) (2026-03-07)
+
+
+### Bug Fixes
+
+* 🐛 return_orientation_scale requires norm=True ([0a231d8](https://github.com/noshita/ktch/commit/0a231d800d1df8a1f2df93d0f591c47ba313a95e))
+* **harmonic:** 🐛 fix inverse_transform return type and add set_output to SHA ([0f66d6a](https://github.com/noshita/ktch/commit/0f66d6adc9dcb9fa8bd7ac79a0940df29a2073fd))
+* **io:** harden TPS write/read for semilandmarks ([c7c7678](https://github.com/noshita/ktch/commit/c7c76783783fe93dcfe788b5173ea9a40e93b550))
+
+
+### Miscellaneous Chores
+
+* 🔧 clean up test directories ([f9897ea](https://github.com/noshita/ktch/commit/f9897ea15c15916590a5121043410e9707cabe89))
+* 🔧 remove bottle dataset ([839b595](https://github.com/noshita/ktch/commit/839b595538c67cfa005560008712bdd32246a0ea))
+* 🔧 remove update_versions_json.py script ([1ef2f4c](https://github.com/noshita/ktch/commit/1ef2f4cb125a47ac3be8301852caef13f6f3a02e))
+
+
+### Code Refactoring
+
+* ♻️ move validations from __init__ into transform following scikit-learn convention ([bb2ed26](https://github.com/noshita/ktch/commit/bb2ed26d8ee04b3dafcebb7dc1d2c44ef7e23611))
+* **harmonic:** ♻  align EFA/SHA API with scikit-learn transformer contract ([4080f00](https://github.com/noshita/ktch/commit/4080f001e87b4315a6c202a3776364136da14681))
+
 ## [0.7.2](https://github.com/noshita/ktch/compare/v0.7.1...v0.7.2) (2026-02-20)
 
 
