@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -160,57 +161,165 @@ def write_tps(
 ) -> None:
     """Write TPS file."""
 
-    if isinstance(landmarks, list):
-        n_specimens = len(landmarks)
-    elif isinstance(landmarks, np.ndarray):
-        if landmarks.ndim == 3:
-            n_specimens = len(landmarks)
-        elif landmarks.ndim == 2:
-            n_specimens = 1
-        else:
-            raise ValueError("")
-    elif isinstance(landmarks, pd.DataFrame):
-        raise NotImplementedError()
+    landmarks_list = _normalize_landmarks_input(landmarks)
+    n_specimens = len(landmarks_list)
+
+    image_path_ = _normalize_optional_values(
+        image_path, n_specimens=n_specimens, arg_name="image_path", default=None
+    )
+
+    if idx is None:
+        idx_ = [None] if n_specimens == 1 else [i for i in range(n_specimens)]
     else:
-        raise ValueError("")
+        idx_ = _normalize_optional_values(
+            idx, n_specimens=n_specimens, arg_name="idx", default=None
+        )
+
+    scale_ = _normalize_optional_values(
+        scale, n_specimens=n_specimens, arg_name="scale", default=None
+    )
+
+    semilandmarks_ = _normalize_semilandmarks_input(semilandmarks, n_specimens)
+
+    comments_ = _normalize_optional_values(
+        comments, n_specimens=n_specimens, arg_name="comments", default=None
+    )
+
+    tps_data = [
+        TPSData(
+            idx=idx_[i],
+            landmarks=landmarks_list[i],
+            image_path=image_path_[i],
+            scale=scale_[i],
+            curves=semilandmarks_[i],
+            comments=comments_[i],
+        )
+        for i in range(n_specimens)
+    ]
 
     if n_specimens == 1:
-        tps_data = TPSData(
-            idx=idx,
-            landmarks=landmarks,
-            image_path=image_path,
-            scale=scale,
-            comments=comments,
-        )
-    else:
-        if image_path is None:
-            image_path_ = [None] * n_specimens
-
-        if idx is None:
-            idx_ = [i for i in range(n_specimens)]
-
-        if scale is None:
-            scale_ = [None] * n_specimens
-
-        if semilandmarks is None:
-            semilandmarks_ = [None] * n_specimens
-
-        if comments is None:
-            comments_ = [None] * n_specimens
-
-        tps_data = [
-            TPSData(
-                idx=idx_[i],
-                landmarks=landmarks[i],
-                image_path=image_path_[i],
-                scale=scale_[i],
-                curves=semilandmarks_[i],
-                comments=comments_[i],
-            )
-            for i in range(n_specimens)
-        ]
+        tps_data = tps_data[0]
 
     _write_tps(file_path=file_path, tps_data=tps_data)
+
+
+def _normalize_landmarks_input(landmarks) -> list[np.ndarray]:
+    """Normalize landmarks input into a per-specimen list of arrays."""
+    if isinstance(landmarks, np.ndarray):
+        if landmarks.ndim == 2:
+            return [landmarks]
+        if landmarks.ndim == 3:
+            return [landmarks[i] for i in range(len(landmarks))]
+        raise ValueError("landmarks must be a 2D or 3D numpy array.")
+
+    if isinstance(landmarks, list):
+        if len(landmarks) == 0:
+            raise ValueError("landmarks list cannot be empty.")
+        return [np.asarray(lm) for lm in landmarks]
+
+    if isinstance(landmarks, pd.DataFrame):
+        raise NotImplementedError()
+
+    raise ValueError(
+        "landmarks must be a numpy array or a list of per-specimen arrays."
+    )
+
+
+def _normalize_optional_values(
+    values,
+    *,
+    n_specimens: int,
+    arg_name: str,
+    default=None,
+):
+    """Normalize scalar or sequence metadata into n_specimens length list."""
+    if values is None:
+        return [default] * n_specimens
+
+    if isinstance(values, np.ndarray):
+        if values.ndim == 0:
+            return [values.item()] * n_specimens
+        values_list = values.tolist()
+        if len(values_list) != n_specimens:
+            raise ValueError(
+                f"{arg_name} must have length {n_specimens}, got {len(values_list)}."
+            )
+        return values_list
+
+    if isinstance(values, Sequence) and not isinstance(values, (str, bytes, bytearray)):
+        values_list = list(values)
+        if len(values_list) != n_specimens:
+            raise ValueError(
+                f"{arg_name} must have length {n_specimens}, got {len(values_list)}."
+            )
+        return values_list
+
+    return [values] * n_specimens
+
+
+def _normalize_curve_block(curves):
+    """Normalize one specimen's semilandmarks to a list of 2D arrays."""
+    if curves is None:
+        return None
+
+    if isinstance(curves, np.ndarray):
+        if curves.ndim != 2:
+            raise ValueError(
+                "Each curve must be a 2D array with shape (n_points, n_dim)."
+            )
+        return [curves]
+
+    if isinstance(curves, Sequence) and not isinstance(curves, (str, bytes, bytearray)):
+        curves_list = []
+        for curve in curves:
+            curve_arr = np.asarray(curve)
+            if curve_arr.ndim != 2:
+                raise ValueError(
+                    "Each curve must be a 2D array with shape (n_points, n_dim)."
+                )
+            curves_list.append(curve_arr)
+        return curves_list
+
+    raise ValueError(
+        "semilandmarks must be None, a 2D array, or a sequence of 2D arrays."
+    )
+
+
+def _normalize_semilandmarks_input(semilandmarks, n_specimens: int):
+    """Normalize semilandmarks input into per-specimen curve lists."""
+    if semilandmarks is None:
+        return [None] * n_specimens
+
+    if n_specimens == 1:
+        if (
+            isinstance(semilandmarks, Sequence)
+            and not isinstance(semilandmarks, (str, bytes, bytearray, np.ndarray))
+            and len(semilandmarks) == 1
+            and (
+                semilandmarks[0] is None
+                or isinstance(semilandmarks[0], (Sequence, np.ndarray))
+            )
+        ):
+            return [_normalize_curve_block(semilandmarks[0])]
+        return [_normalize_curve_block(semilandmarks)]
+
+    if not (
+        isinstance(semilandmarks, Sequence)
+        and not isinstance(semilandmarks, (str, bytes, bytearray, np.ndarray))
+    ):
+        raise ValueError(
+            "For multiple specimens, semilandmarks must be a sequence with one "
+            "entry per specimen."
+        )
+
+    semilandmarks_list = list(semilandmarks)
+    if len(semilandmarks_list) != n_specimens:
+        raise ValueError(
+            "For multiple specimens, semilandmarks must have the same length as "
+            f"landmarks ({n_specimens}), got {len(semilandmarks_list)}."
+        )
+
+    return [_normalize_curve_block(curves) for curves in semilandmarks_list]
 
 
 ######################################
@@ -268,10 +377,12 @@ def _read_tps_single(specimen_str: str) -> TPSData:
     filtered_str = PTN_CURVES.sub("", PTN_LM.sub("", specimen_str))
     filtered_list = [row for row in filtered_str.splitlines() if len(row) > 0]
 
-    meta_dict = {
-        PTN_DICT.search(row)["key"]: PTN_DICT.search(row)["value"]
-        for row in filtered_list
-    }
+    meta_dict = {}
+    for row in filtered_list:
+        m_meta = PTN_DICT.search(row)
+        if m_meta is None:
+            raise ValueError(f"Invalid metadata line in TPS specimen: {row!r}")
+        meta_dict[m_meta["key"]] = m_meta["value"]
 
     if "ID" in meta_dict.keys():
         idx = meta_dict["ID"]
@@ -321,14 +432,19 @@ def _read_coordinate_values(coordinate_list):
     body = coordinate_list[1:]
 
     m = PTN_DICT.match(header)
+    if m is None:
+        raise ValueError(f"Invalid coordinate header in TPS: {header!r}")
 
     key = m["key"]
-    value = np.array(
-        [
-            [float(x) for x in PTN_COORD.match(row).groups() if x is not None and len(x) > 0]
-            for row in body
-        ]
-    )
+    value_rows = []
+    for row in body:
+        m_coord = PTN_COORD.match(row)
+        if m_coord is None:
+            raise ValueError(f"Invalid coordinate row in TPS: {row!r}")
+        value_rows.append(
+            [float(x) for x in m_coord.groups() if x is not None and len(x) > 0]
+        )
+    value = np.array(value_rows)
 
     return key, value
 
@@ -349,10 +465,12 @@ def _write_tps_single(file_path, tps_data, write_mode="w"):
             f.write("SCALE=" + str(tps_data.scale) + "\n")
 
         if tps_data.curves is not None:
-            f.write("CURVES=" + str(len(tps_data.curves)))
+            f.write("CURVES=" + str(len(tps_data.curves)) + "\n")
             for curve in tps_data.curves:
                 f.write("POINTS=" + str(len(curve)) + "\n")
-                f.writelines([" ".join(map(str, row)) for row in curve.tolist()])
+                curve_lines = [" ".join(map(str, row)) for row in curve.tolist()]
+                f.write("\n".join(curve_lines))
+                f.write("\n")
 
         if tps_data.comments is not None:
             f.write("COMMENTS=" + tps_data.comments + "\n")
