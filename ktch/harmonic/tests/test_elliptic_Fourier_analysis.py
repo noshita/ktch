@@ -2,6 +2,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import pytest
 from mpl_toolkits.mplot3d import axes3d
 from numpy.testing import assert_array_almost_equal
@@ -59,9 +60,7 @@ def test_transform(norm, set_output):
     else:
         coef1_arr = coef1
 
-    X_reconstructed = np.array(
-        efa.inverse_transform(coef1_arr, t_num=t_num, norm=norm)
-    )
+    X_reconstructed = np.array(efa.inverse_transform(coef1_arr, t_num=t_num, norm=norm))
     T = [np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)] * len(X)
 
     efa2 = EllipticFourierAnalysis(n_harmonics=n_harmonics)
@@ -687,6 +686,14 @@ def _make_3d_outline(n_harmonics=6, t_num=360, rng=None):
         "en": en,
         "fn": fn,
     }
+
+
+def _make_circle(t_num=200, radius=1.0):
+    """Helper: generate a simple planar circle."""
+    t = np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
+    x = radius * np.cos(t)
+    y = radius * np.sin(t)
+    return np.stack([x, y], axis=1)
 
 
 class TestNormalize3d:
@@ -1651,3 +1658,135 @@ class TestAreaNormalizationRegression:
         orient_scale = result[-5:]
 
         assert_array_almost_equal(orient_scale, self._EXPECTED_ORIENT_SCALE, decimal=12)
+
+
+class TestOrientationMetadataAndRoundTrip:
+    """Orientation/scale metadata, feature names, set_output, and inverse round trips."""
+
+    def test_feature_names_and_counts_2d(self):
+        n_harmonics = 3
+        coords = _make_circle(t_num=120)
+        efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
+        coef = efa.fit_transform([coords], norm=True, return_orientation_scale=True)
+
+        expected = (
+            [f"a_{i}" for i in range(n_harmonics + 1)]
+            + [f"b_{i}" for i in range(n_harmonics + 1)]
+            + [f"c_{i}" for i in range(n_harmonics + 1)]
+            + [f"d_{i}" for i in range(n_harmonics + 1)]
+            + ["psi", "scale"]
+        )
+        assert list(efa.get_feature_names_out()) == expected
+        assert efa._n_features_out == len(expected)
+        assert coef.shape == (1, len(expected))
+
+    def test_feature_names_and_counts_3d(self):
+        n_harmonics = 3
+        coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, t_num=120, rng=np.random.default_rng(123)
+        )
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
+        coef = efa.fit_transform([coords], norm=True, return_orientation_scale=True)
+
+        expected = (
+            [f"a_{i}" for i in range(n_harmonics + 1)]
+            + [f"b_{i}" for i in range(n_harmonics + 1)]
+            + [f"c_{i}" for i in range(n_harmonics + 1)]
+            + [f"d_{i}" for i in range(n_harmonics + 1)]
+            + [f"e_{i}" for i in range(n_harmonics + 1)]
+            + [f"f_{i}" for i in range(n_harmonics + 1)]
+            + ["alpha", "beta", "gamma", "phi", "scale"]
+        )
+        assert list(efa.get_feature_names_out()) == expected
+        assert efa._n_features_out == len(expected)
+        assert coef.shape == (1, len(expected))
+
+    def test_set_output_pandas_columns_2d(self):
+        n_harmonics = 2
+        coords = _make_circle(t_num=60)
+        efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
+        efa.set_output(transform="pandas")
+        coef_df = efa.fit_transform([coords], norm=True, return_orientation_scale=True)
+        expected_cols = (
+            [f"a_{i}" for i in range(n_harmonics + 1)]
+            + [f"b_{i}" for i in range(n_harmonics + 1)]
+            + [f"c_{i}" for i in range(n_harmonics + 1)]
+            + [f"d_{i}" for i in range(n_harmonics + 1)]
+            + ["psi", "scale"]
+        )
+        assert isinstance(coef_df, pd.DataFrame)
+        assert list(coef_df.columns) == expected_cols
+        assert coef_df.shape == (1, len(expected_cols))
+
+    def test_set_output_pandas_columns_3d(self):
+        n_harmonics = 2
+        coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, t_num=60, rng=np.random.default_rng(321)
+        )
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
+        efa.set_output(transform="pandas")
+        coef_df = efa.fit_transform([coords], norm=True, return_orientation_scale=True)
+        expected_cols = (
+            [f"a_{i}" for i in range(n_harmonics + 1)]
+            + [f"b_{i}" for i in range(n_harmonics + 1)]
+            + [f"c_{i}" for i in range(n_harmonics + 1)]
+            + [f"d_{i}" for i in range(n_harmonics + 1)]
+            + [f"e_{i}" for i in range(n_harmonics + 1)]
+            + [f"f_{i}" for i in range(n_harmonics + 1)]
+            + ["alpha", "beta", "gamma", "phi", "scale"]
+        )
+        assert isinstance(coef_df, pd.DataFrame)
+        assert list(coef_df.columns) == expected_cols
+        assert coef_df.shape == (1, len(expected_cols))
+
+    def test_inverse_round_trip_with_orientation_2d(self):
+        n_harmonics = 4
+        coords = _make_circle(t_num=150)
+        efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
+        coef = efa.fit_transform([coords], norm=True, return_orientation_scale=True)
+
+        coords_recon = efa.inverse_transform(coef, t_num=coords.shape[0], norm=True)[0]
+        coef_recon = efa.fit_transform(
+            [coords_recon], norm=True, return_orientation_scale=False
+        )[0]
+
+        np.testing.assert_allclose(coef[0, :-2], coef_recon, rtol=1e-6, atol=1e-6)
+
+    def test_inverse_round_trip_with_orientation_3d(self):
+        n_harmonics = 3
+        t_num = 240
+        t = np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
+        # Deterministic planar ellipse (z=0) to avoid phase/sign ambiguities
+        x = 2.0 * np.cos(t)
+        y = 1.0 * np.sin(t)
+        z = np.zeros_like(t)
+        coords = np.stack([x, y, z], axis=1)
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
+        coef = efa.fit_transform([coords], norm=True, return_orientation_scale=True)
+
+        # Use finer sampling to reduce quadrature error in inverse transform
+        t_num = 720
+        coords_recon = efa.inverse_transform(coef, t_num=t_num, norm=True)[0]
+        coef_recon = efa.fit_transform(
+            [coords_recon], norm=True, return_orientation_scale=False
+        )[0]
+
+        # Compare energy per harmonic (Frobenius norm of 3x2 coefficient matrices) to
+        # avoid sign/phase ambiguities introduced by normalization.
+        arr_orig = coef[0, :-5].reshape(6, n_harmonics + 1)[:, 1:]
+        arr_recon = coef_recon.reshape(6, n_harmonics + 1)[:, 1:]
+
+        frob_orig = np.linalg.norm(arr_orig.reshape(3, 2, n_harmonics), axis=(0, 1))
+        frob_recon = np.linalg.norm(arr_recon.reshape(3, 2, n_harmonics), axis=(0, 1))
+
+        rel_err = np.abs(frob_orig - frob_recon) / np.maximum(frob_orig, 1e-12)
+        assert np.max(rel_err) < 0.1
+
+    def test_return_orientation_requires_norm(self):
+        n_harmonics = 3
+        coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, t_num=80, rng=np.random.default_rng(999)
+        )
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
+        with pytest.raises(ValueError):
+            efa.fit_transform([coords], norm=False, return_orientation_scale=True)

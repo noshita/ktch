@@ -139,38 +139,55 @@ class EllipticFourierAnalysis(
     ) -> npt.ArrayLike:
         """EFA.
 
-        Parameters
-        ----------
-        X: {list of array-like, array-like} of shape (n_samples, n_coords, dim)
-            Coordinate values of n_samples.
-            The i-th array-like of shape (n_coords_i, 2) represents
-            2D coordinate values of the i-th sample.
+            Parameters
+            ----------
+            X: {list of array-like, array-like} of shape (n_samples, n_coords, dim)
+                Coordinate values of n_samples.
+                The i-th array-like of shape (n_coords_i, 2) represents
+                2D coordinate values of the i-th sample.
 
-        t: array-like of shape (n_samples, n_coords), optional
-            Parameters indicating the position on the outline of n_samples.
-            The i-th ndarray of shape (n_coords_i, ) corresponds to
-            each coordinate value in the i-th element of X.
-            If `t=None`, then t is calculated based on
-            the coordinate values with the linear interpolation.
+            t: array-like of shape (n_samples, n_coords), optional
+                Parameters indicating the position on the outline of n_samples.
+                The i-th ndarray of shape (n_coords_i, ) corresponds to
+                each coordinate value in the i-th element of X.
+                If `t=None`, then t is calculated based on
+                the coordinate values with the linear interpolation.
 
-        norm: bool, default=True
-            Normalize the elliptic Fourier coefficients
-            by the major axis of the 1st ellipse.
+            norm: bool, default=True
+                Normalize the elliptic Fourier coefficients
+                by the major axis of the 1st ellipse.
 
         return_orientation_scale: bool, default=False
-            Return orientation and scale of the outline.
-            If `norm=True`, the orientation and scale are normalized by the 1st ellipse.
-            Then, the orientation and scale are returned as the last columns of the output.
+            Return orientation and scale of the outline (requires ``norm=True``).
 
-        Returns
-        ----------
-        X_transformed: array-like of shape (n_samples, (1+2*n_harmonics)*n_dim)
-            Returns the array-like of coefficients.
-            (a_0, a_1, ..., a_n, b_0, b_1, ..., b_n, ,
-            c_0, c_1, ..., c_n, d_0, d_1, ..., d_n)
+            - 2D: Appends ``[psi, scale]`` to the end of the coefficient vector.
+              Base length is ``4 * (n_harmonics + 1)``; with this flag, length becomes
+              ``4 * (n_harmonics + 1) + 2``.
+            - 3D: Appends ``[alpha, beta, gamma, phi, scale]`` to the end of the
+              coefficient vector. Base length is ``6 * (n_harmonics + 1)``; with this
+              flag, length becomes ``6 * (n_harmonics + 1) + 5``.
+
+            Returns
+            ----------
+            X_transformed: array-like of shape (n_samples, n_features_out)
+                Returns the array-like of coefficients.
+
+                - 2D (return_orientation_scale=False):
+                  ``[a_0..a_n, b_0..b_n, c_0..c_n, d_0..d_n]``
+                  length = ``4 * (n_harmonics + 1)``.
+                - 2D (return_orientation_scale=True):
+                  Same as above with ``[psi, scale]`` appended at the end (length +2).
+                - 3D (return_orientation_scale=False):
+                  ``[a_0..a_n, b_0..b_n, c_0..c_n, d_0..d_n, e_0..e_n, f_0..f_n]``
+                  length = ``6 * (n_harmonics + 1)``.
+                - 3D (return_orientation_scale=True):
+                  Same as above with ``[alpha, beta, gamma, phi, scale]`` appended (length +5).
 
         """
         n_dim = self.n_dim
+
+        if return_orientation_scale and not norm:
+            raise ValueError("return_orientation_scale requires norm=True.")
 
         if t is None:
             t_ = [None for i in range(len(X))]
@@ -214,6 +231,9 @@ class EllipticFourierAnalysis(
                 )
             )
 
+        has_orientation = bool(return_orientation_scale and norm)
+        self._update_output_metadata(has_orientation)
+
         return X_transformed
 
     def inverse_transform(self, X_transformed, t_num=100, norm=True, as_frame=False):
@@ -222,7 +242,10 @@ class EllipticFourierAnalysis(
         Parameters
         ----------
         X_transformed : array-like of shape (n_samples, n_features)
-            Elliptic Fourier coefficients.
+            Elliptic Fourier coefficients. Accepted lengths per sample:
+              - 2D: ``4*(n_harmonics+1)`` or ``4*(n_harmonics+1)+2`` (psi, scale).
+              - 3D: ``6*(n_harmonics+1)`` or ``6*(n_harmonics+1)+5`` (alpha, beta, gamma, phi, scale).
+            Orientation/scale columns, if present, are ignored for reconstruction.
         t_num : int, default = 100
             Number of coordinate values.
         as_frame : bool, default = False
@@ -376,6 +399,15 @@ class EllipticFourierAnalysis(
             - [x] 1st ellipse, major axis
             - [ ] 1st ellipse, area
             - [ ] Procrustes alignment -> in coordinate values?
+
+        Returns
+        -------
+        An, Bn, Cn, Dn : np.ndarray
+            Normalized coefficient arrays (offset + harmonics).
+        psi : float
+            Orientation (phase) of the 1st harmonic ellipse in radians.
+        scale : float
+            Semi-major axis length of the 1st harmonic ellipse.
         """
         a1 = an[1]
         b1 = bn[1]
@@ -429,22 +461,24 @@ class EllipticFourierAnalysis(
         norm=True,
         as_frame=False,
     ):
-        coef = X_transformed
-        if as_frame:
-            a0 = coef["an"][0]
-            c0 = coef["cn"][0]
-            an = coef["an"][1:]
-            bn = coef["bn"][1:]
-            cn = coef["cn"][1:]
-            dn = coef["dn"][1:]
+        coef_array = np.asarray(X_transformed, dtype=float)
+        expected_base = 4 * (self.n_harmonics + 1)
+        if coef_array.shape[0] == expected_base + 2:
+            coef_core = coef_array[:expected_base]
+        elif coef_array.shape[0] == expected_base:
+            coef_core = coef_array
         else:
-            an, bn, cn, dn = coef.reshape([2 * self.n_dim, -1])
-            a0 = an[0]
-            c0 = cn[0]
-            an = an[1:]
-            bn = bn[1:]
-            cn = cn[1:]
-            dn = dn[1:]
+            raise ValueError(
+                f"Expected {expected_base} or {expected_base + 2} coefficients, got {coef_array.shape[0]}."
+            )
+
+        an, bn, cn, dn = coef_core.reshape([2 * self.n_dim, -1])
+        a0 = an[0]
+        c0 = cn[0]
+        an = an[1:]
+        bn = bn[1:]
+        cn = cn[1:]
+        dn = dn[1:]
 
         if norm:
             a0 = 0
@@ -610,6 +644,12 @@ class EllipticFourierAnalysis(
         scale : float
             Scaling factor. ``sqrt(pi * a1 * b1)`` when ``norm_method="area"``,
             or ``a1`` when ``norm_method="semi_major_axis"``.
+
+        Notes
+        -----
+        When ``return_orientation_scale=True`` in 3D, these five values are
+        appended to the transform output in the order:
+        ``[alpha, beta, gamma, phi, scale]``.
         """
         # Extract geometric parameters of the 1st harmonic
         phi1, a1, b1, alpha1, beta1, gamma1 = _compute_ellipse_geometry_3d(
@@ -703,28 +743,27 @@ class EllipticFourierAnalysis(
         norm=True,
         as_frame: bool = False,
     ):
-        coef = X_transformed
-        if as_frame:
-            a0 = coef["an"][0]
-            c0 = coef["cn"][0]
-            e0 = coef["en"][0]
-            an = coef["an"][1:]
-            bn = coef["bn"][1:]
-            cn = coef["cn"][1:]
-            dn = coef["dn"][1:]
-            en = coef["en"][1:]
-            fn = coef["fn"][1:]
+        coef_array = np.asarray(X_transformed, dtype=float)
+        expected_base = 6 * (self.n_harmonics + 1)
+        if coef_array.shape[0] == expected_base + 5:
+            coef_core = coef_array[:expected_base]
+        elif coef_array.shape[0] == expected_base:
+            coef_core = coef_array
         else:
-            an, bn, cn, dn, en, fn = coef.reshape([2 * self.n_dim, -1])
-            a0 = an[0]
-            c0 = cn[0]
-            e0 = en[0]
-            an = an[1:]
-            bn = bn[1:]
-            cn = cn[1:]
-            dn = dn[1:]
-            en = en[1:]
-            fn = fn[1:]
+            raise ValueError(
+                f"Expected {expected_base} or {expected_base + 5} coefficients, got {coef_array.shape[0]}."
+            )
+
+        an, bn, cn, dn, en, fn = coef_core.reshape([2 * self.n_dim, -1])
+        a0 = an[0]
+        c0 = cn[0]
+        e0 = en[0]
+        an = an[1:]
+        bn = bn[1:]
+        cn = cn[1:]
+        dn = dn[1:]
+        en = en[1:]
+        fn = fn[1:]
 
         n_max = len(an)
 
@@ -768,22 +807,56 @@ class EllipticFourierAnalysis(
             Transformed feature names.
 
         """
-        an = ["a_" + str(i) for i in range(self.n_harmonics + 1)]
-        bn = ["b_" + str(i) for i in range(self.n_harmonics + 1)]
-        cn = ["c_" + str(i) for i in range(self.n_harmonics + 1)]
-        dn = ["d_" + str(i) for i in range(self.n_harmonics + 1)]
-        feature_names = an + bn + cn + dn
-        if self.n_dim == 3:
-            en = ["e_" + str(i) for i in range(self.n_harmonics + 1)]
-            fn = ["f_" + str(i) for i in range(self.n_harmonics + 1)]
-            feature_names = feature_names + en + fn
-        feature_names_out = np.asarray(feature_names, dtype=str)
-        return feature_names_out
+        if hasattr(self, "_feature_names_out"):
+            return self._feature_names_out
+
+        include_orientation = (
+            getattr(self, "_last_return_orientation_scale_", False) and self.n_dim == 3
+        )
+        return np.asarray(self._build_feature_names(include_orientation), dtype=str)
 
     @property
     def _n_features_out(self):
         """Number of transformed output features."""
-        return (self.n_harmonics + 1) * (2 * self.n_dim)
+        if hasattr(self, "_n_features_out_"):
+            return self._n_features_out_
+
+        base = (self.n_harmonics + 1) * (2 * self.n_dim)
+        if getattr(self, "_last_return_orientation_scale_", False):
+            if self.n_dim == 3:
+                return base + 5
+            if self.n_dim == 2:
+                return base + 2
+        return base
+
+    def _update_output_metadata(self, include_orientation: bool) -> None:
+        """Cache feature names and counts for sklearn set_output compatibility."""
+        names = self._build_feature_names(include_orientation)
+        self._feature_names_out = np.asarray(names, dtype=str)
+
+        base = (self.n_harmonics + 1) * (2 * self.n_dim)
+        extra = 0
+        if include_orientation:
+            extra = 5 if self.n_dim == 3 else 2 if self.n_dim == 2 else 0
+        self._n_features_out_ = base + extra
+        self._last_return_orientation_scale_ = include_orientation
+
+    def _build_feature_names(self, include_orientation: bool) -> list[str]:
+        an = [f"a_{i}" for i in range(self.n_harmonics + 1)]
+        bn = [f"b_{i}" for i in range(self.n_harmonics + 1)]
+        cn = [f"c_{i}" for i in range(self.n_harmonics + 1)]
+        dn = [f"d_{i}" for i in range(self.n_harmonics + 1)]
+        feature_names = an + bn + cn + dn
+        if self.n_dim == 3:
+            en = [f"e_{i}" for i in range(self.n_harmonics + 1)]
+            fn = [f"f_{i}" for i in range(self.n_harmonics + 1)]
+            feature_names = feature_names + en + fn
+        if include_orientation:
+            if self.n_dim == 3:
+                feature_names += ["alpha", "beta", "gamma", "phi", "scale"]
+            elif self.n_dim == 2:
+                feature_names += ["psi", "scale"]
+        return feature_names
 
 
 ###########################################################
