@@ -60,7 +60,7 @@ def test_transform(norm, set_output):
     else:
         coef1_arr = coef1
 
-    X_reconstructed = np.array(efa.inverse_transform(coef1_arr, t_num=t_num))
+    X_reconstructed = efa.inverse_transform(coef1_arr, t_num=t_num)
     T = [np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)] * len(X)
 
     efa2 = EllipticFourierAnalysis(n_harmonics=n_harmonics, norm=norm)
@@ -292,7 +292,7 @@ def test_inverse_transform():
     X = _load_wings_as_list(n_specimens=10)
     efa_norm = EllipticFourierAnalysis(n_harmonics=n_harmonics, norm=True)
     X_transformed = efa_norm.fit_transform(X)
-    X_adj = np.array(efa_norm.inverse_transform(X_transformed, t_num=t_num))
+    X_adj = efa_norm.inverse_transform(X_transformed, t_num=t_num)
     T = [np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num) for i in range(len(X))]
 
     efa_raw = EllipticFourierAnalysis(n_harmonics=n_harmonics, norm=False)
@@ -1183,7 +1183,7 @@ class TestNormalize3dInvariance:
 
         efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True)
         coef_norm = efa.fit_transform([X_coords])
-        X_recon = np.array(efa.inverse_transform(coef_norm, t_num=t_num))
+        X_recon = efa.inverse_transform(coef_norm, t_num=t_num)
 
         # Re-transform with explicit uniform t (matching inverse output spacing)
         t_uniform = [

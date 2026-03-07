@@ -22,11 +22,13 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import scipy as sp
-from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.base import BaseEstimator, ClassNamePrefixFeaturesOutMixin, TransformerMixin
 from sklearn.utils.parallel import Parallel, delayed
 
 
-class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
+class SphericalHarmonicAnalysis(
+    ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator
+):
     r"""Spherical Harmonic (SPHARM) Analysis
 
     Parameters
@@ -196,7 +198,44 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
             )
         )
 
+        self._feature_names_out = np.asarray(self._build_feature_names(), dtype=str)
+        self._n_features_out_ = X_transformed.shape[1]
+
         return X_transformed
+
+    def get_feature_names_out(
+        self, input_features: None | npt.ArrayLike = None
+    ) -> np.ndarray:
+        """Get output feature names.
+
+        Parameters
+        ----------
+        input_features : ignored
+
+        Returns
+        ----------
+        feature_names_out : ndarray of str objects
+            Transformed feature names.
+        """
+        if hasattr(self, "_feature_names_out"):
+            return self._feature_names_out
+        return np.asarray(self._build_feature_names(), dtype=str)
+
+    @property
+    def _n_features_out(self):
+        """Number of transformed output features."""
+        if hasattr(self, "_n_features_out_"):
+            return self._n_features_out_
+        return 3 * (self.n_harmonics + 1) ** 2
+
+    def _build_feature_names(self) -> list[str]:
+        l_max = self.n_harmonics
+        names = []
+        for axis in ("cx", "cy", "cz"):
+            for l in range(l_max + 1):
+                for m in range(-l, l + 1):
+                    names.append(f"{axis}_{l}_{m}")
+        return names
 
     def _inverse_transform_single(
         self,
@@ -346,18 +385,32 @@ def spharm(
     total_imag_parts = np.abs(np.imag(coords)).sum()
     if total_imag_parts > threshold_imag_parts:
         warnings.warn(
-            UserWarning(
-                f"The coordinates have significant imaginary parts {total_imag_parts}."
-            )
+            f"The coordinates have significant imaginary parts {total_imag_parts}.",
+            UserWarning,
+            stacklevel=2,
         )
 
     x, y, z = np.real(coords)
     return x, y, z
 
 
-def cvt_spharm_coef_to_list(coef):
+def cvt_spharm_coef_to_list(
+    coef: npt.NDArray[np.float64],
+) -> list[npt.NDArray[np.float64]]:
+    """Convert flat SPHARM coefficient matrix to a nested list by degree.
+
+    Parameters
+    ----------
+    coef : ndarray of shape (3, (l_max+1)**2) or ((l_max+1)**2, 3)
+        SPHARM coefficient matrix.
+
+    Returns
+    ----------
+    coef_list : list of ndarray
+        ``coef_list[l]`` has shape ``(2*l+1, 3)`` for degree ``l``.
+    """
     coef_ = coef.reshape((-1, 3))
-    lmax = int(np.sqrt(coef_.shape)[0] - 1)
+    lmax = int(np.sqrt(coef_.shape[0]) - 1)
     coef_list = [
         np.array([coef_[l**2 + l + m] for m in range(-l, l + 1, 1)])
         for l in range(0, lmax + 1, 1)

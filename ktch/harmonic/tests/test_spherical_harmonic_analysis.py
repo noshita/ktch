@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose, assert_array_almost_equal
 
 from ktch.harmonic import SphericalHarmonicAnalysis, spharm, xyz2spherical
@@ -83,3 +84,36 @@ def test_transform_and_inverse_roundtrip():
 
     assert reconstructed.shape == (1, len(theta_range), len(phi_range), 3)
     assert_array_almost_equal(reconstructed[0], expected_coords, decimal=6)
+
+
+def test_get_feature_names_out():
+    l_max = 2
+    theta_range = np.linspace(0, np.pi, 5)
+    phi_range = np.linspace(0, 2 * np.pi, 9)
+
+    coef_list = [
+        np.array([[1.0, 0.2, -0.1]]),
+        np.zeros((3, 3)),
+        np.zeros((5, 3)),
+    ]
+
+    x, y, z = spharm(l_max, coef_list, theta_range=theta_range, phi_range=phi_range)
+    coords = np.stack([x, y, z], axis=-1).reshape(-1, 3)
+    theta_grid, phi_grid = np.meshgrid(theta_range, phi_range, indexing="ij")
+    theta_phi = np.stack([theta_grid.ravel(), phi_grid.ravel()], axis=-1)
+
+    sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_jobs=1)
+    sha.fit_transform([coords], theta_phi=[theta_phi])
+
+    names = sha.get_feature_names_out()
+    n_terms = (l_max + 1) ** 2
+    assert len(names) == 3 * n_terms
+    assert names[0] == "cx_0_0"
+    assert names[n_terms] == "cy_0_0"
+    assert names[2 * n_terms] == "cz_0_0"
+
+
+def test_theta_phi_required():
+    sha = SphericalHarmonicAnalysis(n_harmonics=2)
+    with pytest.raises(ValueError, match="theta_phi is required"):
+        sha.transform([np.zeros((10, 3))])

@@ -307,7 +307,7 @@ class EllipticFourierAnalysis(
             X_coords = pd.concat(X_list)
             X_coords = X_coords.set_index(["specimen_id", "coord_id"])
         else:
-            X_coords = X_list
+            X_coords = np.stack(X_list)
 
         return X_coords
 
