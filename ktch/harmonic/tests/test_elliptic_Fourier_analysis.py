@@ -36,8 +36,8 @@ def test_efa_shape(norm):
     n_harmonics = 6
 
     X = _load_wings_as_list(n_specimens=10)
-    efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
-    X_transformed = efa.fit_transform(X, norm=norm)
+    efa = EllipticFourierAnalysis(n_harmonics=n_harmonics, norm=norm)
+    X_transformed = efa.fit_transform(X)
 
     assert X_transformed.shape == (len(X), 4 * (n_harmonics + 1))
 
@@ -50,9 +50,9 @@ def test_transform(norm, set_output):
 
     X = _load_wings_as_list(n_specimens=10)
 
-    efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
+    efa = EllipticFourierAnalysis(n_harmonics=n_harmonics, norm=norm)
     efa.set_output(transform=set_output)
-    coef1 = efa.fit_transform(X, norm=norm)
+    coef1 = efa.fit_transform(X)
 
     # round-trip: inverse_transform -> re-fit_transform
     if set_output == "pandas":
@@ -60,11 +60,11 @@ def test_transform(norm, set_output):
     else:
         coef1_arr = coef1
 
-    X_reconstructed = np.array(efa.inverse_transform(coef1_arr, t_num=t_num, norm=norm))
+    X_reconstructed = np.array(efa.inverse_transform(coef1_arr, t_num=t_num))
     T = [np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)] * len(X)
 
-    efa2 = EllipticFourierAnalysis(n_harmonics=n_harmonics)
-    coef2 = efa2.fit_transform(X_reconstructed, t=T, norm=norm)
+    efa2 = EllipticFourierAnalysis(n_harmonics=n_harmonics, norm=norm)
+    coef2 = efa2.fit_transform(X_reconstructed, t=T)
 
     if norm:
         # DC offsets (a0, c0) change because inverse_transform centers the
@@ -85,11 +85,11 @@ def test_transform_parallel(benchmark, n_jobs, norm=True):
 
     X = _load_wings_as_list(n_specimens=10)
 
-    efa_serial = EllipticFourierAnalysis(n_harmonics=n_harmonics, n_jobs=None)
-    coef_serial = efa_serial.fit_transform(X, norm=norm)
+    efa_serial = EllipticFourierAnalysis(n_harmonics=n_harmonics, n_jobs=None, norm=norm)
+    coef_serial = efa_serial.fit_transform(X)
 
-    efa = EllipticFourierAnalysis(n_harmonics=n_harmonics, n_jobs=n_jobs, verbose=1)
-    coef_parallel = benchmark(efa.fit_transform, X, norm=norm)
+    efa = EllipticFourierAnalysis(n_harmonics=n_harmonics, n_jobs=n_jobs, verbose=1, norm=norm)
+    coef_parallel = benchmark(efa.fit_transform, X)
 
     assert_array_almost_equal(coef_parallel, coef_serial)
 
@@ -117,8 +117,8 @@ def test_transform_exact():
     # ax.plot(X_coords[:, 0], X_coords[:, 1])
     # fig.savefig("X_exact.png")
 
-    efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
-    coef_est = efa.fit_transform([X_coords], t=[t], norm=False)[0]
+    efa = EllipticFourierAnalysis(n_harmonics=n_harmonics, norm=False)
+    coef_est = efa.fit_transform([X_coords], t=[t])[0]
     coef_est = coef_est.reshape(4, n_harmonics + 1)
 
     # Ignore a0, c0 (and b0, d0)
@@ -193,8 +193,8 @@ def test_orientation_and_scale_2d(export_figures=False):
         ).T
     )
 
-    efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
-    coef_est = efa.fit_transform([X_coords], norm=True, return_orientation_scale=True)[
+    efa = EllipticFourierAnalysis(n_harmonics=n_harmonics, return_orientation_scale=True)
+    coef_est = efa.fit_transform([X_coords])[
         0
     ]
     psi_est, scale_est = coef_est[-2:]
@@ -273,8 +273,8 @@ def test_transform_3d_exact():
     # ax.plot(X_coords[:, 0], X_coords[:, 1], X_coords[:, 2])
     # fig.savefig("X_3d_exact.png")
 
-    efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-    coef_est = efa.fit_transform([X_coords], t=[t], norm=False)[0]
+    efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=False)
+    coef_est = efa.fit_transform([X_coords], t=[t])[0]
     coef_est = coef_est.reshape(6, n_harmonics + 1)
 
     # Ignore a0, c0, e0 (and b0, d0, f0)
@@ -290,18 +290,18 @@ def test_inverse_transform():
     t_num = 360
 
     X = _load_wings_as_list(n_specimens=10)
-    efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
-    X_transformed = efa.fit_transform(X, norm=True)
-    X_adj = np.array(efa.inverse_transform(X_transformed, t_num=t_num))
+    efa_norm = EllipticFourierAnalysis(n_harmonics=n_harmonics, norm=True)
+    X_transformed = efa_norm.fit_transform(X)
+    X_adj = np.array(efa_norm.inverse_transform(X_transformed, t_num=t_num))
     T = [np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num) for i in range(len(X))]
 
-    X_transformed = efa.fit_transform(
+    efa_raw = EllipticFourierAnalysis(n_harmonics=n_harmonics, norm=False)
+    X_transformed = efa_raw.fit_transform(
         X_adj,
         t=T,
-        norm=False,
     )
     X_reconstructed = np.array(
-        efa.inverse_transform(X_transformed, t_num=t_num, norm=False)
+        efa_raw.inverse_transform(X_transformed, t_num=t_num)
     )
 
     assert_array_almost_equal(X_adj, X_reconstructed, decimal=4)
@@ -334,13 +334,13 @@ def test_arc_length_3d_includes_z():
     dt_3d = np.sqrt(dx**2 + dy**2 + dz**2)
     t_explicit = np.cumsum(dt_3d)
 
-    efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
+    efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=False)
 
     # With explicit 3D arc-length
-    coef_explicit = efa.fit_transform([X_coords], t=[t_explicit], norm=False)[0]
+    coef_explicit = efa.fit_transform([X_coords], t=[t_explicit])[0]
 
     # With auto arc-length (t=None) — should use sqrt(dx²+dy²+dz²)
-    coef_auto = efa.fit_transform([X_coords], norm=False)[0]
+    coef_auto = efa.fit_transform([X_coords])[0]
 
     # Harmonic coefficients (indices 1+) should match closely
     coef_explicit = coef_explicit.reshape(6, n_harmonics + 1)[:, 1:]
@@ -374,14 +374,14 @@ def test_dc_component_3d_weighted():
     z = e0 / 2 + np.dot(en, cos) + np.dot(fn, sin)
     X_coords = np.stack([x, y, z], 1)
 
-    efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
+    efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=False)
 
     # With uniform t (DC should be close to analytical values)
-    coef_uniform = efa.fit_transform([X_coords], t=[t], norm=False)[0]
+    coef_uniform = efa.fit_transform([X_coords], t=[t])[0]
     dc_uniform = coef_uniform.reshape(6, n_harmonics + 1)[:, 0]
 
     # With auto arc-length (non-uniform dt), DC should also be reasonable
-    coef_auto = efa.fit_transform([X_coords], norm=False)[0]
+    coef_auto = efa.fit_transform([X_coords])[0]
     dc_auto = coef_auto.reshape(6, n_harmonics + 1)[:, 0]
 
     # The auto DC should be close to the analytical values (a0, c0, e0)
@@ -706,8 +706,8 @@ class TestNormalize3d:
             n_harmonics=n_harmonics, rng=np.random.default_rng(42)
         )
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=False)
+        coef = efa.fit_transform([X_coords], t=None)[0]
         arrays = coef.reshape(6, n_harmonics + 1)
         an, bn, cn, dn, en, fn = arrays
 
@@ -733,8 +733,8 @@ class TestNormalize3d:
             n_harmonics=n_harmonics, rng=np.random.default_rng(42)
         )
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=False)
+        coef = efa.fit_transform([X_coords], t=None)[0]
         arrays = coef.reshape(6, n_harmonics + 1)
         an, bn, cn, dn, en, fn = arrays
 
@@ -805,17 +805,17 @@ class TestNormMethodParameter:
         X = _load_wings_as_list(n_specimens=10)
         n_harmonics = 6
 
-        efa_default = EllipticFourierAnalysis(n_harmonics=n_harmonics, n_dim=2)
+        efa_default = EllipticFourierAnalysis(n_harmonics=n_harmonics, n_dim=2, norm=True)
         efa_area = EllipticFourierAnalysis(
-            n_harmonics=n_harmonics, n_dim=2, norm_method="area"
+            n_harmonics=n_harmonics, n_dim=2, norm_method="area", norm=True
         )
         efa_semi = EllipticFourierAnalysis(
-            n_harmonics=n_harmonics, n_dim=2, norm_method="semi_major_axis"
+            n_harmonics=n_harmonics, n_dim=2, norm_method="semi_major_axis", norm=True
         )
 
-        coef_default = efa_default.fit_transform(X, norm=True)
-        coef_area = efa_area.fit_transform(X, norm=True)
-        coef_semi = efa_semi.fit_transform(X, norm=True)
+        coef_default = efa_default.fit_transform(X)
+        coef_area = efa_area.fit_transform(X)
+        coef_semi = efa_semi.fit_transform(X)
 
         assert_array_almost_equal(coef_default, coef_area)
         assert_array_almost_equal(coef_default, coef_semi)
@@ -827,8 +827,8 @@ class TestNormMethodParameter:
             n_harmonics=n_harmonics, rng=np.random.default_rng(42)
         )
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=False)
+        coef = efa.fit_transform([X_coords], t=None)[0]
         arrays = coef.reshape(6, n_harmonics + 1)
         an, bn, cn, dn, en, fn = arrays
 
@@ -851,8 +851,8 @@ class TestNormMethodParameter:
             n_harmonics=n_harmonics, rng=np.random.default_rng(42)
         )
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=False)
+        coef = efa.fit_transform([X_coords], t=None)[0]
         arrays = coef.reshape(6, n_harmonics + 1)
         an, bn, cn, dn, en, fn = arrays
 
@@ -893,8 +893,8 @@ class TestNormMethodParameter:
             n_harmonics=n_harmonics, rng=np.random.default_rng(42)
         )
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=False)
+        coef = efa.fit_transform([X_coords], t=None)[0]
         arrays = coef.reshape(6, n_harmonics + 1)
         an, bn, cn, dn, en, fn = arrays
 
@@ -964,8 +964,8 @@ class TestTransformSingle3dPipeline:
             n_harmonics=n_harmonics, rng=np.random.default_rng(10)
         )
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        result = efa.fit_transform([X_coords], norm=True)
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True)
+        result = efa.fit_transform([X_coords])
 
         assert result.shape == (1, 6 * (n_harmonics + 1))
 
@@ -976,8 +976,10 @@ class TestTransformSingle3dPipeline:
             n_harmonics=n_harmonics, rng=np.random.default_rng(10)
         )
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        result = efa.fit_transform([X_coords], norm=True, return_orientation_scale=True)
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=True, return_orientation_scale=True
+        )
+        result = efa.fit_transform([X_coords])
 
         expected_len = 6 * (n_harmonics + 1) + 5
         assert result.shape == (1, expected_len)
@@ -992,7 +994,8 @@ class TestTransformSingle3dPipeline:
         efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
 
         # Get raw coefficients first
-        raw = efa.fit_transform([X_coords], norm=False)[0]
+        efa_raw = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=False)
+        raw = efa_raw.fit_transform([X_coords])[0]
         arrays = raw.reshape(6, n_harmonics + 1)
         an, bn, cn, dn, en, fn = arrays
 
@@ -1002,9 +1005,10 @@ class TestTransformSingle3dPipeline:
         )
 
         # Get from pipeline
-        result = efa.fit_transform(
-            [X_coords], norm=True, return_orientation_scale=True
-        )[0]
+        efa_with_os = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=True, return_orientation_scale=True
+        )
+        result = efa_with_os.fit_transform([X_coords])[0]
         alpha_got, beta_got, gamma_got, phi_got, scale_got = result[-5:]
 
         assert alpha_got == pytest.approx(alpha_exp, abs=1e-10)
@@ -1023,7 +1027,8 @@ class TestTransformSingle3dPipeline:
         efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
 
         # Get raw coefficients
-        raw = efa.fit_transform([X_coords], norm=False)[0]
+        efa_raw = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=False)
+        raw = efa_raw.fit_transform([X_coords])[0]
         arrays = raw.reshape(6, n_harmonics + 1)
         an, bn, cn, dn, en, fn = arrays
 
@@ -1032,7 +1037,8 @@ class TestTransformSingle3dPipeline:
         expected_coef = np.hstack([An, Bn, Cn, Dn, En, Fn])
 
         # Pipeline normalization
-        result = efa.fit_transform([X_coords], norm=True)[0]
+        efa_norm = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True)
+        result = efa_norm.fit_transform([X_coords])[0]
 
         assert_array_almost_equal(result, expected_coef, decimal=10)
 
@@ -1042,8 +1048,8 @@ class TestTransformSingle3dPipeline:
         X1, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=np.random.default_rng(10))
         X2, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=np.random.default_rng(20))
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        result = efa.fit_transform([X1, X2], norm=True)
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True)
+        result = efa.fit_transform([X1, X2])
 
         assert result.shape == (2, 6 * (n_harmonics + 1))
 
@@ -1054,11 +1060,11 @@ class TestTransformSingle3dPipeline:
             n_harmonics=n_harmonics, rng=np.random.default_rng(10)
         )
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        result_ft = efa.fit_transform(
-            [X_coords], norm=True, return_orientation_scale=True
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=True, return_orientation_scale=True
         )
-        result_t = efa.transform([X_coords], norm=True, return_orientation_scale=True)
+        result_ft = efa.fit_transform([X_coords])
+        result_t = efa.transform([X_coords])
 
         assert_array_almost_equal(result_ft, result_t)
 
@@ -1076,9 +1082,9 @@ class TestNormalize3dInvariance:
         translation = rng.uniform(-10, 10, size=3)
         X_translated = X_coords + translation
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        coef_orig = efa.fit_transform([X_coords], norm=True)[0]
-        coef_trans = efa.fit_transform([X_translated], norm=True)[0]
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True)
+        coef_orig = efa.fit_transform([X_coords])[0]
+        coef_trans = efa.fit_transform([X_translated])[0]
 
         # Harmonic coefficients (indices 1+) should match; DC may differ
         coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
@@ -1096,9 +1102,9 @@ class TestNormalize3dInvariance:
         scale_factor = rng.uniform(0.5, 5.0)
         X_scaled = X_coords * scale_factor
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        coef_orig = efa.fit_transform([X_coords], norm=True)[0]
-        coef_scaled = efa.fit_transform([X_scaled], norm=True)[0]
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True)
+        coef_orig = efa.fit_transform([X_coords])[0]
+        coef_scaled = efa.fit_transform([X_scaled])[0]
 
         # Harmonic coefficients should match
         coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
@@ -1119,9 +1125,9 @@ class TestNormalize3dInvariance:
         R = rotation_matrix_3d_euler_zxz(alpha_r, beta_r, gamma_r)
         X_rotated = (R @ X_coords.T).T
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        coef_orig = efa.fit_transform([X_coords], norm=True)[0]
-        coef_rot = efa.fit_transform([X_rotated], norm=True)[0]
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True)
+        coef_orig = efa.fit_transform([X_coords])[0]
+        coef_rot = efa.fit_transform([X_rotated])[0]
 
         # Harmonic coefficients should match
         coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
@@ -1148,16 +1154,16 @@ class TestNormalize3dInvariance:
         shift = rng.integers(1, len(X_coords))
         X_shifted = np.roll(X_coords, shift, axis=0)
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        coef_orig = efa.fit_transform([X_coords], norm=True)
-        coef_shifted = efa.fit_transform([X_shifted], norm=True)
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True)
+        coef_orig = efa.fit_transform([X_coords])
+        coef_shifted = efa.fit_transform([X_shifted])
 
         # Reconstruct normalized shapes and compare geometrically
         X_recon_orig = np.array(
-            efa.inverse_transform(coef_orig, t_num=t_num, norm=True)
+            efa.inverse_transform(coef_orig, t_num=t_num)
         )[0]
         X_recon_shifted = np.array(
-            efa.inverse_transform(coef_shifted, t_num=t_num, norm=True)
+            efa.inverse_transform(coef_shifted, t_num=t_num)
         )[0]
 
         assert wasserstein_distance_nd(X_recon_orig, X_recon_shifted) < 0.5
@@ -1175,16 +1181,17 @@ class TestNormalize3dInvariance:
         rng = np.random.default_rng(54)
         X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, t_num=t_num, rng=rng)
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        coef_norm = efa.fit_transform([X_coords], norm=True)
-        X_recon = np.array(efa.inverse_transform(coef_norm, t_num=t_num, norm=True))
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True)
+        coef_norm = efa.fit_transform([X_coords])
+        X_recon = np.array(efa.inverse_transform(coef_norm, t_num=t_num))
 
         # Re-transform with explicit uniform t (matching inverse output spacing)
         t_uniform = [
             np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
             for _ in range(len(X_recon))
         ]
-        coef_recon = efa.fit_transform(X_recon, t=t_uniform, norm=False)
+        efa_raw = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=False)
+        coef_recon = efa_raw.fit_transform(X_recon, t=t_uniform)
 
         # Compare harmonics (skip DC since norm=True zeroes it in inverse)
         coef_norm_harmonics = coef_norm.reshape(-1, 6, n_harmonics + 1)[:, :, 1:]
@@ -1210,10 +1217,10 @@ class TestNormalize3dInvariance:
 
         t_uniform = np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        result = efa.fit_transform(
-            [X_coords], t=[t_uniform], norm=True, return_orientation_scale=True
-        )[0]
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=True, return_orientation_scale=True
+        )
+        result = efa.fit_transform([X_coords], t=[t_uniform])[0]
 
         # Shape check: 6*(n_harmonics+1) + 5
         expected_len = 6 * (n_harmonics + 1) + 5
@@ -1253,8 +1260,8 @@ class TestNormalize3dInvariance:
         rng = np.random.default_rng(56)
         X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=rng)
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        coef = efa.fit_transform([X_coords], norm=True)[0]
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True)
+        coef = efa.fit_transform([X_coords])[0]
         arrays = coef.reshape(6, n_harmonics + 1)
 
         An, Bn, Cn, Dn, En, Fn = arrays
@@ -1281,7 +1288,10 @@ class TestSemiMajorAxisNormalization:
         efa = EllipticFourierAnalysis(
             n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
         )
-        coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
+        efa_raw = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis", norm=False
+        )
+        coef = efa_raw.fit_transform([X_coords], t=None)[0]
         arrays = coef.reshape(6, n_harmonics + 1)
         an, bn, cn, dn, en, fn = arrays
 
@@ -1307,7 +1317,10 @@ class TestSemiMajorAxisNormalization:
             n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
         )
 
-        coef = efa_area.fit_transform([X_coords], t=None, norm=False)[0]
+        efa_raw = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=False
+        )
+        coef = efa_raw.fit_transform([X_coords], t=None)[0]
         arrays = coef.reshape(6, n_harmonics + 1)
         an, bn, cn, dn, en, fn = arrays
 
@@ -1326,7 +1339,10 @@ class TestSemiMajorAxisNormalization:
         efa = EllipticFourierAnalysis(
             n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
         )
-        coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
+        efa_raw = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis", norm=False
+        )
+        coef = efa_raw.fit_transform([X_coords], t=None)[0]
         arrays = coef.reshape(6, n_harmonics + 1)
         an, bn, cn, dn, en, fn = arrays
 
@@ -1353,7 +1369,10 @@ class TestSemiMajorAxisNormalization:
             n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
         )
 
-        coef = efa_area.fit_transform([X_coords], t=None, norm=False)[0]
+        efa_raw = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=False
+        )
+        coef = efa_raw.fit_transform([X_coords], t=None)[0]
         arrays = coef.reshape(6, n_harmonics + 1)
         an, bn, cn, dn, en, fn = arrays
 
@@ -1377,14 +1396,19 @@ class TestSemiMajorAxisNormalization:
         )
 
         efa = EllipticFourierAnalysis(
-            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+            n_dim=3,
+            n_harmonics=n_harmonics,
+            norm_method="semi_major_axis",
+            norm=True,
+            return_orientation_scale=True,
         )
-        result = efa.fit_transform(
-            [X_coords], norm=True, return_orientation_scale=True
-        )[0]
+        result = efa.fit_transform([X_coords])[0]
 
         # Get raw coefficients for expected a1
-        raw = efa.fit_transform([X_coords], norm=False)[0]
+        efa_raw = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis", norm=False
+        )
+        raw = efa_raw.fit_transform([X_coords])[0]
         arrays = raw.reshape(6, n_harmonics + 1)
         an, bn, cn, dn, en, fn = arrays
         _, a1, _, _, _, _ = _compute_ellipse_geometry_3d(
@@ -1404,7 +1428,10 @@ class TestSemiMajorAxisNormalization:
         efa = EllipticFourierAnalysis(
             n_dim=3, n_harmonics=n_harmonics, norm_method="area"
         )
-        coef = efa.fit_transform([X_coords], t=None, norm=False)[0]
+        efa_raw = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm_method="area", norm=False
+        )
+        coef = efa_raw.fit_transform([X_coords], t=None)[0]
         arrays = coef.reshape(6, n_harmonics + 1)
         an, bn, cn, dn, en, fn = arrays
 
@@ -1435,9 +1462,9 @@ class TestSemiMajorAxisCanonical:
             )
 
             efa = EllipticFourierAnalysis(
-                n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+                n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis", norm=True
             )
-            coef = efa.fit_transform([X_coords], norm=True)[0]
+            coef = efa.fit_transform([X_coords])[0]
             arrays = coef.reshape(6, n_harmonics + 1)
             An, Bn, Cn, Dn, En, Fn = arrays
 
@@ -1458,9 +1485,9 @@ class TestSemiMajorAxisCanonical:
         )
 
         efa = EllipticFourierAnalysis(
-            n_dim=3, n_harmonics=n_harmonics, norm_method="area"
+            n_dim=3, n_harmonics=n_harmonics, norm_method="area", norm=True
         )
-        coef = efa.fit_transform([X_coords], norm=True)[0]
+        coef = efa.fit_transform([X_coords])[0]
         arrays = coef.reshape(6, n_harmonics + 1)
         An, Bn, Cn, Dn, En, Fn = arrays
 
@@ -1485,10 +1512,10 @@ class TestSemiMajorAxisInvariance:
         X_translated = X_coords + translation
 
         efa = EllipticFourierAnalysis(
-            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis", norm=True
         )
-        coef_orig = efa.fit_transform([X_coords], norm=True)[0]
-        coef_trans = efa.fit_transform([X_translated], norm=True)[0]
+        coef_orig = efa.fit_transform([X_coords])[0]
+        coef_trans = efa.fit_transform([X_translated])[0]
 
         coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
         coef_trans_harmonics = coef_trans.reshape(6, n_harmonics + 1)[:, 1:]
@@ -1505,10 +1532,10 @@ class TestSemiMajorAxisInvariance:
         X_scaled = X_coords * scale_factor
 
         efa = EllipticFourierAnalysis(
-            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis", norm=True
         )
-        coef_orig = efa.fit_transform([X_coords], norm=True)[0]
-        coef_scaled = efa.fit_transform([X_scaled], norm=True)[0]
+        coef_orig = efa.fit_transform([X_coords])[0]
+        coef_scaled = efa.fit_transform([X_scaled])[0]
 
         coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
         coef_scaled_harmonics = coef_scaled.reshape(6, n_harmonics + 1)[:, 1:]
@@ -1528,10 +1555,10 @@ class TestSemiMajorAxisInvariance:
         X_rotated = (R @ X_coords.T).T
 
         efa = EllipticFourierAnalysis(
-            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis", norm=True
         )
-        coef_orig = efa.fit_transform([X_coords], norm=True)[0]
-        coef_rot = efa.fit_transform([X_rotated], norm=True)[0]
+        coef_orig = efa.fit_transform([X_coords])[0]
+        coef_rot = efa.fit_transform([X_rotated])[0]
 
         coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
         coef_rot_harmonics = coef_rot.reshape(6, n_harmonics + 1)[:, 1:]
@@ -1555,16 +1582,16 @@ class TestSemiMajorAxisInvariance:
         X_shifted = np.roll(X_coords, shift, axis=0)
 
         efa = EllipticFourierAnalysis(
-            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis"
+            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis", norm=True
         )
-        coef_orig = efa.fit_transform([X_coords], norm=True)
-        coef_shifted = efa.fit_transform([X_shifted], norm=True)
+        coef_orig = efa.fit_transform([X_coords])
+        coef_shifted = efa.fit_transform([X_shifted])
 
         X_recon_orig = np.array(
-            efa.inverse_transform(coef_orig, t_num=t_num, norm=True)
+            efa.inverse_transform(coef_orig, t_num=t_num)
         )[0]
         X_recon_shifted = np.array(
-            efa.inverse_transform(coef_shifted, t_num=t_num, norm=True)
+            efa.inverse_transform(coef_shifted, t_num=t_num)
         )[0]
 
         assert wasserstein_distance_nd(X_recon_orig, X_recon_shifted) < 1.0
@@ -1643,8 +1670,8 @@ class TestAreaNormalizationRegression:
             n_harmonics=n_harmonics, rng=np.random.default_rng(42)
         )
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        coef = efa.fit_transform([X_coords], norm=True)[0]
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True)
+        coef = efa.fit_transform([X_coords])[0]
 
         assert_array_almost_equal(coef, self._EXPECTED_COEF, decimal=12)
 
@@ -1655,10 +1682,10 @@ class TestAreaNormalizationRegression:
             n_harmonics=n_harmonics, rng=np.random.default_rng(42)
         )
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        result = efa.fit_transform(
-            [X_coords], norm=True, return_orientation_scale=True
-        )[0]
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=True, return_orientation_scale=True
+        )
+        result = efa.fit_transform([X_coords])[0]
         orient_scale = result[-5:]
 
         assert_array_almost_equal(orient_scale, self._EXPECTED_ORIENT_SCALE, decimal=12)
@@ -1670,8 +1697,10 @@ class TestOrientationMetadataAndRoundTrip:
     def test_feature_names_and_counts_2d(self):
         n_harmonics = 3
         coords = _make_circle(t_num=120)
-        efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
-        coef = efa.fit_transform([coords], norm=True, return_orientation_scale=True)
+        efa = EllipticFourierAnalysis(
+            n_harmonics=n_harmonics, norm=True, return_orientation_scale=True
+        )
+        coef = efa.fit_transform([coords])
 
         expected = (
             [f"a_{i}" for i in range(n_harmonics + 1)]
@@ -1689,8 +1718,10 @@ class TestOrientationMetadataAndRoundTrip:
         coords, _ = _make_3d_outline(
             n_harmonics=n_harmonics, t_num=120, rng=np.random.default_rng(123)
         )
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        coef = efa.fit_transform([coords], norm=True, return_orientation_scale=True)
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=True, return_orientation_scale=True
+        )
+        coef = efa.fit_transform([coords])
 
         expected = (
             [f"a_{i}" for i in range(n_harmonics + 1)]
@@ -1708,9 +1739,11 @@ class TestOrientationMetadataAndRoundTrip:
     def test_set_output_pandas_columns_2d(self):
         n_harmonics = 2
         coords = _make_circle(t_num=60)
-        efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
+        efa = EllipticFourierAnalysis(
+            n_harmonics=n_harmonics, norm=True, return_orientation_scale=True
+        )
         efa.set_output(transform="pandas")
-        coef_df = efa.fit_transform([coords], norm=True, return_orientation_scale=True)
+        coef_df = efa.fit_transform([coords])
         expected_cols = (
             [f"a_{i}" for i in range(n_harmonics + 1)]
             + [f"b_{i}" for i in range(n_harmonics + 1)]
@@ -1727,9 +1760,11 @@ class TestOrientationMetadataAndRoundTrip:
         coords, _ = _make_3d_outline(
             n_harmonics=n_harmonics, t_num=60, rng=np.random.default_rng(321)
         )
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=True, return_orientation_scale=True
+        )
         efa.set_output(transform="pandas")
-        coef_df = efa.fit_transform([coords], norm=True, return_orientation_scale=True)
+        coef_df = efa.fit_transform([coords])
         expected_cols = (
             [f"a_{i}" for i in range(n_harmonics + 1)]
             + [f"b_{i}" for i in range(n_harmonics + 1)]
@@ -1746,13 +1781,16 @@ class TestOrientationMetadataAndRoundTrip:
     def test_inverse_round_trip_with_orientation_2d(self):
         n_harmonics = 4
         coords = _make_circle(t_num=150)
-        efa = EllipticFourierAnalysis(n_harmonics=n_harmonics)
-        coef = efa.fit_transform([coords], norm=True, return_orientation_scale=True)
+        efa = EllipticFourierAnalysis(
+            n_harmonics=n_harmonics, norm=True, return_orientation_scale=True
+        )
+        coef = efa.fit_transform([coords])
 
-        coords_recon = efa.inverse_transform(coef, t_num=coords.shape[0], norm=True)[0]
-        coef_recon = efa.fit_transform(
-            [coords_recon], norm=True, return_orientation_scale=False
-        )[0]
+        coords_recon = efa.inverse_transform(coef, t_num=coords.shape[0])[0]
+        efa_refit = EllipticFourierAnalysis(
+            n_harmonics=n_harmonics, norm=True, return_orientation_scale=False
+        )
+        coef_recon = efa_refit.fit_transform([coords_recon])[0]
 
         np.testing.assert_allclose(coef[0, :-2], coef_recon, rtol=1e-6, atol=1e-6)
 
@@ -1765,15 +1803,18 @@ class TestOrientationMetadataAndRoundTrip:
         y = 1.0 * np.sin(t)
         z = np.zeros_like(t)
         coords = np.stack([x, y, z], axis=1)
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
-        coef = efa.fit_transform([coords], norm=True, return_orientation_scale=True)
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=True, return_orientation_scale=True
+        )
+        coef = efa.fit_transform([coords])
 
         # Use finer sampling to reduce quadrature error in inverse transform
         t_num = 720
-        coords_recon = efa.inverse_transform(coef, t_num=t_num, norm=True)[0]
-        coef_recon = efa.fit_transform(
-            [coords_recon], norm=True, return_orientation_scale=False
-        )[0]
+        coords_recon = efa.inverse_transform(coef, t_num=t_num)[0]
+        efa_refit = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=True, return_orientation_scale=False
+        )
+        coef_recon = efa_refit.fit_transform([coords_recon])[0]
 
         # Compare energy per harmonic (Frobenius norm of 3x2 coefficient matrices) to
         # avoid sign/phase ambiguities introduced by normalization.
@@ -1791,6 +1832,8 @@ class TestOrientationMetadataAndRoundTrip:
         coords, _ = _make_3d_outline(
             n_harmonics=n_harmonics, t_num=80, rng=np.random.default_rng(999)
         )
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics)
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=False, return_orientation_scale=True
+        )
         with pytest.raises(ValueError):
-            efa.fit_transform([coords], norm=False, return_orientation_scale=True)
+            efa.fit_transform([coords])

@@ -66,7 +66,7 @@ def test_transform_and_inverse_roundtrip():
     theta_phi = np.stack([theta_grid.ravel(), phi_grid.ravel()], axis=-1)
 
     sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_jobs=1)
-    transformed = sha.fit_transform([coords], [theta_phi])
+    transformed = sha.fit_transform([coords], theta_phi=[theta_phi])
 
     assert transformed.shape == (1, 3 * (l_max + 1) ** 2)
 

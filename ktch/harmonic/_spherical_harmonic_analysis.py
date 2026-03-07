@@ -14,8 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import warnings
-from typing import List
 
 import numpy as np
 import numpy.typing as npt
@@ -92,10 +93,39 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
         self.n_jobs = n_jobs
         self.verbose = verbose
 
-    def fit_transform(self, X, theta_phi):
-        """SPHARM coefficients of outlines."""
+    def fit(self, X, y=None, theta_phi=None):
+        """Fit the model (no-op for stateless transformer).
 
-        return self.transform(X, theta_phi)
+        Parameters
+        ----------
+        X : ignored
+        y : ignored
+        theta_phi : ignored
+
+        Returns
+        ----------
+        self
+        """
+        return self
+
+    def fit_transform(self, X, y=None, theta_phi=None):
+        """Fit and transform in a single step.
+
+        Overridden to support metadata routing of ``theta_phi``.
+
+        Parameters
+        ----------
+        X : list of array-like of shape (n_coords_i, 3)
+            Coordinate values of n_samples.
+        y : ignored
+        theta_phi : list of array-like of shape (n_coords_i, 2)
+            Surface parameterization of n_samples.
+
+        Returns
+        ----------
+        X_transformed : ndarray of shape (n_samples, n_coefficients)
+        """
+        return self.fit(X, y, theta_phi=theta_phi).transform(X, theta_phi=theta_phi)
 
     def _transform_single(self, X, theta_phi):
         """SPHARM coefficients of a single outline.
@@ -129,7 +159,7 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
 
         return X_transformed
 
-    def transform(self, X, theta_phi):
+    def transform(self, X, theta_phi=None):
         """Transform X to a SPHARM coefficients.
 
         Parameters
@@ -148,6 +178,11 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
         X_transformed: array-like of shape (n_samples, n_coefficients)
             Returns the array-like of SPHARM coefficients.
         """
+        if theta_phi is None:
+            raise ValueError(
+                "theta_phi is required for SphericalHarmonicAnalysis.transform(). "
+                "Provide surface parameterization for each sample."
+            )
 
         if isinstance(X, pd.DataFrame):
             X_ = [row.dropna().to_numpy().reshape(3, -1).T for idx, row in X.iterrows()]
@@ -205,8 +240,8 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
     def inverse_transform(
         self,
         X_transformed,
-        theta_range=np.linspace(0, np.pi, 90),
-        phi_range=np.linspace(0, 2 * np.pi, 180),
+        theta_range=None,
+        phi_range=None,
         l_max=None,
     ):
         """Inverse SPHARM transform
@@ -225,6 +260,10 @@ class SphericalHarmonicAnalysis(TransformerMixin, BaseEstimator):
         X_coords: array-like of shape (n_samples, n_theta, n_phi, 3)
             Coordinate values of reconstructed surfaces.
         """
+        if theta_range is None:
+            theta_range = np.linspace(0, np.pi, 90)
+        if phi_range is None:
+            phi_range = np.linspace(0, 2 * np.pi, 180)
         if l_max is None:
             l_max = self.n_harmonics
 
@@ -258,9 +297,9 @@ def xyz2spherical(xyz: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
 
 def spharm(
     l_max: int,
-    coef: List[npt.ArrayLike],
-    theta_range=np.linspace(0, np.pi, 90),
-    phi_range=np.linspace(0, 2 * np.pi, 180),
+    coef: list[npt.ArrayLike],
+    theta_range=None,
+    phi_range=None,
     threshold_imag_parts: float = 1e-10,
 ):
     """SPHARM
@@ -282,6 +321,11 @@ def spharm(
         Coordinate values of SPHARM.
 
     """
+
+    if theta_range is None:
+        theta_range = np.linspace(0, np.pi, 90)
+    if phi_range is None:
+        phi_range = np.linspace(0, 2 * np.pi, 180)
 
     l, m, theta, phi = np.meshgrid(
         np.arange(0, l_max + 1, 1),
