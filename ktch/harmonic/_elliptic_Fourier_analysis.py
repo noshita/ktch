@@ -29,6 +29,18 @@ from sklearn.decomposition import PCA
 from sklearn.utils.parallel import Parallel, delayed
 
 
+# Tolerance for detecting degenerate (near-zero) geometric quantities
+# (arc length, semi-axes, phase-angle denominator).
+_DEGENERACY_TOL = 1e-15
+
+# Floor value for near-zero arc-length segments when
+# duplicated_points="infinitesimal".
+_INFINITESIMAL_DT = 1e-10
+
+# Tolerance for gimbal-lock detection in ZXZ Euler angle extraction.
+_GIMBAL_TOL = 1e-10
+
+
 class EllipticFourierAnalysis(
     ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator
 ):
@@ -365,14 +377,14 @@ class EllipticFourierAnalysis(
                 + str(len(X))
             )
 
-        if tp[-1] < 1e-15:
+        if tp[-1] < _DEGENERACY_TOL:
             raise ValueError(
                 "Degenerate outline: total arc length is near zero. "
                 "All points may be identical."
             )
 
         if duplicated_points == "infinitesimal":
-            dt[dt < 10**-10] = 10**-10
+            dt[dt < _INFINITESIMAL_DT] = _INFINITESIMAL_DT
         elif duplicated_points == "deletion":
             idx_duplicated_points = np.where(dt == 0)[0]
             if len(idx_duplicated_points) > 0:
@@ -570,14 +582,14 @@ class EllipticFourierAnalysis(
                 + str(len(X))
             )
 
-        if tp[-1] < 1e-15:
+        if tp[-1] < _DEGENERACY_TOL:
             raise ValueError(
                 "Degenerate outline: total arc length is near zero. "
                 "All points may be identical."
             )
 
         if duplicated_points == "infinitesimal":
-            dt[dt < 10**-10] = 10**-10
+            dt[dt < _INFINITESIMAL_DT] = _INFINITESIMAL_DT
         elif duplicated_points == "deletion":
             idx_duplicated_points = np.where(dt == 0)[0]
             if len(idx_duplicated_points) > 0:
@@ -663,7 +675,7 @@ class EllipticFourierAnalysis(
         )
 
         # Handle degenerate 1st harmonic
-        if a1 < 1e-15:
+        if a1 < _DEGENERACY_TOL:
             raise ValueError(
                 "Degenerate 1st harmonic: the ellipse has near-zero semi-axes. "
                 "Cannot normalize 3D EFA coefficients."
@@ -931,7 +943,7 @@ def _compute_ellipse_geometry_3d(
     # 2*dot_cs / denom = -tan(2*phi)
     # -> phi_0 = -(1/2) * arctan2(2*dot_cs, denom)
     denom = sum_c2 - sum_s2
-    if abs(denom) < 1e-15 and abs(dot_cs) < 1e-15:
+    if abs(denom) < _DEGENERACY_TOL and abs(dot_cs) < _DEGENERACY_TOL:
         phi_0 = 0.0
     else:
         phi_0 = -0.5 * np.arctan2(2 * dot_cs, denom)
@@ -960,7 +972,7 @@ def _compute_ellipse_geometry_3d(
     a = np.sqrt(max(a2, 0.0))
     b = np.sqrt(max(b2, 0.0))
 
-    if a < 1e-15:
+    if a < _DEGENERACY_TOL:
         return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
     cos_phi = np.cos(phi)
@@ -979,7 +991,7 @@ def _compute_ellipse_geometry_3d(
 
     col0 = (cos_phi * coef_c - sin_phi * coef_s) / a
 
-    if b < 1e-15:
+    if b < _DEGENERACY_TOL:
         col1 = np.zeros(3)
         col2 = np.zeros(3)
     else:
@@ -994,8 +1006,6 @@ def _compute_ellipse_geometry_3d(
     # Extract Euler angles (ZXZ) from the rotation matrix
     cos_beta = np.clip(Omega_33, -1.0, 1.0)
     beta = float(np.arccos(cos_beta))
-
-    _GIMBAL_TOL = 1e-10
 
     if abs(np.sin(beta)) < _GIMBAL_TOL:
         # Gimbal lock

@@ -137,7 +137,7 @@ class SphericalHarmonicAnalysis(
         return self.fit(X, y).transform(X, theta_phi=theta_phi)
 
     def _transform_single(self, X, theta_phi):
-        """SPHARM coefficients of a single outline.
+        """Compute SPHARM coefficients for a single sample.
 
         Parameters
         ----------
@@ -180,7 +180,7 @@ class SphericalHarmonicAnalysis(
         return X_transformed
 
     def transform(self, X, theta_phi=None):
-        """Transform X to a SPHARM coefficients.
+        """Compute SPHARM coefficients.
 
         Parameters
         ----------
@@ -255,24 +255,24 @@ class SphericalHarmonicAnalysis(
         phi_range,
         l_max=None,
     ):
-        """SPHARM
+        """Reconstruct a single surface from SPHARM coefficients.
 
         Parameters
         ----------
-        lmax: int
-            Degree of SPHARM to use how far
-        coef_list: list
-            SPHARM coefficients
-            coef_naive[l,m] corresponding to the coefficient of degree l and order m
-        theta_range: array_like
-        phi_range: array_like
-
+        X_transformed : ndarray of shape (n_coefficients,)
+            Flat SPHARM coefficient vector for one sample.
+        theta_range : array-like of shape (n_theta,)
+            Polar angle values (colatitude, 0 to pi).
+        phi_range : array-like of shape (n_phi,)
+            Azimuthal angle values (0 to 2*pi).
+        l_max : int, optional
+            Maximum degree of harmonics to use. Defaults to
+            ``self.n_harmonics``.
 
         Returns
         -------
-        X_coords: array-like of shape (n_theta, n_phi, 3)
-            Coordinate values of SPHARM.
-
+        X_coords : ndarray of shape (n_theta, n_phi, 3)
+            Reconstructed surface coordinates.
         """
         if l_max is None:
             l_max = self.n_harmonics
@@ -293,21 +293,26 @@ class SphericalHarmonicAnalysis(
         phi_range=None,
         l_max=None,
     ):
-        """Inverse SPHARM transform
+        """Reconstruct surfaces from SPHARM coefficients.
 
         Parameters
         ----------
-        X_transformed: array-like of shape (n_samples, n_coefficients)
+        X_transformed : array-like of shape (n_samples, n_coefficients)
             SPHARM coefficients.
-        theta_range: array_like
-        phi_range: array_like
-        lmax: int
-            Degree of SPHARM to use how far
+        theta_range : array-like of shape (n_theta,), optional
+            Polar angle values (colatitude). Defaults to
+            ``np.linspace(0, pi, 90)``.
+        phi_range : array-like of shape (n_phi,), optional
+            Azimuthal angle values. Defaults to
+            ``np.linspace(0, 2*pi, 180)``.
+        l_max : int, optional
+            Maximum degree of harmonics to use. Defaults to
+            ``self.n_harmonics``.
 
         Returns
         -------
-        X_coords: array-like of shape (n_samples, n_theta, n_phi, 3)
-            Coordinate values of reconstructed surfaces.
+        X_coords : ndarray of shape (n_samples, n_theta, n_phi, 3)
+            Reconstructed surface coordinates.
         """
         if theta_range is None:
             theta_range = np.linspace(0, np.pi, 90)
@@ -336,13 +341,28 @@ class SphericalHarmonicAnalysis(
 
 
 def xyz2spherical(xyz: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
-    """Convert Cartesian coordinates to spherical coordinates (theta, phi)"""
+    """Convert Cartesian coordinates to spherical coordinates.
+
+    Parameters
+    ----------
+    xyz : ndarray of shape (n, 3)
+        Cartesian coordinates (x, y, z). Points are assumed to lie on or
+        near the unit sphere.
+
+    Returns
+    -------
+    theta_phi : ndarray of shape (n, 2)
+        Spherical coordinates ``[theta, phi]`` where ``theta`` is the
+        polar angle (colatitude, 0 to pi) and ``phi`` is the azimuthal
+        angle (-pi to pi).
+    """
     theta = np.arccos(xyz[:, 2])
     xy_norm = np.linalg.norm(xyz[:, 0:2], axis=1)
     phi = np.where(
         xy_norm == 0,
         0.0,
-        np.sign(xyz[:, 1]) * np.arccos(xyz[:, 0] / np.where(xy_norm == 0, 1.0, xy_norm)),
+        np.sign(xyz[:, 1])
+        * np.arccos(xyz[:, 0] / np.where(xy_norm == 0, 1.0, xy_norm)),
     )
     return np.array([theta, phi]).T
 
@@ -354,24 +374,31 @@ def spharm(
     phi_range=None,
     threshold_imag_parts: float = 1e-10,
 ):
-    """SPHARM
+    """Reconstruct surface coordinates from SPHARM coefficients.
 
     Parameters
     ----------
-    l_max: int
-        Degree of SPHARM to use how far
-    coef: List (l_max + 1) of array_like (2l + 1, 3) of complex
-        SPHARM coefficients
-        coef[l][m] is the coefficients (c_x, c_y, c_z) of degree l and order m.
-    theta_range: array_like
-    phi_range: array_like
-
+    l_max : int
+        Maximum degree of spherical harmonics.
+    coef : list of array-like
+        SPHARM coefficients. ``coef[l]`` has shape ``(2*l+1, 3)`` and
+        ``coef[l][l+m]`` holds ``(c_x, c_y, c_z)`` for degree ``l``
+        and order ``m``.
+    theta_range : array-like of shape (n_theta,), optional
+        Polar angle values (colatitude, 0 to pi). Defaults to
+        ``np.linspace(0, pi, 90)``.
+    phi_range : array-like of shape (n_phi,), optional
+        Azimuthal angle values (0 to 2*pi). Defaults to
+        ``np.linspace(0, 2*pi, 180)``.
+    threshold_imag_parts : float, default=1e-10
+        Tolerance for imaginary parts in the reconstructed coordinates.
+        A warning is issued if the total imaginary magnitude exceeds
+        this value.
 
     Returns
     -------
-    x, y, z: tuple of array_like
-        Coordinate values of SPHARM.
-
+    x, y, z : ndarray of shape (n_theta, n_phi)
+        Reconstructed surface coordinates.
     """
     if theta_range is None:
         theta_range = np.linspace(0, np.pi, 90)

@@ -30,6 +30,24 @@ import pandas as pd
 
 @dataclass
 class TPSData:
+    """Data for a single specimen in TPS format.
+
+    Attributes
+    ----------
+    idx : str
+        Specimen identifier (ID field in TPS).
+    landmarks : ndarray of shape (n_landmarks, n_dim)
+        Landmark coordinates. ``n_dim`` is 2 or 3.
+    image_path : str, optional
+        Path to the associated image (IMAGE field in TPS).
+    scale : float, optional
+        Scale factor (SCALE field in TPS).
+    curves : list of ndarray, optional
+        Semilandmark curves. Each array has shape ``(n_points, n_dim)``.
+    comments : str, optional
+        Free-text comments (COMMENTS field in TPS).
+    """
+
     idx: str
     landmarks: np.ndarray
     image_path: str = None
@@ -89,21 +107,25 @@ class TPSData:
 
 
 def read_tps(file_path, as_frame=False):
-    """Read TPS file.
+    """Read landmark data from a TPS file.
 
     Parameters
     ----------
-    file_path : str
+    file_path : str or path-like
         Path to the TPS file.
     as_frame : bool, default=False
-        If True, return pandas.DataFrame. Otherwise, return numpy.ndarray.
+        If True, return pandas DataFrame(s). Otherwise, return ndarray(s).
 
     Returns
     -------
-    landmarks : ndarray
-        Landmarks.
-    semilandmarks: list[ndarray] or ndarray, optional
-        Semilandmarks.
+    landmarks : ndarray of shape (n_specimens, n_landmarks, n_dim) or DataFrame
+        Landmark coordinates. For a single specimen without semilandmarks,
+        the shape is ``(n_landmarks, n_dim)``.
+    semilandmarks : list, optional
+        Returned only when the file contains CURVES data.
+        When ``as_frame=False``, a list of per-specimen curve lists
+        (each curve is an ndarray of shape ``(n_points, n_dim)``).
+        When ``as_frame=True``, a list of per-specimen DataFrame lists.
     """
     path = Path(file_path)
     if not path.exists():
@@ -158,7 +180,31 @@ def write_tps(
     semilandmarks=None,
     comments=None,
 ) -> None:
-    """Write TPS file."""
+    """Write landmark data to a TPS file.
+
+    Parameters
+    ----------
+    file_path : str or path-like
+        Output file path.
+    landmarks : ndarray or list of ndarray
+        Landmark coordinates. A 2D array of shape ``(n_landmarks, n_dim)``
+        for a single specimen, a 3D array of shape
+        ``(n_specimens, n_landmarks, n_dim)`` for multiple specimens,
+        or a list of per-specimen 2D arrays.
+    image_path : str or list of str, optional
+        Image path(s) for the IMAGE field.
+    idx : str, int, or list, optional
+        Specimen identifier(s) for the ID field. Defaults to 0-based
+        indices for multiple specimens.
+    scale : float or list of float, optional
+        Scale factor(s) for the SCALE field.
+    semilandmarks : array-like or list, optional
+        Semilandmark curves. For a single specimen, a 2D array or a list
+        of 2D arrays (one per curve). For multiple specimens, a list with
+        one entry per specimen.
+    comments : str or list of str, optional
+        Free-text comment(s) for the COMMENTS field.
+    """
     landmarks_list = _normalize_landmarks_input(landmarks)
     n_specimens = len(landmarks_list)
 
