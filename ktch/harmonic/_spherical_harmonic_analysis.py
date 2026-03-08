@@ -338,8 +338,11 @@ class SphericalHarmonicAnalysis(
 def xyz2spherical(xyz: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """Convert Cartesian coordinates to spherical coordinates (theta, phi)"""
     theta = np.arccos(xyz[:, 2])
-    phi = np.sign(xyz[:, 1]) * np.arccos(
-        xyz[:, 0] / np.linalg.norm(xyz[:, 0:2], axis=1)
+    xy_norm = np.linalg.norm(xyz[:, 0:2], axis=1)
+    phi = np.where(
+        xy_norm == 0,
+        0.0,
+        np.sign(xyz[:, 1]) * np.arccos(xyz[:, 0] / np.where(xy_norm == 0, 1.0, xy_norm)),
     )
     return np.array([theta, phi]).T
 

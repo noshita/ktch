@@ -100,8 +100,9 @@ def test_transform_exact():
 
     t = np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
 
-    a0, c0 = np.random.rand(2)
-    an, bn, cn, dn = np.random.rand(4, n_harmonics)
+    rng = np.random.default_rng(42)
+    a0, c0 = rng.random(2)
+    an, bn, cn, dn = rng.random((4, n_harmonics))
     coef_exact = np.array([a0, *an, 0, *bn, c0, *cn, 0, *dn]).reshape(
         4, n_harmonics + 1
     )
@@ -254,8 +255,9 @@ def test_transform_3d_exact():
 
     t = np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
 
-    a0, c0, e0 = np.random.rand(3)
-    an, bn, cn, dn, en, fn = np.random.rand(6, n_harmonics)
+    rng = np.random.default_rng(42)
+    a0, c0, e0 = rng.random(3)
+    an, bn, cn, dn, en, fn = rng.random((6, n_harmonics))
     coef_exact = np.array([a0, *an, 0, *bn, c0, *cn, 0, *dn, e0, *en, 0, *fn]).reshape(
         6, n_harmonics + 1
     )
@@ -1836,4 +1838,661 @@ class TestOrientationMetadataAndRoundTrip:
             n_dim=3, n_harmonics=n_harmonics, norm=False, return_orientation_scale=True
         )
         with pytest.raises(ValueError):
+            efa.fit_transform([coords])
+
+
+class TestNHarmonicsOne:
+    """Tests for n_harmonics=1, the minimum non-trivial harmonic count.
+
+    n_harmonics=1 is structurally special: the normalization loop runs
+    exactly once, and output arrays contain only the DC offset (index 0)
+    and a single harmonic (index 1).
+    """
+
+    def test_shape_2d_norm_false(self):
+        """2D EFA with n_harmonics=1, norm=False produces correct shape."""
+        coords = _make_circle(t_num=200, radius=2.0)
+        efa = EllipticFourierAnalysis(n_harmonics=1, norm=False)
+        coef = efa.fit_transform([coords])
+        # 4 coefficient rows * (1 DC + 1 harmonic) = 8
+        assert coef.shape == (1, 4 * 2)
+
+    def test_round_trip_2d(self):
+        """2D forward + inverse + re-forward round-trip with n_harmonics=1."""
+        t_num = 360
+        t = np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
+        x = 3.0 * np.cos(t) + 0.5
+        y = 1.5 * np.sin(t) - 0.3
+        coords = np.stack([x, y], axis=1)
+
+        efa = EllipticFourierAnalysis(n_harmonics=1, norm=False)
+        coef = efa.fit_transform([coords], t=[t])
+        recon = efa.inverse_transform(coef, t_num=t_num)
+        T = [np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)]
+        coef2 = efa.fit_transform(recon, t=T)
+        assert_array_almost_equal(coef, coef2, decimal=4)
+
+    def test_canonical_form_2d(self):
+        """2D norm=True with n_harmonics=1 has canonical 1st harmonic."""
+        t_num = 200
+        t = np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
+        x = 4.0 * np.cos(t) + 1.0
+        y = 2.0 * np.sin(t) - 0.5
+        coords = np.stack([x, y], axis=1)
+
+        efa = EllipticFourierAnalysis(n_harmonics=1, norm=True)
+        coef = efa.fit_transform([coords])
+
+        # Canonical form: A1 > 0, B1 ~ 0, C1 ~ 0, D1 > 0
+        arr = coef[0].reshape(4, 2)
+        An, Bn, Cn, Dn = arr
+        assert An[1] > 0, f"A1={An[1]} should be positive"
+        assert abs(Bn[1]) < 1e-6, f"B1={Bn[1]} should be ~0"
+        assert abs(Cn[1]) < 1e-6, f"C1={Cn[1]} should be ~0"
+        assert Dn[1] > 0, f"D1={Dn[1]} should be positive"
+
+    def test_shape_3d_norm_false(self):
+        """3D EFA with n_harmonics=1, norm=False produces correct shape."""
+        X, _ = _make_3d_outline(n_harmonics=1, t_num=200, rng=np.random.default_rng(7))
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=1, norm=False)
+        coef = efa.fit_transform([X])
+        # 6 coefficient rows * (1 DC + 1 harmonic) = 12
+        assert coef.shape == (1, 6 * 2)
+
+    def test_canonical_first_harmonic_3d(self):
+        """3D EFA with n_harmonics=1, norm=True has canonical 1st harmonic."""
+        X, _ = _make_3d_outline(n_harmonics=1, t_num=200, rng=np.random.default_rng(7))
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=1, norm=True)
+        coef = efa.fit_transform([X])
+        arr = coef[0].reshape(6, 2)
+        An, Bn, Cn, Dn, En, Fn = arr
+
+        assert An[1] > 0, f"An[1]={An[1]} should be positive"
+        assert abs(Bn[1]) < 1e-10, f"Bn[1]={Bn[1]} should be ~0"
+        assert abs(Cn[1]) < 1e-10, f"Cn[1]={Cn[1]} should be ~0"
+        assert Dn[1] >= 0, f"Dn[1]={Dn[1]} should be non-negative"
+        assert abs(En[1]) < 1e-10, f"En[1]={En[1]} should be ~0"
+        assert abs(Fn[1]) < 1e-10, f"Fn[1]={Fn[1]} should be ~0"
+
+    def test_round_trip_3d(self):
+        """3D forward + inverse + re-forward round-trip with n_harmonics=1."""
+        t_num = 360
+        X, _ = _make_3d_outline(n_harmonics=1, t_num=t_num, rng=np.random.default_rng(8))
+
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=1, norm=False)
+        coef = efa.fit_transform([X])
+        recon = efa.inverse_transform(coef, t_num=t_num)
+        T = [np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)]
+        coef2 = efa.fit_transform(recon, t=T)
+        assert_array_almost_equal(coef, coef2, decimal=4)
+
+    def test_orientation_scale_3d(self):
+        """3D return_orientation_scale with n_harmonics=1 returns valid geometry."""
+        X, _ = _make_3d_outline(n_harmonics=1, t_num=200, rng=np.random.default_rng(9))
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=1, norm=True, return_orientation_scale=True
+        )
+        coef = efa.fit_transform([X])
+        assert coef.shape == (1, 6 * 2 + 5)
+
+        alpha, beta, gamma, phi, scale = coef[0, -5:]
+        # beta in [0, pi], scale > 0, phi in ]-pi/4, pi/4[
+        assert 0 <= beta <= np.pi
+        assert scale > 0
+        assert -np.pi / 4 < phi < np.pi / 4
+
+    def test_invariance_3d_translation(self):
+        """3D n_harmonics=1 normalized coefficients are invariant under translation."""
+        rng = np.random.default_rng(70)
+        X, _ = _make_3d_outline(n_harmonics=1, t_num=200, rng=rng)
+        translation = rng.uniform(-10, 10, size=3)
+        X_translated = X + translation
+
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=1, norm=True)
+        coef_orig = efa.fit_transform([X])[0].reshape(6, 2)[:, 1:]
+        coef_trans = efa.fit_transform([X_translated])[0].reshape(6, 2)[:, 1:]
+
+        assert_array_almost_equal(coef_orig, coef_trans, decimal=5)
+
+    def test_invariance_3d_scale(self):
+        """3D n_harmonics=1 normalized coefficients are invariant under scaling."""
+        rng = np.random.default_rng(71)
+        X, _ = _make_3d_outline(n_harmonics=1, t_num=200, rng=rng)
+        X_scaled = X * 3.7
+
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=1, norm=True)
+        coef_orig = efa.fit_transform([X])[0].reshape(6, 2)[:, 1:]
+        coef_scaled = efa.fit_transform([X_scaled])[0].reshape(6, 2)[:, 1:]
+
+        assert_array_almost_equal(coef_orig, coef_scaled, decimal=5)
+
+
+class TestDuplicatedPoints:
+    """Tests for duplicate-point handling in EFA.
+
+    The source has two strategies controlled by the internal
+    ``duplicated_points`` parameter:
+
+    - ``"infinitesimal"``: floors dt < 1e-10 to 1e-10 (default via transform)
+    - ``"deletion"``: removes segments with dt == 0
+    """
+
+    # -- 2D infinitesimal mode (via public API) --
+
+    def test_consecutive_duplicate_2d_coefficients_close(self):
+        """Coefficients with a duplicate are close to those without (2D)."""
+        t = np.linspace(2 * np.pi / 200, 2 * np.pi, 200)
+        coords = np.stack([3.0 * np.cos(t), 1.5 * np.sin(t)], axis=1)
+        coords_dup = np.insert(coords, 50, coords[50], axis=0)
+
+        efa = EllipticFourierAnalysis(n_harmonics=4, norm=False)
+        coef_clean = efa.fit_transform([coords])[0]
+        coef_dup = efa.fit_transform([coords_dup])[0]
+
+        # Harmonics (skip DC) should be close
+        n = efa.n_harmonics + 1
+        assert_array_almost_equal(
+            coef_clean.reshape(4, n)[:, 1:],
+            coef_dup.reshape(4, n)[:, 1:],
+            decimal=1,
+        )
+
+    def test_all_same_points_2d(self):
+        """All-identical-point input raises ValueError (2D)."""
+        coords = np.tile([1.0, 0.0], (50, 1))
+        efa = EllipticFourierAnalysis(n_harmonics=3, norm=False)
+        with pytest.raises(ValueError, match="[Dd]egenerate outline"):
+            efa.fit_transform([coords])
+
+    # -- 3D infinitesimal mode (via public API) --
+
+    def test_consecutive_duplicate_3d_coefficients_close(self):
+        """Coefficients with a duplicate are close to those without (3D)."""
+        t = np.linspace(2 * np.pi / 200, 2 * np.pi, 200)
+        coords = np.stack([3.0 * np.cos(t), 1.5 * np.sin(t), 0.5 * np.cos(2 * t)], axis=1)
+        coords_dup = np.insert(coords, 80, coords[80], axis=0)
+
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=4, norm=False)
+        coef_clean = efa.fit_transform([coords])[0]
+        coef_dup = efa.fit_transform([coords_dup])[0]
+
+        n = efa.n_harmonics + 1
+        assert_array_almost_equal(
+            coef_clean.reshape(6, n)[:, 1:],
+            coef_dup.reshape(6, n)[:, 1:],
+            decimal=1,
+        )
+
+    def test_all_same_points_3d(self):
+        """All-identical-point input raises ValueError (3D)."""
+        coords = np.tile([1.0, 2.0, 3.0], (50, 1))
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=3, norm=False)
+        with pytest.raises(ValueError, match="[Dd]egenerate outline"):
+            efa.fit_transform([coords])
+
+    # -- deletion mode (via internal API) --
+
+    def test_deletion_mode_matches_clean_2d(self):
+        """deletion mode on data with a duplicate matches clean data closely (2D)."""
+        t = np.linspace(2 * np.pi / 200, 2 * np.pi, 200)
+        coords = np.stack([3.0 * np.cos(t), 1.5 * np.sin(t)], axis=1)
+        coords_dup = np.insert(coords, 50, coords[50], axis=0)
+
+        efa = EllipticFourierAnalysis(n_harmonics=4, norm=False)
+        coef_clean = efa._transform_single_2d(coords)
+        coef_del = efa._transform_single_2d(coords_dup, duplicated_points="deletion")
+
+        n = efa.n_harmonics + 1
+        assert_array_almost_equal(
+            coef_clean.reshape(4, n)[:, 1:],
+            coef_del.reshape(4, n)[:, 1:],
+            decimal=2,
+        )
+
+    def test_deletion_mode_matches_clean_3d(self):
+        """deletion mode on data with a duplicate matches clean data closely (3D)."""
+        t = np.linspace(2 * np.pi / 200, 2 * np.pi, 200)
+        coords = np.stack([3.0 * np.cos(t), 1.5 * np.sin(t), 0.5 * np.cos(2 * t)], axis=1)
+        coords_dup = np.insert(coords, 80, coords[80], axis=0)
+
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=4, norm=False)
+        coef_clean = efa._transform_single_3d(coords)
+        coef_del = efa._transform_single_3d(coords_dup, duplicated_points="deletion")
+
+        n = efa.n_harmonics + 1
+        assert_array_almost_equal(
+            coef_clean.reshape(6, n)[:, 1:],
+            coef_del.reshape(6, n)[:, 1:],
+            decimal=2,
+        )
+
+    def test_deletion_mode_no_duplicates_equals_default_2d(self):
+        """deletion mode on clean data gives same result as default mode (2D)."""
+        t = np.linspace(2 * np.pi / 100, 2 * np.pi, 100)
+        coords = np.stack([np.cos(t), np.sin(t)], axis=1)
+
+        efa = EllipticFourierAnalysis(n_harmonics=4, norm=False)
+        coef_default = efa._transform_single_2d(coords)
+        coef_deletion = efa._transform_single_2d(coords, duplicated_points="deletion")
+
+        assert_array_almost_equal(coef_default, coef_deletion, decimal=10)
+
+    def test_deletion_mode_no_duplicates_equals_default_3d(self):
+        """deletion mode on clean data gives same result as default mode (3D)."""
+        t = np.linspace(2 * np.pi / 100, 2 * np.pi, 100)
+        coords = np.stack([np.cos(t), np.sin(t), 0.3 * np.sin(2 * t)], axis=1)
+
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=4, norm=False)
+        coef_default = efa._transform_single_3d(coords)
+        coef_deletion = efa._transform_single_3d(coords, duplicated_points="deletion")
+
+        assert_array_almost_equal(coef_default, coef_deletion, decimal=10)
+
+    def test_deletion_mode_all_same_raises_2d(self):
+        """deletion mode with all-identical points raises ValueError (2D)."""
+        coords = np.tile([1.0, 0.0], (50, 1))
+        efa = EllipticFourierAnalysis(n_harmonics=3, norm=False)
+        with pytest.raises(ValueError, match="[Dd]egenerate outline"):
+            efa._transform_single_2d(coords, duplicated_points="deletion")
+
+    def test_deletion_mode_all_same_raises_3d(self):
+        """deletion mode with all-identical points raises ValueError (3D)."""
+        coords = np.tile([1.0, 2.0, 3.0], (50, 1))
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=3, norm=False)
+        with pytest.raises(ValueError, match="[Dd]egenerate outline"):
+            efa._transform_single_3d(coords, duplicated_points="deletion")
+
+    # -- Invalid mode --
+
+    def test_invalid_duplicated_points_raises_2d(self):
+        """Invalid duplicated_points value raises ValueError (2D)."""
+        coords = _make_circle(t_num=50)
+        efa = EllipticFourierAnalysis(n_harmonics=3, norm=False)
+        with pytest.raises(ValueError, match="duplicated_points"):
+            efa._transform_single_2d(coords, duplicated_points="unknown")
+
+    def test_invalid_duplicated_points_raises_3d(self):
+        """Invalid duplicated_points value raises ValueError (3D)."""
+        t = np.linspace(2 * np.pi / 50, 2 * np.pi, 50)
+        coords = np.stack([np.cos(t), np.sin(t), np.zeros_like(t)], axis=1)
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=3, norm=False)
+        with pytest.raises(ValueError, match="duplicated_points"):
+            efa._transform_single_3d(coords, duplicated_points="unknown")
+
+
+class TestParameterLengthMismatch:
+    """Tests for t length mismatch error path."""
+
+    def test_t_length_mismatch_outer_2d(self):
+        """Outer transform raises when len(t) != len(X) (2D)."""
+        coords = _make_circle(t_num=50)
+        t_wrong = [np.linspace(0.1, 2 * np.pi, 50)] * 2  # 2 t arrays for 1 sample
+        efa = EllipticFourierAnalysis(n_harmonics=4, norm=False)
+        with pytest.raises(ValueError, match="same length"):
+            efa.fit_transform([coords], t=t_wrong)
+
+    def test_t_length_mismatch_outer_3d(self):
+        """Outer transform raises when len(t) != len(X) (3D)."""
+        X, _ = _make_3d_outline(n_harmonics=3, t_num=50, rng=np.random.default_rng(0))
+        t_wrong = [np.linspace(0.1, 2 * np.pi, 50)] * 2
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=3, norm=False)
+        with pytest.raises(ValueError, match="same length"):
+            efa.fit_transform([X], t=t_wrong)
+
+    def test_t_length_mismatch_inner_2d(self):
+        """Inner _transform_single_2d raises when len(t) != n_points (2D)."""
+        coords = _make_circle(t_num=50)
+        t_wrong = np.linspace(0.1, 2 * np.pi, 30)  # 30 != 50
+        efa = EllipticFourierAnalysis(n_harmonics=4, norm=False)
+        with pytest.raises(ValueError, match="len\\(t\\)"):
+            efa._transform_single_2d(coords, t=t_wrong)
+
+    def test_t_length_mismatch_inner_3d(self):
+        """Inner _transform_single_3d raises when len(t) != n_points (3D)."""
+        X, _ = _make_3d_outline(n_harmonics=3, t_num=50, rng=np.random.default_rng(0))
+        t_wrong = np.linspace(0.1, 2 * np.pi, 30)
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=3, norm=False)
+        with pytest.raises(ValueError, match="len\\(t\\)"):
+            efa._transform_single_3d(X, t=t_wrong)
+
+
+class TestFewPointsHighHarmonics:
+    """Tests for n_points < n_harmonics in EFA.
+
+    EFA uses an analytical formula that always produces output regardless
+    of point count. These tests verify that the output shape is correct
+    and that low-order coefficients still approximate the input geometry.
+    """
+
+    def test_pentagon_round_trip(self):
+        """Pentagon (5 pts, n_harmonics=20): round-trip reconstruction passes near original points."""
+        t = np.linspace(0, 2 * np.pi, 6)[:-1]
+        coords = np.stack([np.cos(t), np.sin(t)], axis=1)
+
+        efa = EllipticFourierAnalysis(n_harmonics=20, norm=False)
+        coef = efa.fit_transform([coords])
+        assert coef.shape == (1, 4 * 21)
+
+        # Reconstruct and check that reconstruction is close to original
+        recon = efa.inverse_transform(coef, t_num=200)
+        # For each original point, find the closest reconstructed point
+        for pt in coords:
+            dists = np.linalg.norm(recon[0] - pt, axis=1)
+            assert np.min(dists) < 0.1
+
+    def test_few_points_low_harmonics_match_many_points(self):
+        """Low-order coefficients for 10 pts match those for 200 pts on same shape."""
+        coords_few = np.stack([2 * np.cos(np.linspace(0, 2 * np.pi, 11)[:-1]),
+                               np.sin(np.linspace(0, 2 * np.pi, 11)[:-1])], axis=1)
+        coords_many = np.stack([2 * np.cos(np.linspace(0, 2 * np.pi, 201)[:-1]),
+                                np.sin(np.linspace(0, 2 * np.pi, 201)[:-1])], axis=1)
+
+        efa = EllipticFourierAnalysis(n_harmonics=3, norm=False)
+        coef_few = efa.fit_transform([coords_few])
+        coef_many = efa.fit_transform([coords_many])
+
+        # 1st harmonic should be close (the shape is the same ellipse)
+        n = efa.n_harmonics + 1
+        for block in range(4):
+            assert_array_almost_equal(
+                coef_few[0, block * n + 1], coef_many[0, block * n + 1], decimal=0
+            )
+
+
+class TestCircleNormalization2d:
+    """Tests for perfect circle with norm=True in 2D.
+
+    A perfect circle has a1^2 + c1^2 = b1^2 + d1^2, making the denominator
+    of the phase angle computation zero. The orientation (psi) is indeterminate,
+    but normalization must still produce finite, valid output.
+    """
+
+    @pytest.fixture()
+    def circle_coords(self):
+        t = np.linspace(0, 2 * np.pi, 101)[:-1]
+        return np.stack([np.cos(t), np.sin(t)], axis=1)
+
+    def test_canonical_first_harmonic(self, circle_coords):
+        """After normalization, first harmonic has A1=1, B1~0, C1~0, |D1|~1."""
+        efa = EllipticFourierAnalysis(n_harmonics=4, norm=True)
+        coef = efa.fit_transform([circle_coords])
+        n = efa.n_harmonics + 1
+        A1, B1, C1, D1 = coef[0, 1], coef[0, n + 1], coef[0, 2 * n + 1], coef[0, 3 * n + 1]
+        assert_array_almost_equal(A1, 1.0, decimal=4)
+        assert abs(B1) < 0.01
+        assert abs(C1) < 0.01
+        assert abs(abs(D1) - 1.0) < 0.01
+
+    def test_scale_equals_radius(self, circle_coords):
+        """Scale factor should be approximately the radius (1.0)."""
+        efa = EllipticFourierAnalysis(n_harmonics=4, norm=True, return_orientation_scale=True)
+        coef = efa.fit_transform([circle_coords])
+        n_base = 4 * (efa.n_harmonics + 1)
+        scale = coef[0, n_base + 1]
+        assert abs(scale - 1.0) < 0.01
+
+    def test_scaled_circle(self):
+        """Circle with radius 5: canonical form preserved, scale correct.
+
+        This triggers RuntimeWarning (divide by zero in arctan) because
+        the denominator is exactly zero. The code handles this via
+        arctan(±inf) = ±pi/2.
+        """
+        t = np.linspace(0, 2 * np.pi, 101)[:-1]
+        coords = np.stack([5 * np.cos(t), 5 * np.sin(t)], axis=1)
+
+        efa = EllipticFourierAnalysis(n_harmonics=4, norm=True, return_orientation_scale=True)
+        coef = efa.fit_transform([coords])
+
+        n = efa.n_harmonics + 1
+        A1, D1 = coef[0, 1], coef[0, 3 * n + 1]
+        assert_array_almost_equal(A1, 1.0, decimal=3)
+        assert abs(abs(D1) - 1.0) < 0.01
+
+        n_base = 4 * n
+        scale = coef[0, n_base + 1]
+        assert abs(scale - 5.0) < 0.05
+
+    def test_near_circle_continuity(self):
+        """Near-circular ellipse (eccentricity -> 0) also normalizes cleanly."""
+        t = np.linspace(0, 2 * np.pi, 101)[:-1]
+        # Very slight eccentricity
+        coords = np.stack([1.001 * np.cos(t), np.sin(t)], axis=1)
+
+        efa = EllipticFourierAnalysis(n_harmonics=4, norm=True)
+        coef = efa.fit_transform([coords])
+        assert np.all(np.isfinite(coef))
+
+        n = efa.n_harmonics + 1
+        A1 = coef[0, 1]
+        assert_array_almost_equal(A1, 1.0, decimal=2)
+
+
+class TestCoplanar3dNormalization:
+    """Tests for coplanar 3D input (z=0) with norm=True.
+
+    When all z-coordinates are zero, the 1st harmonic has zc=zs=0.
+    The normal vector of the fitted ellipse lies along the z-axis,
+    so beta should be 0 or pi (gimbal lock case).
+    """
+
+    @pytest.fixture()
+    def coplanar_ellipse(self):
+        t = np.linspace(0, 2 * np.pi, 101)[:-1]
+        return np.stack([2 * np.cos(t), np.sin(t), np.zeros_like(t)], axis=1)
+
+    def test_beta_is_zero_or_pi(self, coplanar_ellipse):
+        """Beta should be 0 or pi for xy-plane input."""
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=4, norm=True, return_orientation_scale=True
+        )
+        coef = efa.fit_transform([coplanar_ellipse])
+        n_base = 6 * (efa.n_harmonics + 1)
+        beta = coef[0, n_base + 1]
+        assert np.isclose(beta, 0.0, atol=1e-10) or np.isclose(beta, np.pi, atol=1e-10)
+
+    def test_z_coefficients_near_zero(self, coplanar_ellipse):
+        """Normalized z-axis coefficients (en, fn) should be near zero."""
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=4, norm=True)
+        coef = efa.fit_transform([coplanar_ellipse])
+        n = efa.n_harmonics + 1
+        en = coef[0, 4 * n : 5 * n]
+        fn = coef[0, 5 * n : 6 * n]
+        assert np.max(np.abs(en)) < 1e-10
+        assert np.max(np.abs(fn)) < 1e-10
+
+    def test_round_trip_coplanar(self, coplanar_ellipse):
+        """Round-trip: coplanar coords -> normalize -> inverse stays coplanar."""
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=4, norm=True, return_orientation_scale=True
+        )
+        coef = efa.fit_transform([coplanar_ellipse])
+        recon = efa.inverse_transform(coef, t_num=100)
+        # Reconstructed z should be near zero
+        assert np.max(np.abs(recon[0, :, 2])) < 1e-6
+
+    def test_tilted_coplanar_plane(self):
+        """Coplanar input in a tilted plane (not xy) produces finite output."""
+        t = np.linspace(0, 2 * np.pi, 101)[:-1]
+        # Ellipse in xz-plane: y=0
+        coords = np.stack([2 * np.cos(t), np.zeros_like(t), np.sin(t)], axis=1)
+
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=4, norm=True, return_orientation_scale=True
+        )
+        coef = efa.fit_transform([coords])
+        assert np.all(np.isfinite(coef))
+
+        n_base = 6 * (efa.n_harmonics + 1)
+        beta = coef[0, n_base + 1]
+        # xz-plane: normal is y-axis, so beta should be pi/2
+        assert np.isclose(beta, np.pi / 2, atol=0.1)
+
+    def test_near_coplanar(self):
+        """Near-coplanar input (z ~ 1e-15) produces same result as exact z=0."""
+        t = np.linspace(0, 2 * np.pi, 101)[:-1]
+        coords_exact = np.stack([2 * np.cos(t), np.sin(t), np.zeros_like(t)], axis=1)
+        coords_near = np.stack([2 * np.cos(t), np.sin(t), 1e-15 * np.ones_like(t)], axis=1)
+
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=4, norm=True)
+        coef_exact = efa.fit_transform([coords_exact])
+        coef_near = efa.fit_transform([coords_near])
+
+        assert_array_almost_equal(coef_exact, coef_near, decimal=8)
+
+
+class TestNyquistLimit:
+    """Tests for n_harmonics near n_points // 2.
+
+    EFA uses an analytical formula, so coefficients are always finite.
+    The meaningful property to verify is that low-order coefficients
+    are independent of n_harmonics (higher harmonics do not corrupt
+    lower ones).
+    """
+
+    def test_low_order_coefficients_stable_2d(self):
+        """Low-order 2D coefficients are identical regardless of n_harmonics."""
+        t = np.linspace(0, 2 * np.pi, 21)[:-1]
+        coords = np.stack([2 * np.cos(t) + 0.3 * np.cos(3 * t),
+                           np.sin(t) + 0.2 * np.sin(5 * t)], axis=1)
+
+        efa_low = EllipticFourierAnalysis(n_harmonics=5, norm=False)
+        efa_high = EllipticFourierAnalysis(n_harmonics=19, norm=False)
+        coef_low = efa_low.fit_transform([coords])
+        coef_high = efa_high.fit_transform([coords])
+
+        # First 5 harmonics (offset + 5) should agree across all 4 blocks
+        n_low = 6
+        for block in range(4):
+            low_block = coef_low[0, block * n_low : (block + 1) * n_low]
+            high_block = coef_high[0, block * 20 : block * 20 + n_low]
+            assert_array_almost_equal(low_block, high_block, decimal=10)
+
+    def test_low_order_coefficients_stable_3d(self):
+        """Low-order 3D coefficients are identical regardless of n_harmonics."""
+        t = np.linspace(0, 2 * np.pi, 21)[:-1]
+        coords = np.stack([2 * np.cos(t), np.sin(t), 0.5 * np.cos(2 * t)], axis=1)
+
+        efa_low = EllipticFourierAnalysis(n_dim=3, n_harmonics=5, norm=False)
+        efa_high = EllipticFourierAnalysis(n_dim=3, n_harmonics=10, norm=False)
+        coef_low = efa_low.fit_transform([coords])
+        coef_high = efa_high.fit_transform([coords])
+
+        n_low = 6
+        for block in range(6):
+            low_block = coef_low[0, block * n_low : (block + 1) * n_low]
+            high_block = coef_high[0, block * 11 : block * 11 + n_low]
+            assert_array_almost_equal(low_block, high_block, decimal=10)
+
+
+class TestExtremeScales:
+    """Tests for extreme coordinate scales.
+
+    Verifies algebraic properties that must hold at any scale:
+    - Unnormalized coefficients scale linearly with coordinate magnitude
+    - Normalized coefficients are scale-invariant
+    """
+
+    def test_linear_scaling_2d(self):
+        """Unnormalized 2D coefficients scale linearly with coordinate magnitude."""
+        t = np.linspace(0, 2 * np.pi, 101)[:-1]
+        base = np.stack([2 * np.cos(t), np.sin(t)], axis=1)
+
+        efa = EllipticFourierAnalysis(n_harmonics=4, norm=False)
+        coef_1 = efa.fit_transform([base])
+        coef_big = efa.fit_transform([base * 1e6])
+        coef_small = efa.fit_transform([base * 1e-6])
+
+        assert_array_almost_equal(coef_big / 1e6, coef_1, decimal=6)
+        assert_array_almost_equal(coef_small / 1e-6, coef_1, decimal=6)
+
+    def test_linear_scaling_3d(self):
+        """Unnormalized 3D coefficients scale linearly with coordinate magnitude."""
+        t = np.linspace(0, 2 * np.pi, 101)[:-1]
+        base = np.stack([2 * np.cos(t), np.sin(t), 0.5 * np.cos(2 * t)], axis=1)
+
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=4, norm=False)
+        coef_1 = efa.fit_transform([base])
+        coef_big = efa.fit_transform([base * 1e6])
+
+        assert_array_almost_equal(coef_big / 1e6, coef_1, decimal=6)
+
+    def test_norm_invariant_to_scale_2d(self):
+        """Normalized 2D harmonic coefficients (n>=1) are identical at any scale.
+
+        DC offsets (n=0) are not normalized and scale with coordinates.
+        """
+        t = np.linspace(0, 2 * np.pi, 101)[:-1]
+        base = np.stack([2 * np.cos(t), np.sin(t)], axis=1)
+
+        efa = EllipticFourierAnalysis(n_harmonics=4, norm=True)
+        coef_1 = efa.fit_transform([base])
+        coef_big = efa.fit_transform([base * 1e6])
+        coef_small = efa.fit_transform([base * 1e-6])
+
+        # Extract harmonic coefficients only (skip DC offset at index 0 of each block)
+        n = efa.n_harmonics + 1
+        harm_idx = np.concatenate([np.arange(b * n + 1, (b + 1) * n) for b in range(4)])
+        assert_array_almost_equal(coef_big[0, harm_idx], coef_1[0, harm_idx], decimal=6)
+        assert_array_almost_equal(coef_small[0, harm_idx], coef_1[0, harm_idx], decimal=6)
+
+    def test_norm_invariant_to_scale_3d(self):
+        """Normalized 3D harmonic coefficients (n>=1) are identical at any scale."""
+        t = np.linspace(0, 2 * np.pi, 101)[:-1]
+        base = np.stack([2 * np.cos(t), np.sin(t), 0.5 * np.cos(2 * t)], axis=1)
+
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=4, norm=True)
+        coef_1 = efa.fit_transform([base])
+        coef_big = efa.fit_transform([base * 1e6])
+
+        n = efa.n_harmonics + 1
+        harm_idx = np.concatenate([np.arange(b * n + 1, (b + 1) * n) for b in range(6)])
+        assert_array_almost_equal(coef_big[0, harm_idx], coef_1[0, harm_idx], decimal=6)
+
+
+class TestNonFiniteInput:
+    """Tests for NaN/Inf input to EFA.
+
+    EFA validates input and raises ValueError for non-finite values,
+    consistent with SHA (which raises via scipy.linalg.lstsq).
+    """
+
+    def test_nan_raises_2d(self):
+        """NaN in 2D input raises ValueError."""
+        t = np.linspace(0, 2 * np.pi, 51)[:-1]
+        coords = np.stack([np.cos(t), np.sin(t)], axis=1)
+        coords[5, 0] = np.nan
+
+        efa = EllipticFourierAnalysis(n_harmonics=4, norm=False)
+        with pytest.raises(ValueError, match="NaN or Inf"):
+            efa.fit_transform([coords])
+
+    def test_inf_raises_2d(self):
+        """Inf in 2D input raises ValueError."""
+        t = np.linspace(0, 2 * np.pi, 51)[:-1]
+        coords = np.stack([np.cos(t), np.sin(t)], axis=1)
+        coords[10, 1] = np.inf
+
+        efa = EllipticFourierAnalysis(n_harmonics=4, norm=False)
+        with pytest.raises(ValueError, match="NaN or Inf"):
+            efa.fit_transform([coords])
+
+    def test_nan_raises_3d(self):
+        """NaN in 3D input raises ValueError."""
+        t = np.linspace(0, 2 * np.pi, 51)[:-1]
+        coords = np.stack([np.cos(t), np.sin(t), 0.5 * np.cos(2 * t)], axis=1)
+        coords[5, 0] = np.nan
+
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=4, norm=False)
+        with pytest.raises(ValueError, match="NaN or Inf"):
+            efa.fit_transform([coords])
+
+    def test_inf_raises_3d(self):
+        """Inf in 3D input raises ValueError."""
+        t = np.linspace(0, 2 * np.pi, 51)[:-1]
+        coords = np.stack([np.cos(t), np.sin(t), 0.5 * np.cos(2 * t)], axis=1)
+        coords[10, 2] = -np.inf
+
+        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=4, norm=False)
+        with pytest.raises(ValueError, match="NaN or Inf"):
             efa.fit_transform([coords])

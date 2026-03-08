@@ -342,6 +342,10 @@ class EllipticFourierAnalysis(
         X_arr = np.append(
             X[-1].reshape(1, self.n_dim), np.array(X), axis=0
         )  # 1 <= i <= k
+
+        if not np.all(np.isfinite(X_arr)):
+            raise ValueError("Input coordinates must not contain NaN or Inf values.")
+
         dx = X_arr[1:, 0] - X_arr[:-1, 0]  # 1 <= i <= k
         dy = X_arr[1:, 1] - X_arr[:-1, 1]  # 1 <= i <= k
 
@@ -353,6 +357,20 @@ class EllipticFourierAnalysis(
             dt = t_[1:] - t_[:-1]  # 1 <= i <= k
             tp = np.cumsum(dt)
 
+        if len(tp) != len(X):
+            raise ValueError(
+                "len(t) must have a same len(X), len(t): "
+                + str(len(tp))
+                + ", len(X): "
+                + str(len(X))
+            )
+
+        if tp[-1] < 1e-15:
+            raise ValueError(
+                "Degenerate outline: total arc length is near zero. "
+                "All points may be identical."
+            )
+
         if duplicated_points == "infinitesimal":
             dt[dt < 10**-10] = 10**-10
         elif duplicated_points == "deletion":
@@ -362,23 +380,13 @@ class EllipticFourierAnalysis(
                 dy = np.delete(dy, idx_duplicated_points)
 
                 dt = np.delete(dt, idx_duplicated_points)
-                tp = np.delete(
-                    tp,
-                    (np.array(idx_duplicated_points) + 1).tolist(),
-                )
                 X_arr = np.delete(X_arr, idx_duplicated_points, 0)
         else:
             raise ValueError(
                 "'duplicated_points' must be 'infinitesimal' or 'deletion'"
             )
 
-        if len(tp) != len(X):
-            raise ValueError(
-                "len(t) must have a same len(X), len(t): "
-                + str(len(tp))
-                + ", len(X): "
-                + str(len(X))
-            )
+        tp = np.cumsum(dt)
 
         # Fourier series expansion
         T = tp[-1]
@@ -538,6 +546,10 @@ class EllipticFourierAnalysis(
         X_arr = np.append(
             X[-1].reshape(1, self.n_dim), np.array(X), axis=0
         )  # 1 <= i <= k
+
+        if not np.all(np.isfinite(X_arr)):
+            raise ValueError("Input coordinates must not contain NaN or Inf values.")
+
         dx = X_arr[1:, 0] - X_arr[:-1, 0]  # 1 <= i <= k
         dy = X_arr[1:, 1] - X_arr[:-1, 1]  # 1 <= i <= k
         dz = X_arr[1:, 2] - X_arr[:-1, 2]  # 1 <= i <= k
@@ -550,6 +562,20 @@ class EllipticFourierAnalysis(
             dt = t_[1:] - t_[:-1]  # 1 <= i <= k
             tp = np.cumsum(dt)
 
+        if len(tp) != len(X):
+            raise ValueError(
+                "len(t) must have a same len(X), len(t): "
+                + str(len(tp))
+                + ", len(X): "
+                + str(len(X))
+            )
+
+        if tp[-1] < 1e-15:
+            raise ValueError(
+                "Degenerate outline: total arc length is near zero. "
+                "All points may be identical."
+            )
+
         if duplicated_points == "infinitesimal":
             dt[dt < 10**-10] = 10**-10
         elif duplicated_points == "deletion":
@@ -560,23 +586,13 @@ class EllipticFourierAnalysis(
                 dz = np.delete(dz, idx_duplicated_points)
 
                 dt = np.delete(dt, idx_duplicated_points)
-                tp = np.delete(
-                    tp,
-                    (np.array(idx_duplicated_points) + 1).tolist(),
-                )
                 X_arr = np.delete(X_arr, idx_duplicated_points, 0)
         else:
             raise ValueError(
                 "'duplicated_points' must be 'infinitesimal' or 'deletion'"
             )
 
-        if len(tp) != len(X):
-            raise ValueError(
-                "len(t) must have a same len(X), len(t): "
-                + str(len(tp))
-                + ", len(X): "
-                + str(len(X))
-            )
+        tp = np.cumsum(dt)
 
         # Fourier series expansion
         T = tp[-1]
