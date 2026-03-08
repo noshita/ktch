@@ -324,6 +324,153 @@ def test_gpa_size_and_shape_parallel(n_jobs):
 
 ###########################################################
 #
+#   sklearn API compliance
+#
+###########################################################
+
+
+def test_gpa_unfitted_transform_raises():
+    """Test that transform on an unfitted GPA raises NotFittedError."""
+    from sklearn.exceptions import NotFittedError
+
+    gpa = GeneralizedProcrustesAnalysis(n_dim=2)
+    with pytest.raises(NotFittedError):
+        gpa.transform(X)
+
+
+def test_gpa_fit_then_transform():
+    """Test that fit followed by transform produces same results as fit_transform."""
+    gpa1 = GeneralizedProcrustesAnalysis(n_dim=2)
+    X_ft = gpa1.fit_transform(X)
+
+    gpa2 = GeneralizedProcrustesAnalysis(n_dim=2)
+    gpa2.fit(X)
+    X_t = gpa2.transform(X)
+
+    assert_array_almost_equal(X_ft, X_t)
+    assert_array_almost_equal(gpa1.mu_, gpa2.mu_)
+
+
+def test_gpa_transform_new_data():
+    """Test that transform aligns unseen data to the learned mean."""
+    np.random.seed(42)
+    n_landmarks, n_dim = 5, 2
+    base = np.random.randn(n_landmarks, n_dim)
+
+    # Training data: rotated/scaled copies of base
+    X_train = []
+    for _ in range(5):
+        angle = np.random.uniform(0, 2 * np.pi)
+        R = np.array([[np.cos(angle), -np.sin(angle)],
+                       [np.sin(angle), np.cos(angle)]])
+        scale = np.random.uniform(0.5, 2.0)
+        offset = np.random.randn(n_dim)
+        X_train.append((scale * (base @ R.T) + offset).ravel())
+    X_train = np.array(X_train)
+
+    gpa = GeneralizedProcrustesAnalysis(n_dim=2)
+    gpa.fit(X_train)
+
+    # New data: another rotated/scaled copy
+    angle = np.random.uniform(0, 2 * np.pi)
+    R = np.array([[np.cos(angle), -np.sin(angle)],
+                   [np.sin(angle), np.cos(angle)]])
+    X_new = (1.5 * (base @ R.T) + np.array([3.0, -2.0])).ravel().reshape(1, -1)
+
+    X_aligned = gpa.transform(X_new)
+
+    assert X_aligned.shape == X_new.shape
+    # Aligned shape should be close to the mean shape
+    aligned_2d = X_aligned.reshape(n_landmarks, n_dim)
+    # Procrustes aligns to mu_, so disparity should be small
+    _, _, disp = __import__("scipy").spatial.procrustes(gpa.mu_, aligned_2d)
+    assert disp < 1e-10
+
+
+def test_gpa_fit_accepts_y():
+    """Test that fit and fit_transform accept y parameter (ignored)."""
+    gpa = GeneralizedProcrustesAnalysis(n_dim=2)
+    y_dummy = np.ones(len(X))
+
+    X1 = gpa.fit(X, y=y_dummy).transform(X)
+    X2 = gpa.fit_transform(X, y=y_dummy)
+
+    assert X1.shape == X.shape
+    assert X2.shape == X.shape
+
+
+def test_gpa_validate_data_rejects_nan():
+    """Test that NaN in input raises ValueError via validate_data."""
+    X_bad = X.copy().astype(float)
+    X_bad[0, 0] = np.nan
+    gpa = GeneralizedProcrustesAnalysis(n_dim=2)
+    with pytest.raises(ValueError, match="Input X contains NaN"):
+        gpa.fit(X_bad)
+
+
+def test_gpa_validate_data_rejects_inf():
+    """Test that inf in input raises ValueError via validate_data."""
+    X_bad = X.copy().astype(float)
+    X_bad[0, 0] = np.inf
+    gpa = GeneralizedProcrustesAnalysis(n_dim=2)
+    with pytest.raises(ValueError, match="Input X contains infinity"):
+        gpa.fit(X_bad)
+
+
+def test_gpa_invalid_n_dim_raises_on_fit():
+    """Test that invalid n_dim raises ValueError on fit, not on construction."""
+    gpa = GeneralizedProcrustesAnalysis(n_dim=4)
+    # Construction should succeed
+    assert gpa.n_dim == 4
+    # Fit should fail
+    with pytest.raises(ValueError, match="n_dim must be 2 or 3"):
+        gpa.fit(X)
+
+
+def test_gpa_clone():
+    """Test that sklearn clone works without side effects."""
+    from sklearn.base import clone
+
+    gpa = GeneralizedProcrustesAnalysis(
+        n_dim=2, tol=1e-5, scaling=False, debug=True,
+    )
+    gpa_cloned = clone(gpa)
+
+    assert gpa_cloned.n_dim == 2
+    assert gpa_cloned.tol == 1e-5
+    assert gpa_cloned.scaling is False
+    assert gpa_cloned.debug is True
+    assert not hasattr(gpa_cloned, "mu_")
+
+
+def test_gpa_debug_warning_not_in_init():
+    """Test that debug warning fires on fit, not on construction."""
+    import warnings as _warnings
+
+    # Construction should NOT warn
+    with _warnings.catch_warnings(record=True) as record:
+        _warnings.simplefilter("always")
+        GeneralizedProcrustesAnalysis(n_dim=2, debug=True)
+    future_warnings = [w for w in record if issubclass(w.category, FutureWarning)]
+    assert len(future_warnings) == 0
+
+    # Fit SHOULD warn
+    gpa = GeneralizedProcrustesAnalysis(n_dim=2, debug=True)
+    with pytest.warns(FutureWarning, match="debug"):
+        gpa.fit(X)
+
+
+def test_gpa_n_features_in_set_after_fit():
+    """Test that n_features_in_ is set after fitting."""
+    gpa = GeneralizedProcrustesAnalysis(n_dim=2)
+    assert not hasattr(gpa, "n_features_in_")
+
+    gpa.fit(X)
+    assert gpa.n_features_in_ == X.shape[1]
+
+
+###########################################################
+#
 #   parameter validation
 #
 ###########################################################

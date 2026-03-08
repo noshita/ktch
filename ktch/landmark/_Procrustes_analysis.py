@@ -18,14 +18,13 @@ from __future__ import annotations
 
 import logging
 import warnings
-from abc import ABCMeta
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 import scipy as sp
 from sklearn.base import BaseEstimator, OneToOneFeatureMixin, TransformerMixin
 from sklearn.utils.parallel import Parallel, delayed
+from sklearn.utils.validation import check_is_fitted, validate_data
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,6 @@ class GeneralizedProcrustesAnalysis(
     OneToOneFeatureMixin,
     TransformerMixin,
     BaseEstimator,
-    metaclass=ABCMeta,
 ):
     r"""
     Generalized Procrustes Analysis (GPA)
@@ -78,9 +76,7 @@ class GeneralizedProcrustesAnalysis(
     Attributes
     ------------
     mu_: ndarray, shape (n_landmarks, n_dim)
-        The mean shape of the aligned shapes.
-    n_dim_: int, 2 or 3
-        Dimensions of the configurations.
+        The mean shape of the aligned shapes. Set after fitting.
 
     Notes
     ------------
@@ -112,39 +108,20 @@ class GeneralizedProcrustesAnalysis(
         tol=10**-7,
         scaling=True,
         n_dim=2,
-        curves: Optional[npt.ArrayLike] = None,
-        surfaces: Optional[npt.ArrayLike] = None,
+        curves: npt.ArrayLike | None = None,
+        surfaces: npt.ArrayLike | None = None,
         sliding_criterion: str = "bending_energy",
-        n_jobs: Optional[int] = None,
+        n_jobs: int | None = None,
         debug=False,
     ):
         self.tol = tol
         self.scaling = scaling
-        if debug:
-            warnings.warn(
-                "The 'debug' parameter is deprecated and will be removed in "
-                "v0.9.0. Use logging.getLogger('ktch.landmark."
-                "_Procrustes_analysis').setLevel(logging.DEBUG) instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
         self.debug = debug
-        self.mu_ = None
-        self.n_dim_ = n_dim
+        self.n_dim = n_dim
         self.curves = curves
         self.surfaces = surfaces
         self.sliding_criterion = sliding_criterion
         self.n_jobs = n_jobs
-
-    @property
-    def n_dim(self):
-        return self.n_dim_
-
-    @n_dim.setter
-    def n_dim(self, n_dim):
-        if n_dim not in [2, 3]:
-            raise ValueError("n_dim must be 2 or 3.")
-        self.n_dim_ = n_dim
 
     def _validate_semilandmark_params(self, n_landmarks):
         """Validate semilandmark parameters.
@@ -190,64 +167,52 @@ class GeneralizedProcrustesAnalysis(
                     "Each semilandmark can only be a slider in one curve segment."
                 )
 
-    def fit(self, X: npt.ArrayLike) -> GeneralizedProcrustesAnalysis:
-        """Fit GPA.
+    def fit(self, X: npt.ArrayLike, y=None) -> GeneralizedProcrustesAnalysis:
+        """Fit GPA by computing the mean shape from training data.
 
         Parameters
         ----------
-        X : array-like, shape (n_specimens, n_landmarks, n_dim)
-            or DataFrame, shape (n_specimens, n_landmarks * n_dim)
+        X : array-like, shape (n_specimens, n_landmarks * n_dim)
             Configurations to be aligned.
+        y : ignored
 
         Returns
         -------
         self : object
             Returns the instance itself.
         """
-        self.n_features_in_ = X.shape[1]
-        if hasattr(X, "columns"):
-            self.feature_names_in_ = X.columns
-
-        # Validate semilandmark parameters
-        n_dim = self.n_dim_
-        if self.n_features_in_ % n_dim != 0:
-            raise ValueError("X must have n_landmarks * n_dim features.")
-        n_landmarks = self.n_features_in_ // n_dim
-        self._validate_semilandmark_params(n_landmarks)
-
+        self._fit_gpa(X)
         return self
 
-    def transform(self, X: npt.ArrayLike) -> npt.ArrayLike:
-        """GPA for shapes/size-and-shapes.
+    def transform(self, X: npt.ArrayLike, y=None) -> npt.ArrayLike:
+        """Align configurations to the learned mean shape.
 
         Parameters
         ----------
-        X : array-like, shape (n_specimens, n_landmarks*n_dim)
+        X : array-like, shape (n_specimens, n_landmarks * n_dim)
             Configurations to be aligned.
+        y : ignored
 
         Returns
         -------
-        X_ : ndarray, shape (n_specimens, n_landmarks, n_dim)
-            Shapes/Size-and-Shape
+        X_aligned : ndarray, shape (n_specimens, n_landmarks * n_dim)
+            Aligned configurations.
         """
-
+        check_is_fitted(self)
         X_ = np.array(X)
         n_specimen = len(X_)
-        n_dim = self.n_dim_
-        if len(X_[0]) % n_dim != 0:
-            raise ValueError("X must be n_specimens x n_landmarks*n_dim.")
-        n_landmarks = int(len(X_[0]) / n_dim)
+        n_dim = self.n_dim
+        n_landmarks = self.n_features_in_ // n_dim
         X_ = X_.reshape(n_specimen, n_landmarks, n_dim)
 
-        scaling = self.scaling
-        if scaling:
-            X_ = self._transform_shape(X_)
+        if self.scaling:
+            X_aligned = self._align_to_mean_shape(X_)
         else:
-            X_ = self._transform_size_and_shape(X_)
+            X_aligned = self._align_to_mean_size_and_shape(X_)
 
-        return X_.reshape(n_specimen, n_landmarks * n_dim)
+        return X_aligned.reshape(n_specimen, n_landmarks * n_dim)
 
-    def _transform_shape(self, X):
+    def _fit_shape(self, X):
         X_ = np.array(X, dtype=np.double, copy=True)
         X_ = self._center(X_)
         X_ = self._scale(X_)
@@ -301,7 +266,7 @@ class GeneralizedProcrustesAnalysis(
 
         return X_
 
-    def _transform_size_and_shape(self, X):
+    def _fit_size_and_shape(self, X):
         X_ = np.array(X, dtype=np.double, copy=True)
         X_ = self._center(X_)
         mu = np.sum(X_, axis=0) / len(X_)
@@ -325,24 +290,97 @@ class GeneralizedProcrustesAnalysis(
 
         return X_
 
-    def fit_transform(self, X):
-        """GPA for shapes/size-and-shapes.
+    def fit_transform(self, X, y=None):
+        """Run GPA and return the aligned configurations.
 
         Parameters
         ----------
         X : array-like, shape (n_specimens, n_landmarks * n_dim)
-            /DataFrame, shape (n_specimens, n_landmarks * n_dim)
+            Configurations to be aligned.
+        y : ignored
+
+        Returns
+        -------
+        X_aligned : ndarray, shape (n_specimens, n_landmarks * n_dim)
+            Aligned configurations.
+        """
+        return self._fit_gpa(X)
+
+    def _fit_gpa(self, X):
+        """Validate input, run GPA convergence, and return aligned data.
+
+        Parameters
+        ----------
+        X : array-like, shape (n_specimens, n_landmarks * n_dim)
             Configurations to be aligned.
 
         Returns
         -------
-        X_ : ndarray, shape (n_specimens, n_landmarks, n_dim)
-            Shapes/Size-and-Shape
-
+        X_aligned : ndarray, shape (n_specimens, n_landmarks * n_dim)
+            Aligned configurations.
         """
-        self.fit(X)
-        X_ = self.transform(X)
-        return X_
+        if self.debug:
+            warnings.warn(
+                "The 'debug' parameter is deprecated and will be removed in "
+                "v0.9.0. Use logging.getLogger('ktch.landmark."
+                "_Procrustes_analysis').setLevel(logging.DEBUG) instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
+        n_dim = self.n_dim
+        if n_dim not in (2, 3):
+            raise ValueError("n_dim must be 2 or 3.")
+
+        X_ = validate_data(self, X, dtype="float64")
+
+        if self.n_features_in_ % n_dim != 0:
+            raise ValueError("X must have n_landmarks * n_dim features.")
+        n_landmarks = self.n_features_in_ // n_dim
+        self._validate_semilandmark_params(n_landmarks)
+
+        n_specimen = len(X_)
+        X_3d = X_.reshape(n_specimen, n_landmarks, n_dim)
+
+        if self.scaling:
+            X_aligned = self._fit_shape(X_3d)
+        else:
+            X_aligned = self._fit_size_and_shape(X_3d)
+
+        return X_aligned.reshape(n_specimen, n_landmarks * n_dim)
+
+    def _align_to_mean_shape(self, X):
+        """Align specimens to the learned mean shape (shape mode).
+
+        Parameters
+        ----------
+        X : ndarray, shape (n_specimens, n_landmarks, n_dim)
+
+        Returns
+        -------
+        X_aligned : ndarray, shape (n_specimens, n_landmarks, n_dim)
+        """
+        results = Parallel(n_jobs=self.n_jobs)(
+            delayed(self._align_single_shape)(self.mu_, x) for x in X
+        )
+        return np.array([x_aligned for _, x_aligned, _ in results])
+
+    def _align_to_mean_size_and_shape(self, X):
+        """Align specimens to the learned mean shape (size-and-shape mode).
+
+        Parameters
+        ----------
+        X : ndarray, shape (n_specimens, n_landmarks, n_dim)
+
+        Returns
+        -------
+        X_aligned : ndarray, shape (n_specimens, n_landmarks, n_dim)
+        """
+        X_ = self._center(X)
+        results = Parallel(n_jobs=self.n_jobs)(
+            delayed(self._align_single_size_and_shape)(x, self.mu_) for x in X_
+        )
+        return np.array([r[0] for r in results])
 
     @staticmethod
     def _align_single_shape(mu, x):
