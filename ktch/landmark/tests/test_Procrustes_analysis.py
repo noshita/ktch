@@ -248,12 +248,18 @@ def test_gpa_semilandmark_parallel_bending(n_jobs, semilandmark_test_data):
     X_flat, curves = semilandmark_test_data
 
     gpa_baseline = GeneralizedProcrustesAnalysis(
-        n_dim=2, curves=curves, sliding_criterion="bending_energy", n_jobs=None,
+        n_dim=2,
+        curves=curves,
+        sliding_criterion="bending_energy",
+        n_jobs=None,
     )
     X_baseline = gpa_baseline.fit_transform(X_flat)
 
     gpa = GeneralizedProcrustesAnalysis(
-        n_dim=2, curves=curves, sliding_criterion="bending_energy", n_jobs=n_jobs,
+        n_dim=2,
+        curves=curves,
+        sliding_criterion="bending_energy",
+        n_jobs=n_jobs,
     )
     X_result = gpa.fit_transform(X_flat)
 
@@ -267,12 +273,18 @@ def test_gpa_semilandmark_parallel_procrustes(n_jobs, semilandmark_test_data):
     X_flat, curves = semilandmark_test_data
 
     gpa_baseline = GeneralizedProcrustesAnalysis(
-        n_dim=2, curves=curves, sliding_criterion="procrustes_distance", n_jobs=None,
+        n_dim=2,
+        curves=curves,
+        sliding_criterion="procrustes_distance",
+        n_jobs=None,
     )
     X_baseline = gpa_baseline.fit_transform(X_flat)
 
     gpa = GeneralizedProcrustesAnalysis(
-        n_dim=2, curves=curves, sliding_criterion="procrustes_distance", n_jobs=n_jobs,
+        n_dim=2,
+        curves=curves,
+        sliding_criterion="procrustes_distance",
+        n_jobs=n_jobs,
     )
     X_result = gpa.fit_transform(X_flat)
 
@@ -361,8 +373,7 @@ def test_gpa_transform_new_data():
     X_train = []
     for _ in range(5):
         angle = np.random.uniform(0, 2 * np.pi)
-        R = np.array([[np.cos(angle), -np.sin(angle)],
-                       [np.sin(angle), np.cos(angle)]])
+        R = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
         scale = np.random.uniform(0.5, 2.0)
         offset = np.random.randn(n_dim)
         X_train.append((scale * (base @ R.T) + offset).ravel())
@@ -373,8 +384,7 @@ def test_gpa_transform_new_data():
 
     # New data: another rotated/scaled copy
     angle = np.random.uniform(0, 2 * np.pi)
-    R = np.array([[np.cos(angle), -np.sin(angle)],
-                   [np.sin(angle), np.cos(angle)]])
+    R = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
     X_new = (1.5 * (base @ R.T) + np.array([3.0, -2.0])).ravel().reshape(1, -1)
 
     X_aligned = gpa.transform(X_new)
@@ -432,7 +442,10 @@ def test_gpa_clone():
     from sklearn.base import clone
 
     gpa = GeneralizedProcrustesAnalysis(
-        n_dim=2, tol=1e-5, scaling=False, debug=True,
+        n_dim=2,
+        tol=1e-5,
+        scaling=False,
+        debug=True,
     )
     gpa_cloned = clone(gpa)
 
@@ -778,12 +791,11 @@ def test_sliding_with_reprojection_reduces_energy():
 
     be_before = tps_bending_energy(base, specimen)
 
-    # _slide_semilandmarks now includes re-projection
-    X = np.array([specimen])
-    X_curve_geom = X.copy()
-    X_slid = gpa._slide_semilandmarks(X, base, curves, X_curve_geom)
+    # Slide + reproject (single specimen)
+    x_slid = gpa._slide_bending_energy(specimen, base, curves)
+    x_slid = gpa._reproject_onto_curves(x_slid, specimen, curves)
 
-    be_after = tps_bending_energy(base, X_slid[0])
+    be_after = tps_bending_energy(base, x_slid)
     assert be_after < be_before
 
 

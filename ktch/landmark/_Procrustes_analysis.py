@@ -526,7 +526,14 @@ class GeneralizedProcrustesAnalysis(
         A_mat = UtL @ U
         Y0 = X_slid.T.ravel()  # shape (k * n_dim,)
         b_vec = UtL @ Y0
-        T, _, _, _ = np.linalg.lstsq(A_mat, -b_vec, rcond=None)
+        T, _, rank, _ = np.linalg.lstsq(A_mat, -b_vec, rcond=None)
+        if rank < A_mat.shape[1]:
+            warnings.warn(
+                f"Rank-deficient sliding system: rank {rank} < {A_mat.shape[1]}. "
+                f"Tangent directions may be degenerate (zero-length or collinear).",
+                UserWarning,
+                stacklevel=2,
+            )
 
         # Update positions Y = Y^0 + U T
         Y = Y0 + U @ T
@@ -588,38 +595,6 @@ class GeneralizedProcrustesAnalysis(
             X_out[s_idx] = proj_bs if dist_bs <= dist_sa else proj_sa
 
         return X_out
-
-    def _slide_semilandmarks(self, X, reference, curves, X_curve_geom):
-        """Slide semilandmarks according to sliding_criterion.
-
-        Parameters
-        ----------
-        X : ndarray, shape (n_specimens, n_landmarks, n_dim)
-            Configurations to slide.
-        reference : ndarray, shape (n_landmarks, n_dim)
-            Reference configuration.
-        curves : ndarray, shape (n_sliders, 3)
-            Topology matrix [before, slider, after].
-        X_curve_geom : ndarray, shape (n_specimens, n_landmarks, n_dim)
-            Original curve geometry for re-projection.
-
-        Returns
-        -------
-        X_slid : ndarray, shape (n_specimens, n_landmarks, n_dim)
-            Configurations with sliders moved.
-        """
-        X_slid = np.array(X, copy=True)
-
-        if self.sliding_criterion == "procrustes_distance":
-            slide_func = self._slide_procrustes
-        else:
-            slide_func = self._slide_bending_energy
-
-        for i in range(len(X_slid)):
-            X_slid[i] = slide_func(X_slid[i], reference, curves)
-            X_slid[i] = self._reproject_onto_curves(X_slid[i], X_curve_geom[i], curves)
-
-        return X_slid
 
     # @property
     # def _n_features_out(self):
