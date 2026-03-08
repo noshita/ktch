@@ -245,9 +245,6 @@ class EllipticFourierAnalysis(
                 )
             )
 
-        has_orientation = bool(return_orientation_scale and norm)
-        self._update_output_metadata(has_orientation)
-
         return X_transformed
 
     def inverse_transform(self, X_transformed, t_num=100, as_frame=False):
@@ -271,7 +268,6 @@ class EllipticFourierAnalysis(
             Coordinate values reconstructed from the elliptic Fourier coefficients.
 
         """
-        norm = self.norm
         X_list = []
         sp_num = X_transformed.shape[0]
 
@@ -280,12 +276,12 @@ class EllipticFourierAnalysis(
                 coef = X_transformed.loc[i]
                 if self.n_dim == 2:
                     X = self._inverse_transform_single_2d(
-                        coef, as_frame=as_frame, t_num=t_num, norm=norm
+                        coef, as_frame=as_frame, t_num=t_num
                     )
                     df_X = pd.DataFrame(X, columns=["x", "y"])
                 elif self.n_dim == 3:
                     X = self._inverse_transform_single_3d(
-                        coef, as_frame=as_frame, t_num=t_num, norm=norm
+                        coef, as_frame=as_frame, t_num=t_num
                     )
                     df_X = pd.DataFrame(X, columns=["x", "y", "z"])
                 df_X["coord_id"] = [coord_id for coord_id in range(len(X))]
@@ -295,11 +291,11 @@ class EllipticFourierAnalysis(
                 coef = X_transformed[i]
                 if self.n_dim == 2:
                     X = self._inverse_transform_single_2d(
-                        coef, as_frame=as_frame, t_num=t_num, norm=norm
+                        coef, as_frame=as_frame, t_num=t_num
                     )
                 elif self.n_dim == 3:
                     X = self._inverse_transform_single_3d(
-                        coef, as_frame=as_frame, t_num=t_num, norm=norm
+                        coef, as_frame=as_frame, t_num=t_num
                     )
                 X_list.append(X)
 
@@ -471,7 +467,6 @@ class EllipticFourierAnalysis(
         self,
         X_transformed,
         t_num=100,
-        norm=True,
         as_frame=False,
     ):
         coef_array = np.asarray(X_transformed, dtype=float)
@@ -493,7 +488,7 @@ class EllipticFourierAnalysis(
         cn = cn[1:]
         dn = dn[1:]
 
-        if norm:
+        if self.norm:
             a0 = 0
             c0 = 0
 
@@ -530,7 +525,7 @@ class EllipticFourierAnalysis(
         X : ndarray of shape (n_coords, 3)
             Coordinate values of a 3D outline.
 
-        t : ndarray of shape (n_coords+1,), optional
+        t : ndarray of shape (n_coords,), optional
             A parameter indicating the position on the outline.
             If ``None``, arc-length parameterization is computed automatically.
 
@@ -737,7 +732,6 @@ class EllipticFourierAnalysis(
         self,
         X_transformed,
         t_num: int = 100,
-        norm=True,
         as_frame: bool = False,
     ):
         coef_array = np.asarray(X_transformed, dtype=float)
@@ -766,7 +760,7 @@ class EllipticFourierAnalysis(
 
         theta = np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
 
-        if norm:
+        if self.norm:
             a0 = 0
             c0 = 0
             e0 = 0
@@ -788,6 +782,10 @@ class EllipticFourierAnalysis(
     #
     ###########################################################
 
+    def __sklearn_is_fitted__(self):
+        """Return True since this is a stateless transformer."""
+        return True
+
     def get_feature_names_out(
         self, input_features: None | npt.ArrayLike = None
     ) -> np.ndarray:
@@ -795,8 +793,7 @@ class EllipticFourierAnalysis(
 
         Parameters
         ----------
-        input_features : None | npt.ArrayLike, optional
-            Input feature names, by default None
+        input_features : ignored
 
         Returns
         ----------
@@ -804,39 +801,19 @@ class EllipticFourierAnalysis(
             Transformed feature names.
 
         """
-        if hasattr(self, "_feature_names_out"):
-            return self._feature_names_out
-
-        include_orientation = (
-            getattr(self, "_last_return_orientation_scale_", False) and self.n_dim == 3
-        )
+        include_orientation = self.return_orientation_scale and self.norm
         return np.asarray(self._build_feature_names(include_orientation), dtype=str)
 
     @property
     def _n_features_out(self):
         """Number of transformed output features."""
-        if hasattr(self, "_n_features_out_"):
-            return self._n_features_out_
-
         base = (self.n_harmonics + 1) * (2 * self.n_dim)
-        if getattr(self, "_last_return_orientation_scale_", False):
+        if self.return_orientation_scale and self.norm:
             if self.n_dim == 3:
                 return base + 5
             if self.n_dim == 2:
                 return base + 2
         return base
-
-    def _update_output_metadata(self, include_orientation: bool) -> None:
-        """Cache feature names and counts for sklearn set_output compatibility."""
-        names = self._build_feature_names(include_orientation)
-        self._feature_names_out = np.asarray(names, dtype=str)
-
-        base = (self.n_harmonics + 1) * (2 * self.n_dim)
-        extra = 0
-        if include_orientation:
-            extra = 5 if self.n_dim == 3 else 2 if self.n_dim == 2 else 0
-        self._n_features_out_ = base + extra
-        self._last_return_orientation_scale_ = include_orientation
 
     def _build_feature_names(self, include_orientation: bool) -> list[str]:
         an = [f"a_{i}" for i in range(self.n_harmonics + 1)]

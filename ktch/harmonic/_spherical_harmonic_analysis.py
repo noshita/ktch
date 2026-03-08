@@ -95,20 +95,23 @@ class SphericalHarmonicAnalysis(
         self.n_jobs = n_jobs
         self.verbose = verbose
 
-    def fit(self, X, y=None, theta_phi=None):
+    def fit(self, X, y=None):
         """Fit the model (no-op for stateless transformer).
 
         Parameters
         ----------
         X : ignored
         y : ignored
-        theta_phi : ignored
 
         Returns
         ----------
         self
         """
         return self
+
+    def __sklearn_is_fitted__(self):
+        """Return True since this is a stateless transformer."""
+        return True
 
     def fit_transform(self, X, y=None, theta_phi=None):
         """Fit and transform in a single step.
@@ -127,7 +130,7 @@ class SphericalHarmonicAnalysis(
         ----------
         X_transformed : ndarray of shape (n_samples, n_coefficients)
         """
-        return self.fit(X, y, theta_phi=theta_phi).transform(X, theta_phi=theta_phi)
+        return self.fit(X, y).transform(X, theta_phi=theta_phi)
 
     def _transform_single(self, X, theta_phi):
         """SPHARM coefficients of a single outline.
@@ -149,6 +152,18 @@ class SphericalHarmonicAnalysis(
         l_max = self.n_harmonics
         theta = theta_phi[:, 0]
         phi = theta_phi[:, 1]
+
+        n_coords = len(theta)
+        n_coeffs = (l_max + 1) ** 2
+        if n_coords < n_coeffs:
+            warnings.warn(
+                f"Underdetermined system: n_coords ({n_coords}) < "
+                f"(n_harmonics+1)**2 ({n_coeffs}). "
+                f"lstsq will return a least-norm solution, not a least-squares fit. "
+                f"Consider reducing n_harmonics or providing more sample points.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         lm2j = np.array([[l, m] for l in range(l_max + 1) for m in range(-l, l + 1)])
 
@@ -198,9 +213,6 @@ class SphericalHarmonicAnalysis(
             )
         )
 
-        self._feature_names_out = np.asarray(self._build_feature_names(), dtype=str)
-        self._n_features_out_ = X_transformed.shape[1]
-
         return X_transformed
 
     def get_feature_names_out(
@@ -217,15 +229,11 @@ class SphericalHarmonicAnalysis(
         feature_names_out : ndarray of str objects
             Transformed feature names.
         """
-        if hasattr(self, "_feature_names_out"):
-            return self._feature_names_out
         return np.asarray(self._build_feature_names(), dtype=str)
 
     @property
     def _n_features_out(self):
         """Number of transformed output features."""
-        if hasattr(self, "_n_features_out_"):
-            return self._n_features_out_
         return 3 * (self.n_harmonics + 1) ** 2
 
     def _build_feature_names(self) -> list[str]:

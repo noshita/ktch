@@ -117,3 +117,19 @@ def test_theta_phi_required():
     sha = SphericalHarmonicAnalysis(n_harmonics=2)
     with pytest.raises(ValueError, match="theta_phi is required"):
         sha.transform([np.zeros((10, 3))])
+
+
+def test_underdetermined_system_warns():
+    """Warn when n_coords < (l_max+1)**2."""
+    l_max = 3
+    n_coeffs = (l_max + 1) ** 2  # 16
+    n_coords = 5  # < 16
+
+    coords = np.random.default_rng(0).standard_normal((n_coords, 3))
+    theta_phi = np.column_stack(
+        [np.linspace(0.1, np.pi - 0.1, n_coords), np.linspace(0, 2 * np.pi, n_coords)]
+    )
+
+    sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_jobs=1)
+    with pytest.warns(UserWarning, match="Underdetermined system"):
+        sha.fit_transform([coords], theta_phi=[theta_phi])
