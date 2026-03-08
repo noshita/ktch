@@ -52,7 +52,6 @@ def make_landmarks_from_reference(
     X : array-like, shape (n_samples, n_landmarks, n_dim)
         Generated landmark dataset.
     """
-
     ref = np.asarray(reference)
 
     generator = check_random_state(random_state)

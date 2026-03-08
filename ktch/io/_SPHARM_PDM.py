@@ -130,7 +130,6 @@ def cvt_spharm_coef_spharmpdm_to_list(
     ValueError
         If the input array has invalid shape or dimensions.
     """
-
     lmax = int(np.sqrt(coef_spharmpdm.shape[0]) - 1)
     if coef_spharmpdm.shape != ((lmax + 1) ** 2, 3):
         raise ValueError(

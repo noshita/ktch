@@ -29,11 +29,13 @@ class PositionAligner(TransformerMixin, BaseEstimator):
     This transformation is often used as an alternative to zero mean,
     unit variance scaling.
     Read more in the :ref:`User Guide <preprocessing_scaler>`.
+
     Parameters
     ----------
     copy : bool, default=True
         Set to False to perform inplace row normalization and avoid a
         copy (if the input is already a numpy array).
+
     Attributes
     ----------
     data_range_ : ndarray of shape (n_features,)
@@ -44,8 +46,9 @@ class PositionAligner(TransformerMixin, BaseEstimator):
         The number of samples processed by the estimator.
         It will be reset on new calls to fit, but increments across
         ``partial_fit`` calls.
+
     Examples
-    ----------
+    --------
     >>> from sklearn.preprocessing import MinMaxScaler
     >>> data = [[-1, 2], [-0.5, 6], [0, 10], [1, 18]]
     >>> scaler = MinMaxScaler()
@@ -60,11 +63,13 @@ class PositionAligner(TransformerMixin, BaseEstimator):
      [1.   1.  ]]
     >>> print(scaler.transform([[2, 2]]))
     [[1.5 0. ]]
+
     See Also
-    ----------
+    --------
     minmax_scale : Equivalent function without the estimator API.
+
     Notes
-    ----------
+    -----
     NaNs are treated as missing values: disregarded in fit, and maintained in
     transform.
     For a comparison of the different scalers, transformers, and normalizers,
@@ -77,6 +82,7 @@ class PositionAligner(TransformerMixin, BaseEstimator):
 
     def transform(self, X, reference_point=None):
         """Perform alignment by centroid position
+
         Parameters
         ----------
         X : {array-like, dense matrix of shape (n_samples, n_landmarks, n_dims)
@@ -84,8 +90,9 @@ class PositionAligner(TransformerMixin, BaseEstimator):
         reference_point: {array-like}
                 The coordinate value of the reference point to be aligned onto the origin.
                 If `reference_point` is `None`, the centroid computed from `X` is used as the reference point.
+
         Returns
-        ----------
+        -------
         X_tr : {ndarray, sparse matrix} of shape (n_samples, n_landmarks,n_dims)
                 Transformed array, which is removed the information about the position.
         """
@@ -104,12 +111,14 @@ class SizeScaler(TransformerMixin, BaseEstimator):
 
     def transform(self, X):
         """Perform scaling by centroid size
+
         Parameters
         ----------
         X : {array-like, dense matrix of shape (n_samples, n_landmarks, n_dims)
                 The coordinate values used to align by the centroid position onto the origin.
+
         Returns
-        ----------
+        -------
         X_tr : {ndarray, sparse matrix} of shape (n_samples, n_landmarks,n_dims)
                 Transformed array, which is removed the information about the position.
         """

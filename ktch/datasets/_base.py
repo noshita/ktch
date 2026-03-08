@@ -434,7 +434,6 @@ def convert_coords_df_to_df_sklearn_transform(df_coords: pd.DataFrame) -> pd.Dat
     df_coords_new: pandas.DataFrame of index (specimen_id), columns (coord_id, axis)
         The dataframe of coordinates compatible with input of scikit-learn transformers.
     """
-
     df_coords_new = df_coords.unstack().swaplevel(axis=1).sort_index(axis=1)
 
     return df_coords_new

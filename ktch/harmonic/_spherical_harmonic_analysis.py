@@ -22,7 +22,11 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import scipy as sp
-from sklearn.base import BaseEstimator, ClassNamePrefixFeaturesOutMixin, TransformerMixin
+from sklearn.base import (
+    BaseEstimator,
+    ClassNamePrefixFeaturesOutMixin,
+    TransformerMixin,
+)
 from sklearn.utils.parallel import Parallel, delayed
 
 
@@ -43,7 +47,7 @@ class SphericalHarmonicAnalysis(
 
 
     Notes
-    ----------
+    -----
     [Ritche_Kemp_1999]_, [Shen_etal_2009]_
 
     .. math::
@@ -104,7 +108,7 @@ class SphericalHarmonicAnalysis(
         y : ignored
 
         Returns
-        ----------
+        -------
         self
         """
         return self
@@ -127,7 +131,7 @@ class SphericalHarmonicAnalysis(
             Surface parameterization of n_samples.
 
         Returns
-        ----------
+        -------
         X_transformed : ndarray of shape (n_samples, n_coefficients)
         """
         return self.fit(X, y).transform(X, theta_phi=theta_phi)
@@ -144,11 +148,10 @@ class SphericalHarmonicAnalysis(
                 Parameters indicating the position on the surface.
 
         Returns
-        ----------
+        -------
         X_transformed: array-like
             Returns the SPHARM coefficients.
         """
-
         l_max = self.n_harmonics
         theta = theta_phi[:, 0]
         phi = theta_phi[:, 1]
@@ -191,7 +194,7 @@ class SphericalHarmonicAnalysis(
             The i-th array-like of theta and phi values whose shape is (n_coords_i, 2).
 
         Returns
-        ----------
+        -------
         X_transformed: array-like of shape (n_samples, n_coefficients)
             Returns the array-like of SPHARM coefficients.
         """
@@ -225,7 +228,7 @@ class SphericalHarmonicAnalysis(
         input_features : ignored
 
         Returns
-        ----------
+        -------
         feature_names_out : ndarray of str objects
             Transformed feature names.
         """
@@ -266,12 +269,11 @@ class SphericalHarmonicAnalysis(
 
 
         Returns
-        ----------
+        -------
         X_coords: array-like of shape (n_theta, n_phi, 3)
             Coordinate values of SPHARM.
 
         """
-
         if l_max is None:
             l_max = self.n_harmonics
 
@@ -303,7 +305,7 @@ class SphericalHarmonicAnalysis(
             Degree of SPHARM to use how far
 
         Returns
-        ----------
+        -------
         X_coords: array-like of shape (n_samples, n_theta, n_phi, 3)
             Coordinate values of reconstructed surfaces.
         """
@@ -363,12 +365,11 @@ def spharm(
 
 
     Returns
-    ----------
+    -------
     x, y, z: tuple of array_like
         Coordinate values of SPHARM.
 
     """
-
     if theta_range is None:
         theta_range = np.linspace(0, np.pi, 90)
     if phi_range is None:
@@ -413,7 +414,7 @@ def cvt_spharm_coef_to_list(
         SPHARM coefficient matrix.
 
     Returns
-    ----------
+    -------
     coef_list : list of ndarray
         ``coef_list[l]`` has shape ``(2*l+1, 3)`` for degree ``l``.
     """

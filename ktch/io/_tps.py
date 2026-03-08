@@ -99,13 +99,12 @@ def read_tps(file_path, as_frame=False):
         If True, return pandas.DataFrame. Otherwise, return numpy.ndarray.
 
     Returns
-    ----------
+    -------
     landmarks : ndarray
         Landmarks.
     semilandmarks: list[ndarray] or ndarray, optional
         Semilandmarks.
     """
-
     path = Path(file_path)
     if not path.exists():
         raise FileNotFoundError(f"{path} does not exist.")
@@ -160,7 +159,6 @@ def write_tps(
     comments=None,
 ) -> None:
     """Write TPS file."""
-
     landmarks_list = _normalize_landmarks_input(landmarks)
     n_specimens = len(landmarks_list)
 

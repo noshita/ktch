@@ -67,7 +67,7 @@ class EllipticFourierAnalysis(
           convention (Kuhl & Giardina 1982).
 
     Notes
-    ----------
+    -----
     EFA is widely applied for outline shape analysis
     in two-dimensional space [Kuhl_Giardina_1982]_.
 
@@ -136,7 +136,7 @@ class EllipticFourierAnalysis(
         y : ignored
 
         Returns
-        ----------
+        -------
         self
         """
         return self
@@ -155,7 +155,7 @@ class EllipticFourierAnalysis(
             Per-sample parameterization. Passed to ``transform``.
 
         Returns
-        ----------
+        -------
         X_transformed : ndarray of shape (n_samples, n_features_out)
         """
         return self.fit(X, y).transform(X, t=t)
@@ -181,7 +181,7 @@ class EllipticFourierAnalysis(
             is computed automatically.
 
         Returns
-        ----------
+        -------
         X_transformed : ndarray of shape (n_samples, n_features_out)
             Elliptic Fourier coefficients.
 
@@ -263,7 +263,7 @@ class EllipticFourierAnalysis(
             If True, return pd.DataFrame.
 
         Returns
-        ----------
+        -------
         X_coords : array-like of shape (n_samples, t_num, n_dim) or pd.DataFrame
             Coordinate values reconstructed from the elliptic Fourier coefficients.
 
@@ -332,12 +332,11 @@ class EllipticFourierAnalysis(
             the coordinate values with the linear interpolation.
 
         Returns
-        ----------
+        -------
         X_transformed: ndarray of shape (4*(n_harmonics+1), )
             Coefficients of Fourier series.
 
         """
-
         n_harmonics = self.n_harmonics
 
         X_arr = np.append(
@@ -530,11 +529,10 @@ class EllipticFourierAnalysis(
             If ``None``, arc-length parameterization is computed automatically.
 
         Returns
-        ----------
+        -------
         X_transformed : ndarray of shape (6*(n_harmonics+1),) or (6*(n_harmonics+1)+5,)
             Coefficients of Fourier series.
         """
-
         n_harmonics = self.n_harmonics
 
         X_arr = np.append(
@@ -626,7 +624,7 @@ class EllipticFourierAnalysis(
             Raw Fourier coefficient arrays. Index 0 is the offset.
 
         Returns
-        ----------
+        -------
         An, Bn, Cn, Dn, En, Fn : np.ndarray of shape (n_harmonics+1,)
             Normalized coefficient arrays.
         alpha, beta, gamma : float
@@ -796,7 +794,7 @@ class EllipticFourierAnalysis(
         input_features : ignored
 
         Returns
-        ----------
+        -------
         feature_names_out : ndarray of str objects
             Transformed feature names.
 
@@ -859,7 +857,7 @@ def rotation_matrix_3d_euler_zxz(alpha: float, beta: float, gamma: float) -> np.
         ZXZ Euler angles in radians.
 
     Returns
-    ----------
+    -------
     rotation_matrix : np.ndarray of shape (3, 3)
         Orthogonal rotation matrix with determinant +1.
     """
@@ -895,7 +893,7 @@ def _compute_ellipse_geometry_3d(
         Cosine and sine Fourier coefficients for x, y, z coordinates.
 
     Returns
-    ----------
+    -------
     phi : float
         Phase angle in ]-pi/4, pi/4[.
     a : float
@@ -909,7 +907,6 @@ def _compute_ellipse_geometry_3d(
     gamma : float
         Third Euler angle (ZXZ convention).
     """
-
     sum_c2 = xc**2 + yc**2 + zc**2
     sum_s2 = xs**2 + ys**2 + zs**2
     dot_cs = xc * xs + yc * ys + zc * zs
@@ -1014,11 +1011,10 @@ def _cse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
         number of harmonics
 
     Returns
-    ----------
+    -------
     coef : np.ndarray
         coefficients of cos series expansion
     """
-
     # t = np.concatenate([[0], np.cumsum(dt)]) - dt[0]  # t_{i-1}
     # T = t[-1] + dt[0]
     t = np.concatenate([[0], np.cumsum(dt)])

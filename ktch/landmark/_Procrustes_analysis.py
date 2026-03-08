@@ -40,7 +40,7 @@ class GeneralizedProcrustesAnalysis(
     Generalized Procrustes Analysis (GPA)
 
     Parameters
-    ------------
+    ----------
     tol: float, default=10^-7
         Tolerance for convergence of Procrustes analysis.
 
@@ -74,12 +74,12 @@ class GeneralizedProcrustesAnalysis(
         The number of parallel jobs to run for Procrustes analysis.
 
     Attributes
-    ------------
+    ----------
     mu_: ndarray, shape (n_landmarks, n_dim)
         The mean shape of the aligned shapes. Set after fitting.
 
     Notes
-    ------------
+    -----
     GPA for shape involves translating, rotating, and scaling the configurations
     to each other to minimize the sum of the squared distances with respect to
     positional, rotational, and size parameters, subject to a size constraint
@@ -91,7 +91,7 @@ class GeneralizedProcrustesAnalysis(
     [Bookstein_1997]_, [Gunz_2013]_.
 
     References
-    ------------
+    ----------
     .. [Gower_1975] Gower, J.C., 1975. Generalized procrustes analysis.
        Psychometrika 40, 33-51.
     .. [Goodall_1991] Goodall, C., 1991. Procrustes Methods in the Statistical

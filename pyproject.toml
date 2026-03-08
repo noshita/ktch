@@ -106,5 +106,25 @@ ignore = [
   "E731", # do not assign a lambda expression, use a def
   "E741", # do not use variables named 'l', 'O', or 'I'
   "F401", # imported but unused
+  # pydocstyle (D) - incompatible pairs
+  "D203", # incompatible with D211 (no blank line before class docstring)
+  "D212", # multi-line summary start position; both D212/D213 ignored
+  "D213", # to allow mixed styles
+  # pydocstyle (D) - docstring style issues
+  # TODO: incrementally remove following items as docstrings are improved
+  "D100", # undocumented-public-module
+  "D102", # undocumented-public-method
+  "D103", # undocumented-public-function
+  "D104", # undocumented-public-package
+  "D200", # unnecessary-multiline-docstring
+  "D205", # missing-blank-line-after-summary
+  "D400", # missing-trailing-period
+  "D401", # non-imperative-mood
+  "D403", # first-word-uncapitalized
+  "D415", # missing-terminal-punctuation
+  "D417", # undocumented-param
 ]
-select = ["E", "F", "W", "I"]
+select = ["E", "F", "W", "I", "D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
