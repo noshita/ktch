@@ -18,14 +18,13 @@ import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
-from matplotlib.collections import LineCollection
 import seaborn as sns
 
 from sklearn.decomposition import PCA
 
 from ktch.datasets import load_landmark_trilobite_cephala
 from ktch.landmark import GeneralizedProcrustesAnalysis, combine_landmarks_and_curves
-from ktch.plot import explained_variance_ratio_plot
+from ktch.plot import explained_variance_ratio_plot, morphospace_plot
 ```
 
 ## Load trilobite cephalon dataset
@@ -52,103 +51,6 @@ df_meta.head()
 ```
 
 ## Visualize raw data
-
-```{code-cell} ipython3
-def configuration_plot(
-    configuration_2d,
-    x="x",
-    y="y",
-    links=None,
-    ax=None,
-    hue=None,
-    hue_order=None,
-    c="gray",
-    palette=None,
-    c_line="gray",
-    style=None,
-    s=10,
-    alpha=1,
-):
-    if ax is None:
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-
-    if links is None:
-        links = []
-
-    configuration = configuration_2d.reset_index()
-
-    if hue is not None and hue_order is None:
-        hue_order = configuration[hue].unique()
-
-    color_map = None
-    if hue is not None:
-        if palette is not None:
-            colors = sns.color_palette(palette, n_colors=len(hue_order))
-            color_map = dict(zip(hue_order, colors))
-        else:
-            hue_dtype = configuration[hue].dtype
-            if np.issubdtype(hue_dtype, np.number):
-                cmap = sns.cubehelix_palette(as_cmap=True)
-                hue_min, hue_max = min(hue_order), max(hue_order)
-                color_map = {}
-                for hue_val in hue_order:
-                    if hue_max > hue_min:
-                        norm_val = (hue_val - hue_min) / (hue_max - hue_min)
-                    else:
-                        norm_val = 0.5
-                    color_map[hue_val] = cmap(norm_val)
-            else:
-                colors = sns.color_palette(n_colors=len(hue_order))
-                color_map = dict(zip(hue_order, colors))
-
-    if links:
-        if hue is None:
-            segments = []
-            for link in links:
-                link_data = configuration[configuration["coord_id"].isin(link)]
-                if len(link_data) == 2:
-                    coords = link_data[[x, y]].values
-                    segments.append(coords)
-            if segments:
-                lc = LineCollection(segments, colors=c_line, alpha=alpha)
-                ax.add_collection(lc)
-        else:
-            for specimen in hue_order:
-                specimen_data = configuration[configuration[hue] == specimen]
-                segments = []
-                for link in links:
-                    link_data = specimen_data[specimen_data["coord_id"].isin(link)]
-                    if len(link_data) == 2:
-                        coords = link_data[[x, y]].values
-                        segments.append(coords)
-                if segments:
-                    lc = LineCollection(
-                        segments, colors=[color_map[specimen]], alpha=alpha
-                    )
-                    ax.add_collection(lc)
-
-        ax.autoscale_view()
-
-    axis = sns.scatterplot(
-        data=configuration,
-        x=x,
-        y=y,
-        ax=ax,
-        hue=hue,
-        hue_order=hue_order,
-        palette=palette,
-        style=style,
-        c=c,
-        alpha=alpha,
-        s=s,
-    )
-
-    if axis.legend_:
-        sns.move_legend(ax, "upper left", bbox_to_anchor=(1, 1))
-
-    ax.set_aspect("equal")
-```
 
 Plot a single specimen, distinguishing fixed landmarks from curve semilandmarks.
 
@@ -311,152 +213,24 @@ sns.scatterplot(
 ax.set(xlabel="PC1", ylabel="PC2")
 ```
 
-Reconstruct shapes at grid positions in PC1--PC2 space.
-
 ```{code-cell} ipython3
-def get_pc_scores_for_morphospace(ax, num=5):
-    xrange = np.linspace(ax.get_xlim()[0], ax.get_xlim()[1], num)
-    yrange = np.linspace(ax.get_ylim()[0], ax.get_ylim()[1], num)
-    return xrange, yrange
+fig, axes = plt.subplots(2, 2, figsize=(16, 16), dpi=200)
 
+for ax, (i, j) in zip(axes.flat[:3], [(0, 1), (1, 2), (2, 0)]):
+    morphospace_plot(
+        data=df_pca,
+        x=f"PC{i + 1}", y=f"PC{j + 1}",
+        reducer=pca,
+        n_dim=2,
+        shape_type="landmarks_2d",
+        components=(i, j),
+        n_shapes=5,
+        shape_alpha=0.5,
+        ax=ax,
+        scatter_kw=dict(c="gray", alpha=0.3, s=10),
+    )
 
-def plot_recon_morphs(
-    pca,
-    fig,
-    ax,
-    n_PCs_xy=[1, 2],
-    morph_num=3,
-    morph_alpha=1.0,
-    morph_scale=1.0,
-    links=[],
-):
-    pc_scores_h, pc_scores_v = get_pc_scores_for_morphospace(ax, morph_num)
-    for pc_score_h in pc_scores_h:
-        for pc_score_v in pc_scores_v:
-            pc_score = np.zeros(pca.n_components_)
-            n_PC_h, n_PC_v = n_PCs_xy
-            pc_score[n_PC_h - 1] = pc_score_h
-            pc_score[n_PC_v - 1] = pc_score_v
-
-            arr_shapes = pca.inverse_transform([pc_score])
-            arr_shapes = arr_shapes.reshape(-1, 2)
-
-            df_shapes = pd.DataFrame(arr_shapes, columns=["x", "y"])
-            df_shapes["coord_id"] = [i for i in range(len(df_shapes))]
-            df_shapes = df_shapes.set_index("coord_id")
-
-            ax_width = ax.get_window_extent().width
-            fig_width = fig.get_window_extent().width
-            fig_height = fig.get_window_extent().height
-            morph_size = morph_scale * ax_width / (fig_width * morph_num)
-            loc = ax.transData.transform((pc_score_h, pc_score_v))
-
-            axins = fig.add_axes(
-                [
-                    loc[0] / fig_width - morph_size / 2,
-                    loc[1] / fig_height - morph_size / 2,
-                    morph_size,
-                    morph_size,
-                ],
-                anchor="C",
-            )
-            configuration_plot(df_shapes, links=links, ax=axins, alpha=morph_alpha)
-
-            axins.axis("off")
-```
-
-```{code-cell} ipython3
-morph_num = 5
-morph_scale = 1.0
-morph_alpha = 0.5
-
-fig = plt.figure(figsize=(16, 16), dpi=200)
-
-#########
-# PC1-PC2
-#########
-ax = fig.add_subplot(2, 2, 1)
-sns.scatterplot(
-    data=df_pca,
-    x="PC1",
-    y="PC2",
-    ax=ax,
-    c="gray",
-    alpha=0.3,
-    s=10,
-)
-
-plot_recon_morphs(
-    pca,
-    morph_num=5,
-    morph_scale=morph_scale,
-    morph_alpha=0.5,
-    fig=fig,
-    ax=ax,
-)
-
-ax.patch.set_alpha(0)
-ax.set(xlabel="PC1", ylabel="PC2")
-
-#########
-# PC2-PC3
-#########
-ax = fig.add_subplot(2, 2, 2)
-sns.scatterplot(
-    data=df_pca,
-    x="PC2",
-    y="PC3",
-    ax=ax,
-    c="gray",
-    alpha=0.3,
-    s=10,
-)
-
-plot_recon_morphs(
-    pca,
-    morph_num=5,
-    morph_scale=morph_scale,
-    morph_alpha=0.5,
-    fig=fig,
-    ax=ax,
-    n_PCs_xy=[2, 3],
-)
-
-ax.patch.set_alpha(0)
-ax.set(xlabel="PC2", ylabel="PC3")
-
-#########
-# PC3-PC1
-#########
-ax = fig.add_subplot(2, 2, 3)
-sns.scatterplot(
-    data=df_pca,
-    x="PC3",
-    y="PC1",
-    ax=ax,
-    c="gray",
-    alpha=0.3,
-    s=10,
-)
-
-plot_recon_morphs(
-    pca,
-    morph_num=5,
-    morph_scale=morph_scale,
-    morph_alpha=0.5,
-    fig=fig,
-    ax=ax,
-    n_PCs_xy=[3, 1],
-)
-
-ax.patch.set_alpha(0)
-ax.set(xlabel="PC3", ylabel="PC1")
-
-#########
-# Explained variance
-#########
-ax = fig.add_subplot(2, 2, 4)
-explained_variance_ratio_plot(pca, ax=ax, verbose=True)
+explained_variance_ratio_plot(pca, ax=axes[1, 1], verbose=True)
 ```
 
 ```{code-cell} ipython3

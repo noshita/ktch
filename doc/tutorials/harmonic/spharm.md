@@ -167,7 +167,7 @@ fig.show()
 
 ```{code-cell} ipython3
 spharm_analysis = SphericalHarmonicAnalysis(n_harmonics=10)
-X_transform = spharm_analysis.fit_transform([arr_surf], [xyz2spherical(arr_para)])
+X_transform = spharm_analysis.fit_transform([arr_surf], theta_phi=[xyz2spherical(arr_para)])
 ```
 
 ```{code-cell} ipython3

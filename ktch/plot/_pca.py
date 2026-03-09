@@ -131,9 +131,10 @@ def shape_variation_plot(
 ) -> object:
     """Plot reconstructed shapes along component axes.
 
-    Creates a grid of subplots showing shape variation along dimensionality
-    reduction component axes. Each row corresponds to a component, each
-    column to a standard deviation multiplier.
+    Creates a grid of subplots showing shape variation along
+    dimensionality reduction (reducer) component axes.
+    Each row corresponds to a component,
+    each column to a standard deviation multiplier.
 
     The function uses a two-stage inverse transform pipeline:
     ``scores -> [reducer_inverse_transform] -> coefficients ->
@@ -219,7 +220,7 @@ def shape_variation_plot(
     require_dependencies("matplotlib")
     import matplotlib.pyplot as plt
 
-    # --- Resolve parameters ---
+    # Resolve parameters
     reducer_inverse_transform, explained_variance, n_components = (
         _resolve_reducer_params(
             reducer,
@@ -237,7 +238,7 @@ def shape_variation_plot(
     )
     _validate_components(components, n_components)
 
-    # --- Auto-detect shape_type if needed ---
+    # Auto-detect shape_type if needed
     if shape_type == "auto":
         probe_score = np.zeros((1, n_components))
         probe_coeffs = reducer_inverse_transform(probe_score)
@@ -254,7 +255,7 @@ def shape_variation_plot(
 
     renderer, proj = _get_renderer_and_projection(shape_type, render_fn)
 
-    # --- Build figure ---
+    # Build figure
     n_rows = len(components)
     n_cols = len(sd_values)
 

@@ -471,7 +471,7 @@ nb_execution_timeout = 300
 nb_execution_mode = "cache"
 nb_execution_cache_path = os.environ.get(
     "JUPYTER_CACHE_PATH",
-    str(Path(__file__).resolve().parent.parent / "_build" / ".jupyter_cache"),
+    str(Path(__file__).resolve().parent / "_build" / ".jupyter_cache"),
 )
 
 # -- sphinx-multiversion configuration ---------------------------------------

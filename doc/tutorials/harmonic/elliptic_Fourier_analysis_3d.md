@@ -25,7 +25,7 @@ from sklearn.decomposition import PCA
 
 from ktch.datasets import load_outline_leaf_bending
 from ktch.harmonic import EllipticFourierAnalysis
-from ktch.plot import explained_variance_ratio_plot
+from ktch.plot import explained_variance_ratio_plot, morphospace_plot
 ```
 
 ```{code-cell} ipython3
@@ -90,18 +90,18 @@ fig.show()
 ## 3D EFA without normalization
 
 ```{code-cell} ipython3
-efa = EllipticFourierAnalysis(n_harmonics=20, n_dim=3)
+efa = EllipticFourierAnalysis(n_harmonics=20, n_dim=3, norm=False)
 ```
 
 ```{code-cell} ipython3
-coef = efa.fit_transform(coords, norm=False)
+coef = efa.fit_transform(coords)
 coef.shape
 ```
 
 ### Reconstruction from coefficients
 
 ```{code-cell} ipython3
-coords_recon = efa.inverse_transform(coef, t_num=200, norm=False)
+coords_recon = efa.inverse_transform(coef, t_num=200)
 ```
 
 ```{code-cell} ipython3
@@ -120,18 +120,18 @@ fig.show()
 ## 3D EFA
 
 ```{code-cell} ipython3
-efa = EllipticFourierAnalysis(n_harmonics=20, n_dim=3)
+efa = EllipticFourierAnalysis(n_harmonics=20, n_dim=3, norm=True)
 ```
 
 ```{code-cell} ipython3
-coef = efa.fit_transform(coords, norm=True)
+coef = efa.fit_transform(coords)
 coef.shape
 ```
 
 ### Reconstruction from coefficients
 
 ```{code-cell} ipython3
-coords_recon = efa.inverse_transform(coef, t_num=200, norm=True)
+coords_recon = efa.inverse_transform(coef, t_num=200)
 ```
 
 ```{code-cell} ipython3
@@ -193,188 +193,35 @@ sns.scatterplot(
 ## Morphospace
 
 ```{code-cell} ipython3
-def project_3d_to_2d(points, azim=-60, elev=30):
-    """Project 3D points onto 2D plane from given viewpoint.
-    Uses the same azimuth/elevation as matplotlib.
-    """
-    az = np.radians(azim)
-    el = np.radians(elev)
-    R = np.array([
-        [-np.sin(az),            np.cos(az),            0         ],
-        [-np.sin(el)*np.cos(az), -np.sin(el)*np.sin(az), np.cos(el)],
-    ])
-    projected = points @ R.T
-    return projected[:, 0], projected[:, 1]
-
-
-def get_pc_scores_for_morphospace(ax, num=5):
-    xrange = np.linspace(ax.get_xlim()[0], ax.get_xlim()[1], num)
-    yrange = np.linspace(ax.get_ylim()[0], ax.get_ylim()[1], num)
-    return xrange, yrange
-
-
-def plot_recon_morphs_3d(
-    pca,
-    efa,
-    fig,
-    ax,
-    n_PCs_xy=[1, 2],
-    morph_num=3,
-    morph_scale=1.0,
-    morph_color="lightgray",
-    morph_alpha=0.7,
-    view=(-60, 30),
-):
-    """Plot reconstructed shapes in PC space with oblique 2D projection."""
-    pc_scores_h, pc_scores_v = get_pc_scores_for_morphospace(ax, morph_num)
-    for pc_score_h in pc_scores_h:
-        for pc_score_v in pc_scores_v:
-            pc_score = np.zeros(pca.n_components_)
-            n_PC_h, n_PC_v = n_PCs_xy
-            pc_score[n_PC_h - 1] = pc_score_h
-            pc_score[n_PC_v - 1] = pc_score_v
-
-            arr_coef = pca.inverse_transform([pc_score])
-
-            ax_width = ax.get_window_extent().width
-            fig_width = fig.get_window_extent().width
-            fig_height = fig.get_window_extent().height
-            morph_size = morph_scale * ax_width / (fig_width * morph_num)
-            loc = ax.transData.transform((pc_score_h, pc_score_v))
-            axins = fig.add_axes(
-                [
-                    loc[0] / fig_width - morph_size / 2,
-                    loc[1] / fig_height - morph_size / 2,
-                    morph_size,
-                    morph_size,
-                ],
-                anchor="C",
-            )
-
-            recon = efa.inverse_transform(arr_coef, norm=False)
-            x, y = project_3d_to_2d(recon[0], azim=view[0], elev=view[1])
-
-            axins.plot(
-                x.astype(float), y.astype(float), color=morph_color, alpha=morph_alpha
-            )
-            axins.axis("equal")
-            axins.axis("off")
+def render_curve_3d_fixed_view(coords, ax, *, color="gray", alpha=0.7, **kw):
+    kw.pop("links", None)
+    ax.plot(coords[:, 0], coords[:, 1], coords[:, 2], color=color, alpha=alpha)
+    ptp = [max(np.ptp(coords[:, i]), 1e-10) for i in range(3)]
+    ax.set_box_aspect(ptp)
+    ax.view_init(elev=60, azim=-120)
 ```
 
 ```{code-cell} ipython3
-morph_num = 5
-morph_scale = 0.8
-morph_color = "gray"
-morph_alpha = 0.8
-view = (-120, 60)
+fig, axes = plt.subplots(2, 2, figsize=(16, 16), dpi=200)
 
+for ax, (i, j) in zip(axes.flat[:3], [(0, 1), (1, 2), (2, 0)]):
+    morphospace_plot(
+        data=df_pca,
+        x=f"PC{i + 1}", y=f"PC{j + 1}",
+        hue="bending_angle", hue_order=bending_order,
+        palette="Set2",
+        reducer=pca,
+        descriptor=efa,
+        shape_type="curve_3d",
+        render_fn=render_curve_3d_fixed_view,
+        components=(i, j),
+        n_shapes=5,
+        shape_scale=0.8,
+        shape_color="gray",
+        shape_alpha=0.8,
+        ax=ax,
+        scatter_kw=dict(style="aspect_ratio"),
+    )
 
-fig = plt.figure(figsize=(16, 16), dpi=200)
-
-#########
-# PC1 vs PC2
-#########
-ax = fig.add_subplot(2, 2, 1)
-sns.scatterplot(
-    data=df_pca,
-    x="PC1",
-    y="PC2",
-    hue="bending_angle",
-    hue_order=bending_order,
-    style="aspect_ratio",
-    palette="Set2",
-    ax=ax,
-    legend=True,
-)
-
-plot_recon_morphs_3d(
-    pca,
-    efa,
-    morph_num=morph_num,
-    morph_scale=morph_scale,
-    morph_color=morph_color,
-    morph_alpha=morph_alpha,
-    fig=fig,
-    ax=ax,
-    view=view,
-)
-
-ax.patch.set_alpha(0)
-ax.set(xlabel="PC1", ylabel="PC2")
-
-print("PC1-PC2 done")
-
-#########
-# PC2 vs PC3
-#########
-ax = fig.add_subplot(2, 2, 2)
-sns.scatterplot(
-    data=df_pca,
-    x="PC2",
-    y="PC3",
-    hue="bending_angle",
-    hue_order=bending_order,
-    style="aspect_ratio",
-    palette="Set2",
-    ax=ax,
-    legend=True,
-)
-
-plot_recon_morphs_3d(
-    pca,
-    efa,
-    morph_num=morph_num,
-    morph_scale=morph_scale,
-    morph_color=morph_color,
-    morph_alpha=morph_alpha,
-    fig=fig,
-    ax=ax,
-    n_PCs_xy=[2, 3],
-    view=view,
-)
-
-ax.patch.set_alpha(0)
-ax.set(xlabel="PC2", ylabel="PC3")
-
-print("PC2-PC3 done")
-
-#########
-# PC3 vs PC1
-#########
-ax = fig.add_subplot(2, 2, 3)
-sns.scatterplot(
-    data=df_pca,
-    x="PC3",
-    y="PC1",
-    hue="bending_angle",
-    hue_order=bending_order,
-    style="aspect_ratio",
-    palette="Set2",
-    ax=ax,
-    legend=True,
-)
-
-plot_recon_morphs_3d(
-    pca,
-    efa,
-    morph_num=morph_num,
-    morph_scale=morph_scale,
-    morph_color=morph_color,
-    morph_alpha=morph_alpha,
-    fig=fig,
-    ax=ax,
-    n_PCs_xy=[3, 1],
-    view=view,
-)
-
-ax.patch.set_alpha(0)
-ax.set(xlabel="PC3", ylabel="PC1")
-
-print("PC3-PC1 done")
-
-#########
-# Explained variance
-#########
-ax = fig.add_subplot(2, 2, 4)
-explained_variance_ratio_plot(pca, ax=ax, verbose=True)
+explained_variance_ratio_plot(pca, ax=axes[1, 1], verbose=True)
 ```

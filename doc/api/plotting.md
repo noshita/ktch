@@ -16,5 +16,7 @@
    :template: base.rst
 
    plot.explained_variance_ratio_plot
+   plot.shape_variation_plot
    plot.tps_grid_2d_plot
+   plot.morphospace_plot
 ```

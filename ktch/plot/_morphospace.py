@@ -61,8 +61,9 @@ def morphospace_plot(
 ) -> object:
     """Scatter plot of specimens in morphospace with shape insets.
 
-    Draws a scatter plot of dimensionality reduction scores and overlays
-    reconstructed shapes at a regular grid of positions in the score space.
+    Draws a scatter plot of scores from dimension reduction (reducer)
+    and overlays reconstructed shapes at a regular grid of positions
+    in the low-dimensional space.
 
     The function uses the same two-stage inverse transform pipeline as
     :func:`shape_variation_plot`:
@@ -70,10 +71,10 @@ def morphospace_plot(
     [descriptor_inverse_transform] -> shape coordinates``.
 
     This function calls ``fig.canvas.draw()`` internally to compute accurate
-    pixel positions for inset axes. Inset positions are fixed at draw time
-    and will not automatically update if the figure is later resized or saved
-    at a different DPI. For best results, set the final figure size before
-    calling this function.
+    pixel positions for inset axes.
+    Inset positions are fixed at draw time and will not automatically update
+    if the figure is later resized or saved at a different DPI.
+    For best results, set the final figure size before calling this function.
 
     Parameters
     ----------
@@ -159,13 +160,13 @@ def morphospace_plot(
     import matplotlib.pyplot as plt
     import seaborn as sns
 
-    # 1. Create or reuse axes
+    # Create or reuse axes
     if ax is None:
         fig, ax = plt.subplots()
     else:
         fig = ax.figure
 
-    # 2. Draw scatter plot (if data provided)
+    # Draw scatter plot (if data provided)
     if x is not None and y is not None:
         sns.scatterplot(
             data=data,
@@ -178,7 +179,7 @@ def morphospace_plot(
             **(scatter_kw or {}),
         )
 
-    # 3. Resolve reducer/descriptor parameters (if reducer available)
+    # Resolve reducer/descriptor parameters (if reducer available)
     if reducer is not None or reducer_inverse_transform is not None:
         reducer_inverse_transform, _, n_components = _resolve_reducer_params(
             reducer,
@@ -195,7 +196,7 @@ def morphospace_plot(
         )
         _validate_components(components, n_components)
 
-        # 4. Overlay shapes
+        # Overlay shapes
         fig.canvas.draw()  # force layout for accurate positions
 
         comp_h, comp_v = components
@@ -256,6 +257,7 @@ def morphospace_plot(
             renderer(single, axins, **resolved)
             axins.axis("off")
 
-        ax.patch.set_alpha(0)  # transparent background behind insets
+        ax.set_zorder(1)  # draw scatter on top of inset shapes
+        ax.patch.set_alpha(0)  # transparent background so insets show through
 
     return ax
