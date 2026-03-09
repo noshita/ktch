@@ -25,7 +25,7 @@ from sklearn.decomposition import PCA
 
 from ktch.datasets import load_landmark_mosquito_wings
 from ktch.landmark import GeneralizedProcrustesAnalysis
-from ktch.plot import explained_variance_ratio_plot
+from ktch.plot import explained_variance_ratio_plot, morphospace_plot, shape_variation_plot
 ```
 
 ## Load mosquito wing landmark dataset
@@ -299,187 +299,40 @@ sns.scatterplot(data=df_pca, x="pca0", y="pca1", hue="genus", palette="Paired", 
 ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
 ```
 
+## Shape variation along PC axes
+
+```{code-cell} ipython3
+fig = shape_variation_plot(
+    pca,
+    n_dim=2,
+    links=links,
+    components=(0, 1, 2),
+    sd_values=(-2, -1, 0, 1, 2),
+)
+```
+
 ## Morphospace
 
 ```{code-cell} ipython3
-def get_pc_scores_for_morphospace(ax, num=5):
-    xrange = np.linspace(ax.get_xlim()[0], ax.get_xlim()[1], num)
-    yrange = np.linspace(ax.get_ylim()[0], ax.get_ylim()[1], num)
-    return xrange, yrange
+fig, axes = plt.subplots(2, 2, figsize=(16, 16), dpi=200)
 
+for ax, (i, j) in zip(axes.flat[:3], [(0, 1), (1, 2), (2, 0)]):
+    morphospace_plot(
+        data=df_pca,
+        x=f"pca{i}", y=f"pca{j}", hue="genus",
+        reducer=pca,
+        n_dim=2,
+        components=(i, j),
+        links=links,
+        palette="Paired",
+        n_shapes=5,
+        shape_color="gray",
+        shape_scale=1.0,
+        shape_alpha=0.5,
+        ax=ax,
+        s=5,
+    )
+    ax.set(xlabel=f"PC{i + 1}", ylabel=f"PC{j + 1}")
 
-def plot_recon_morphs(
-    pca,
-    fig,
-    ax,
-    n_PCs_xy=[1, 2],
-    morph_num=3,
-    morph_alpha=1.0,
-    morph_scale=1.0,
-    links=[],
-):
-    pc_scores_h, pc_scores_v = get_pc_scores_for_morphospace(ax, morph_num)
-    print("PC_h: ", pc_scores_h, ", PC_v: ", pc_scores_v)
-    for pc_score_h in pc_scores_h:
-        for pc_score_v in pc_scores_v:
-            pc_score = np.zeros(pca.n_components_)
-            n_PC_h, n_PC_v = n_PCs_xy
-            pc_score[n_PC_h - 1] = pc_score_h
-            pc_score[n_PC_v - 1] = pc_score_v
-
-            arr_shapes = pca.inverse_transform([pc_score])
-            arr_shapes = arr_shapes.reshape(-1, 2)
-
-            df_shapes = pd.DataFrame(arr_shapes, columns=["x", "y"])
-            df_shapes["coord_id"] = [i for i in range(len(df_shapes))]
-            df_shapes = df_shapes.set_index("coord_id")
-
-            ax_width = ax.get_window_extent().width
-            fig_width = fig.get_window_extent().width
-            fig_height = fig.get_window_extent().height
-            morph_size = morph_scale * ax_width / (fig_width * morph_num)
-            loc = ax.transData.transform((pc_score_h, pc_score_v))
-
-            if arr_shapes.shape[1] == 3:
-                axins = fig.add_axes(
-                    [
-                        loc[0] / fig_width - morph_size / 2,
-                        loc[1] / fig_height - morph_size / 2,
-                        morph_size,
-                        morph_size,
-                    ],
-                    anchor="C",
-                    projection="3d",
-                )
-                axins.patch.set_alpha(0.3)
-
-                configuration_plot(df_shapes, links=links, ax=axins, alpha=morph_alpha)
-
-            else:
-                axins = fig.add_axes(
-                    [
-                        loc[0] / fig_width - morph_size / 2,
-                        loc[1] / fig_height - morph_size / 2,
-                        morph_size,
-                        morph_size,
-                    ],
-                    anchor="C",
-                )
-                configuration_plot(df_shapes, links=links, ax=axins, alpha=morph_alpha)
-
-            axins.axis("off")
-```
-
-```{code-cell} ipython3
-morph_num = 5
-morph_scale = 1.0
-morph_alpha = 0.5
-
-fig = plt.figure(figsize=(16, 16), dpi=200)
-hue_order = df_pca["genus"].unique()
-
-#########
-# PC1
-#########
-ax = fig.add_subplot(2, 2, 1)
-sns.scatterplot(
-    data=df_pca,
-    x="pca0",
-    y="pca1",
-    hue="genus",
-    hue_order=hue_order,
-    palette="Paired",
-    ax=ax,
-    legend=True,
-)
-
-plot_recon_morphs(
-    pca,
-    morph_num=5,
-    morph_scale=morph_scale,
-    morph_alpha=0.5,
-    fig=fig,
-    ax=ax,
-    links=links,
-)
-
-ax.patch.set_alpha(0)
-ax.set(xlabel="PC1", ylabel="PC2")
-
-print("PC1-PC2 done")
-
-#########
-# PC2
-#########
-ax = fig.add_subplot(2, 2, 2)
-sns.scatterplot(
-    data=df_pca,
-    x="pca1",
-    y="pca2",
-    hue="genus",
-    hue_order=hue_order,
-    palette="Paired",
-    ax=ax,
-    legend=True,
-)
-
-plot_recon_morphs(
-    pca,
-    morph_num=5,
-    morph_scale=morph_scale,
-    morph_alpha=0.5,
-    fig=fig,
-    ax=ax,
-    links=links,
-    n_PCs_xy=[2, 3],
-)
-
-
-ax.patch.set_alpha(0)
-ax.set(xlabel="PC2", ylabel="PC3")
-
-print("PC2-PC3 done")
-
-#########
-# PC3
-#########
-ax = fig.add_subplot(2, 2, 3)
-sns.scatterplot(
-    data=df_pca,
-    x="pca2",
-    y="pca0",
-    hue="genus",
-    hue_order=hue_order,
-    palette="Paired",
-    ax=ax,
-    legend=True,
-)
-
-plot_recon_morphs(
-    pca,
-    morph_num=5,
-    morph_scale=morph_scale,
-    morph_alpha=0.5,
-    fig=fig,
-    ax=ax,
-    links=links,
-    n_PCs_xy=[3, 1],
-)
-
-
-ax.patch.set_alpha(0)
-ax.set(xlabel="PC3", ylabel="PC1")
-
-print("PC3-PC1 done")
-
-#########
-# CCR
-#########
-
-ax = fig.add_subplot(2, 2, 4)
-explained_variance_ratio_plot(pca, ax=ax, verbose=True)
-```
-
-```{code-cell} ipython3
-
+explained_variance_ratio_plot(pca, ax=axes[1, 1])
 ```

@@ -18,14 +18,18 @@ The :mod:`ktch.plot` module implements plotting functions for morphometrics.
 import warnings
 
 from ._kriging import tps_grid_2d_plot
-from ._pca import explained_variance_ratio_plot
+from ._morphospace import morphospace_plot
+from ._pca import explained_variance_ratio_plot, shape_variation_plot
 
 _RENAMED_FUNCTIONS = {
     "plot_explained_variance_ratio": "explained_variance_ratio_plot",
+    "plot_shapes_along_pcs": "shape_variation_plot",
 }
 
 __all__ = [
     "explained_variance_ratio_plot",
+    "morphospace_plot",
+    "shape_variation_plot",
     "tps_grid_2d_plot",
 ]
 
