@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.8.1](https://github.com/noshita/ktch/compare/v0.8.0...v0.8.1) (2026-03-10)
+
+
+### Features
+
+* **datasets:** ✨ use 0-based specimen_id and return 3D arrays ([06c5ba6](https://github.com/noshita/ktch/commit/06c5ba66b1d1244da11d77f6f7fda70cf15dfcbe))
+
+
+### Reverts
+
+* restore versions.json to 0.8.0 before release ([2203c39](https://github.com/noshita/ktch/commit/2203c39aabfbd2b892c44cce150f8396d36f4326))
+
+
+### Documentation
+
+* update versions.json for v0.8.1 release ([0475f81](https://github.com/noshita/ktch/commit/0475f81d209516aa80fd62cc8d09312085f740b4))
+
+
+### Miscellaneous Chores
+
+* 🔧 update pyproject.toml metadata, sdist excludes, and lint config ([e04acc0](https://github.com/noshita/ktch/commit/e04acc0aab5fbd42bf46161929af3f98947e1909))
+
+
+### Code Refactoring
+
+* ♻️ remove unused imports detected by ruff F401 ([e29d452](https://github.com/noshita/ktch/commit/e29d4526efa2d0417efb9880dfc844e2650a2ae5))
+
+
+### Continuous Integration
+
+* harden and modernize GitHub Actions workflows ([a1611bf](https://github.com/noshita/ktch/commit/a1611bf07e856dc65b7a28f07226e3b24a4387f7))
+
 ## [0.8.0](https://github.com/noshita/ktch/compare/v0.7.2...v0.8.0) (2026-03-10)
 
 
