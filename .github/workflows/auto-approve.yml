@@ -6,14 +6,18 @@ on:
       - reopened
       - synchronize
       - ready_for_review
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   auto-approve:
-    # PR作成者とリポジトリ所有者と同じ
-    # Draft Pull Requestではない
+    # PR author is the repository owner
+    # PR is not a draft
     if: |
       github.event.pull_request.user.login == github.repository_owner && ! github.event.pull_request.draft
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
     steps:
-      - uses: hmarr/auto-approve-action@v4
+      - uses: hmarr/auto-approve-action@f0939ea97e9205ef24d872e76833fa908a770363 # v4.0.0
