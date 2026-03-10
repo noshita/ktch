@@ -83,7 +83,7 @@ pcscores = pca.fit_transform(coef)
 
 ```{code-cell} ipython3
 df_pca = pd.DataFrame(pcscores)
-df_pca["specimen_id"] = [i for i in range(1, len(pcscores) + 1)]
+df_pca["specimen_id"] = list(range(len(pcscores)))
 df_pca = df_pca.set_index("specimen_id")
 df_pca = df_pca.join(data_outline_mosquito_wings.meta)
 df_pca = df_pca.rename(columns={i: ("PC" + str(i + 1)) for i in range(12)})

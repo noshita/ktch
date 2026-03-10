@@ -126,7 +126,7 @@ def load_landmark_mosquito_wings(*, as_frame: bool = False) -> Bunch:
     -------
     data : :class:`~sklearn.utils.Bunch`
         Dictionary-like object, with the following attributes.
-        coords : {ndarray of shape (2286, 2), dataframe}
+        coords : {ndarray of shape (127, 18, 2), dataframe}
             The coordinate data (127 specimens x 18 landmarks, 2D).
             If `as_frame=True`, `coords` will be a pandas DataFrame
             with MultiIndex (specimen_id, coord_id).
@@ -159,7 +159,8 @@ def load_landmark_mosquito_wings(*, as_frame: bool = False) -> Bunch:
     )
 
     if not as_frame:
-        coords = coords.to_numpy()
+        n_specimens = len(meta)
+        coords = coords.to_numpy().reshape(n_specimens, -1, 2)
         meta = meta.to_dict()
 
     return Bunch(
@@ -282,7 +283,7 @@ def load_outline_mosquito_wings(*, as_frame: bool = False) -> Bunch:
     -------
     data : :class:`~sklearn.utils.Bunch`
         Dictionary-like object, with the following attributes.
-        coords : {ndarray of shape (12600, 2), dataframe}
+        coords : {ndarray of shape (126, 100, 2), dataframe}
             The coordinate data (126 specimens x 100 points, 2D).
             If `as_frame=True`, `coords` will be a pandas DataFrame
             with MultiIndex (specimen_id, coord_id).
@@ -315,7 +316,8 @@ def load_outline_mosquito_wings(*, as_frame: bool = False) -> Bunch:
     )
 
     if not as_frame:
-        coords = coords.to_numpy()
+        n_specimens = len(meta)
+        coords = coords.to_numpy().reshape(n_specimens, -1, 2)
         meta = meta.to_dict()
 
     return Bunch(

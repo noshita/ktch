@@ -22,9 +22,7 @@ EXPORT_DIR_FIGS.mkdir(exist_ok=True, parents=True)
 def _load_wings_as_list(n_specimens=None):
     """Load mosquito wing outlines as a list of arrays for EFA input."""
     wings = load_outline_mosquito_wings()
-    n_total = 126
-    n_points = 100
-    coords = wings.coords.reshape(n_total, n_points, 2)
+    coords = wings.coords
     if n_specimens is not None:
         coords = coords[:n_specimens]
     return [coords[i] for i in range(len(coords))]

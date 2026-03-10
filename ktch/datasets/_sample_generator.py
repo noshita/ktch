@@ -71,9 +71,9 @@ def make_landmarks_from_reference(
         n_landmarks = X.shape[1]
         n_dim = X.shape[2]
         X = pd.DataFrame(X.reshape(n_samples * n_landmarks, n_dim))
-        X["id"] = [i for i in range(n_samples) for _ in range(n_landmarks)]
+        X["specimen_id"] = [i for i in range(n_samples) for _ in range(n_landmarks)]
         X["coord_id"] = [j for _ in range(n_samples) for j in range(n_landmarks)]
-        X = X.set_index(["id", "coord_id"])
+        X = X.set_index(["specimen_id", "coord_id"])
         if n_dim == 2:
             X.columns = ["x", "y"]
         elif n_dim == 3:

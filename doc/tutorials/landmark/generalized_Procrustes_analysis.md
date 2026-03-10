@@ -177,7 +177,7 @@ links = [
 ]
 
 configuration_plot(
-    data_landmark_mosquito_wings.coords.loc[1], links=links, alpha=0.5, s=20
+    data_landmark_mosquito_wings.coords.loc[0], links=links, alpha=0.5, s=20
 )
 ```
 
@@ -204,18 +204,18 @@ configuration_plot(
 
 ```{code-cell} ipython3
 index = pd.MultiIndex.from_tuples(
-    [(2, i) for i in data_landmark_mosquito_wings.coords.loc[2].index],
+    [(1, i) for i in data_landmark_mosquito_wings.coords.loc[1].index],
     names=["specimen_id", "coord_id"],
 )
 x2 = pd.DataFrame(
-    data_landmark_mosquito_wings.coords.loc[2].to_numpy(),
+    data_landmark_mosquito_wings.coords.loc[1].to_numpy(),
     columns=["x", "y"],
     index=index,
 )
 ```
 
 ```{code-cell} ipython3
-data_landmark_mosquito_wings.coords.loc[1:3]
+data_landmark_mosquito_wings.coords.loc[0:2]
 ```
 
 ```{code-cell} ipython3

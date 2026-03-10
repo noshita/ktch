@@ -69,7 +69,7 @@ from ktch.harmonic import EllipticFourierAnalysis
 
 # Load outline data (126 specimens, 100 points, 2D)
 data = load_outline_mosquito_wings()
-coords = data.coords.reshape(-1, 100, 2)
+coords = data.coords
 
 # Elliptic Fourier Analysis
 efa = EllipticFourierAnalysis(n_harmonics=20)

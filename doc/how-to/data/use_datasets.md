@@ -48,7 +48,7 @@ from ktch.datasets import load_landmark_mosquito_wings
 
 data = load_landmark_mosquito_wings()
 
-print(f"Coordinates shape: {data.coords.shape}")  # (n_specimens * n_landmarks, n_dim)
+print(f"Coordinates shape: {data.coords.shape}")  # (n_specimens, n_landmarks, n_dim)
 print(f"Metadata keys: {list(data.meta.keys())}")
 ```
 
@@ -67,7 +67,7 @@ print(data.coords.head())
 from ktch.datasets import load_outline_mosquito_wings
 
 data = load_outline_mosquito_wings()
-print(f"Outlines shape: {data.coords.shape}")  # (n_specimens * n_points, n_dim)
+print(f"Outlines shape: {data.coords.shape}")  # (n_specimens, n_points, n_dim)
 ```
 
 ## Load remote datasets
