@@ -1,6 +1,8 @@
 import numpy as np
+import pandas as pd
 import pytest
 from numpy.testing import assert_array_almost_equal, assert_array_equal
+from sklearn.utils.estimator_checks import parametrize_with_checks
 
 from ktch.datasets import load_landmark_mosquito_wings
 from ktch.landmark import (
@@ -534,6 +536,19 @@ def test_gpa_surfaces_not_implemented():
         gpa.fit(X)
 
 
+def test_gpa_centroid_size_zero_raises():
+    """Test that specimens with centroid size 0 raise ValueError."""
+    X_degenerate = np.array(
+        [
+            [1.0, 2.0, 1.0, 2.0],  # 2 landmarks at the same point
+            [3.0, 4.0, 5.0, 6.0],
+        ]
+    )
+    gpa = GeneralizedProcrustesAnalysis(n_dim=2)
+    with pytest.raises(ValueError, match="centroid size 0"):
+        gpa.fit(X_degenerate)
+
+
 ###########################################################
 #
 #   closed-form bending energy sliding
@@ -932,3 +947,108 @@ def test_bending_energy_sliding_moves_along_tangent():
         # cross product (2D) should be zero
         cross = displacement[0] * tangents[j][1] - displacement[1] * tangents[j][0]
         assert abs(cross) < 1e-10
+
+
+###########################################################
+#
+#   sklearn estimator checks (parametrize_with_checks)
+#
+###########################################################
+
+# GPA requires n_features % n_dim == 0 and non-degenerate specimens
+# (centroid_size > 0). Many sklearn checks use test data that violates
+# these domain constraints, so we xfail those checks.
+_N_DIM_REASON = "sklearn test data has n_features not divisible by n_dim=2"
+_SINGLE_LM_REASON = (
+    "sklearn test data maps to 1 landmark (2 features / n_dim=2), "
+    "giving centroid_size=0"
+)
+
+_EXPECTED_FAILURES = {
+    # sklearn test data has n_features not divisible by n_dim=2
+    "check_fit_score_takes_y": _N_DIM_REASON,
+    "check_dont_overwrite_parameters": _N_DIM_REASON,
+    "check_estimators_dtypes": _N_DIM_REASON,
+    "check_pipeline_consistency": _N_DIM_REASON,
+    "check_estimators_nan_inf": _N_DIM_REASON,
+    "check_estimators_pickle": _N_DIM_REASON,
+    "check_f_contiguous_array_estimator": _N_DIM_REASON,
+    "check_transformer_data_not_an_array": _N_DIM_REASON,
+    "check_transformer_general": _N_DIM_REASON,
+    "check_transformer_preserve_dtypes": _N_DIM_REASON,
+    "check_methods_sample_order_invariance": _N_DIM_REASON,
+    "check_methods_subset_invariance": _N_DIM_REASON,
+    "check_dict_unchanged": _N_DIM_REASON,
+    "check_fit2d_predict1d": _N_DIM_REASON,
+    "check_fit2d_1feature": _N_DIM_REASON,
+    # sklearn test data maps to 1 landmark per specimen (centroid_size=0)
+    "check_estimators_overwrite_params": _SINGLE_LM_REASON,
+    "check_estimators_fit_returns_self": _SINGLE_LM_REASON,
+    "check_readonly_memmap_input": _SINGLE_LM_REASON,
+    "check_fit_idempotent": _SINGLE_LM_REASON,
+    "check_fit_check_is_fitted": _SINGLE_LM_REASON,
+    "check_n_features_in": _SINGLE_LM_REASON,
+}
+
+
+def _expected_failed_checks(estimator):
+    return _EXPECTED_FAILURES
+
+
+@parametrize_with_checks(
+    [GeneralizedProcrustesAnalysis(n_dim=2)],
+    expected_failed_checks=_expected_failed_checks,
+)
+def test_sklearn_estimator_checks(estimator, check):
+    check(estimator)
+
+
+###########################################################
+#
+#   set_output(transform="pandas")
+#
+###########################################################
+
+
+def test_gpa_set_output_pandas():
+    """Test that set_output(transform='pandas') returns a DataFrame."""
+    gpa = GeneralizedProcrustesAnalysis(n_dim=2)
+    gpa.set_output(transform="pandas")
+    X_aligned = gpa.fit_transform(X)
+
+    assert isinstance(X_aligned, pd.DataFrame)
+    assert X_aligned.shape == X.shape
+
+
+def test_gpa_set_output_pandas_preserves_columns():
+    """Test that DataFrame output preserves input column names."""
+    cols = [f"lm{i}_{ax}" for i in range(18) for ax in ("x", "y")]
+    X_df = pd.DataFrame(X, columns=cols)
+
+    gpa = GeneralizedProcrustesAnalysis(n_dim=2)
+    gpa.set_output(transform="pandas")
+    X_aligned = gpa.fit_transform(X_df)
+
+    assert isinstance(X_aligned, pd.DataFrame)
+    assert list(X_aligned.columns) == cols
+
+
+def test_gpa_set_output_pandas_transform():
+    """Test set_output with separate fit and transform calls."""
+    gpa = GeneralizedProcrustesAnalysis(n_dim=2)
+    gpa.set_output(transform="pandas")
+    gpa.fit(X)
+    X_aligned = gpa.transform(X)
+
+    assert isinstance(X_aligned, pd.DataFrame)
+    assert X_aligned.shape == X.shape
+
+
+def test_gpa_transform_rejects_wrong_n_features():
+    """Test that transform rejects input with wrong number of features."""
+    gpa = GeneralizedProcrustesAnalysis(n_dim=2)
+    gpa.fit(X)
+
+    X_wrong = np.random.randn(5, X.shape[1] + 2)
+    with pytest.raises(ValueError):
+        gpa.transform(X_wrong)

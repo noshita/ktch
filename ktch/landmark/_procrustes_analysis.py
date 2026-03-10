@@ -199,7 +199,7 @@ class GeneralizedProcrustesAnalysis(
             Aligned configurations.
         """
         check_is_fitted(self)
-        X_ = np.array(X)
+        X_ = validate_data(self, X, dtype="float64", reset=False)
         n_specimen = len(X_)
         n_dim = self.n_dim
         n_landmarks = self.n_features_in_ // n_dim
@@ -341,6 +341,14 @@ class GeneralizedProcrustesAnalysis(
 
         n_specimen = len(X_)
         X_3d = X_.reshape(n_specimen, n_landmarks, n_dim)
+
+        cs = np.array([centroid_size(x) for x in X_3d])
+        if np.any(cs == 0):
+            zero_idx = np.where(cs == 0)[0]
+            raise ValueError(
+                f"Specimen(s) at index {zero_idx.tolist()} have centroid size 0 "
+                f"(all landmarks coincide). GPA requires non-degenerate configurations."
+            )
 
         if self.scaling:
             X_aligned = self._fit_shape(X_3d)
