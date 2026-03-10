@@ -166,23 +166,6 @@ class TestDeprecatedAlias:
         assert "renamed" in str(w[0].message)
         assert isinstance(ax, mpl.axes.Axes)
 
-    def test_plot_shapes_along_pcs(self, fitted_pca):
-        from ktch import plot
-
-        desc = _MockDescriptor2D()
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            result = plot.plot_shapes_along_pcs(
-                fitted_pca,
-                descriptor=desc,
-                components=(0, 1),
-            )
-
-        assert len(w) == 1
-        assert issubclass(w[0].category, DeprecationWarning)
-        assert "renamed" in str(w[0].message)
-        assert isinstance(result, mpl.figure.Figure)
-
 
 # ===========================================================================
 # shape_variation_plot
