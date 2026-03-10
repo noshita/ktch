@@ -2,7 +2,6 @@
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from ktch.datasets import load_landmark_trilobite_cephala
 

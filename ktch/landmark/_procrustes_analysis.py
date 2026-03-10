@@ -28,7 +28,7 @@ from sklearn.utils.validation import check_is_fitted, validate_data
 
 logger = logging.getLogger(__name__)
 
-from ._kernels import tps_bending_energy, tps_bending_energy_matrix, tps_system_matrix
+from ._kernels import tps_bending_energy_matrix
 
 
 class GeneralizedProcrustesAnalysis(

@@ -5,7 +5,6 @@ import tempfile
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from ktch.io import read_chc, write_chc
 

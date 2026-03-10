@@ -1,7 +1,6 @@
 import ast
 from pathlib import Path
 
-import pytest
 from numpy.testing import assert_array_almost_equal
 
 from ktch.io import read_spharmpdm_coef

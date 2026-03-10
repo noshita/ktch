@@ -16,13 +16,8 @@
 
 from __future__ import annotations
 
-from abc import ABCMeta
-from typing import Optional
 
 import numpy as np
-import numpy.typing as npt
-import scipy as sp
-from sklearn.base import BaseEstimator, OneToOneFeatureMixin, TransformerMixin
 
 from ._kernels import tps_coefficients, tps_warp
 

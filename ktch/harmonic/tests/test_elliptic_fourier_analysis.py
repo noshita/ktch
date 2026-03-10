@@ -4,9 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
-from mpl_toolkits.mplot3d import axes3d
 from numpy.testing import assert_array_almost_equal
-from scipy.interpolate import BSpline, make_interp_spline
+from scipy.interpolate import make_interp_spline
 from scipy.stats import wasserstein_distance_nd
 
 from ktch.datasets import load_outline_mosquito_wings

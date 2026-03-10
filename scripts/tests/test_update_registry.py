@@ -1,7 +1,6 @@
 """Tests for scripts/update_registry.py."""
 
 import importlib.util
-import sys
 from pathlib import Path
 
 import pytest
