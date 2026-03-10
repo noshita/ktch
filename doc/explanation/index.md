@@ -31,3 +31,12 @@ Conceptual explanations of morphometric methods and theory.
 
     harmonic
 ```
+
+## Visualization
+
+```{eval-rst}
+.. toctree::
+    :maxdepth: 1
+
+    visualization
+```

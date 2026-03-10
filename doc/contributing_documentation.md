@@ -7,7 +7,7 @@ For build instructions, see `README.md` in　this directory.
 
 - URL: <https://doc.ktch.dev/>
 - Framework: Sphinx with pydata-sphinx-theme
-- Format: MyST Markdown (with myst-nb for executable notebooks)
+- Format: MyST Markdown (with myst-nb for executable notebooks, sphinxcontrib-mermaid for diagrams)
 
 ## Diataxis Structure
 
@@ -160,6 +160,9 @@ The topic name should be self-descriptive and indicate its domain.
 
 ## Harmonic-based Morphometrics
 - {doc}`harmonic` - EFA and spherical harmonics
+
+## Visualization
+- {doc}`visualization` - Reconstruction pipeline and plot API design
 ```
 
 This approach scales to future modules without requiring subdirectories.

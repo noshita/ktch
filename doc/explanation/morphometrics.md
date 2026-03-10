@@ -100,7 +100,8 @@ scores = pca.fit_transform(shapes)  # or coefficients
 ```
 
 ```{seealso}
-{doc}`../how-to/analysis/use_with_pipeline` for practical examples
+- {doc}`../how-to/analysis/use_with_pipeline` for practical examples
+- {doc}`visualization` for the visualization pipeline design
 ```
 
 ## References

@@ -8,6 +8,8 @@ Guides for visualizing morphometric data and results.
 .. toctree::
     :maxdepth: 1
 
-    tps_grid
     morphospace
+    shape_variation
+    non_pca_reducer
+    tps_grid
 ```

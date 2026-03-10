@@ -44,6 +44,7 @@ extensions = [
     # "sphinx_gallery.gen_gallery",
     # "sphinx.ext.linkcode",
     "sphinxcontrib.bibtex",
+    "sphinxcontrib.mermaid",
     "sphinx.ext.viewcode",
     "sphinx.ext.mathjax",
     "numpydoc",
@@ -52,6 +53,9 @@ extensions = [
     "sphinx_favicon",
     "override_pst_pagetoc",
 ]
+
+# Mermaid: let SVG height fit content instead of fixed 500px
+mermaid_height = "auto"
 
 # this is needed for some reason...
 # see https://github.com/numpy/numpydoc/issues/69
@@ -190,7 +194,7 @@ pygments_style = "sphinx"
 
 # Custom style
 # html_style = 'css/ktch.css'
-# html_css_files = ["css/ktch.css"]
+html_css_files = ["css/ktch.css"]
 
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []

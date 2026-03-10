@@ -53,7 +53,7 @@ jobs:
           uv pip install --system \
             "sphinx>=8.1,<9.0" pydata-sphinx-theme \
             git+https://github.com/sphinx-contrib/multiversion.git \
-            sphinx-gallery sphinxcontrib-bibtex myst-nb \
+            sphinx-gallery sphinxcontrib-bibtex sphinxcontrib-mermaid myst-nb \
             numpydoc matplotlib seaborn 'plotly>=6.0' \
             sphinx-sitemap sphinx-favicon vtk opencv-python pooch
           uv pip install --system -e .

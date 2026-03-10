@@ -68,5 +68,7 @@ print(f"Generated outline shape: {outline.shape}")
 ```
 
 ```{seealso}
-- {doc}`../visualization/morphospace` for visualizing shape variation
+- {doc}`../visualization/morphospace` for morphospace scatter plots with shape overlays
+- {doc}`../visualization/shape_variation` for visualizing shape changes along component axes
+- {doc}`../../explanation/visualization` for the reconstruction pipeline design
 ```

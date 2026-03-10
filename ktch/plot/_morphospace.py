@@ -143,6 +143,32 @@ def morphospace_plot(
     ValueError
         If required parameters cannot be resolved.
 
+    Notes
+    -----
+    When ``shape_type="auto"`` (the default), the type is inferred from the
+    output of the descriptor inverse transform:
+
+    - 4-D array -> ``"surface_3d"``
+    - 3-D array with last dimension 2 -> ``"curve_2d"``
+    - 3-D array with last dimension 3 -> ``"curve_3d"``
+    - No descriptor (identity / GPA case) with ``n_dim=2`` -> ``"landmarks_2d"``
+    - No descriptor (identity / GPA case) with ``n_dim=3`` -> ``"landmarks_3d"``
+
+    For 3-D arrays with ``shape[-1] == 3``, auto-detection chooses
+    ``"curve_3d"``. If the data represents landmarks, specify
+    ``shape_type="landmarks_3d"`` explicitly.
+
+    3-D shape types (``"surface_3d"``, ``"curve_3d"``, ``"landmarks_3d"``)
+    use matplotlib 3-D projection for each inset, which is significantly
+    slower. For 3-D surfaces (e.g., SHA), consider using ``n_shapes <= 3``
+    and reducing surface resolution via a
+    ``descriptor_inverse_transform`` wrapper.
+
+    See Also
+    --------
+    shape_variation_plot : Shape grid along component axes.
+    explained_variance_ratio_plot : Scree plot of explained variance.
+
     Examples
     --------
     >>> from ktch.plot import morphospace_plot

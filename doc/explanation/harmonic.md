@@ -126,7 +126,7 @@ modified_coef = pca.inverse_transform(modified_scores)
 reconstructed_shape = efa.inverse_transform(modified_coef)
 ```
 
-This enables visualization of shape variation along PC axes or between groups.
+ktch provides built-in plot functions for these visualizations; see {doc}`visualization` for details.
 
 ## Limitations
 
@@ -136,6 +136,7 @@ This enables visualization of shape variation along PC axes or between groups.
 
 ```{seealso}
 - {doc}`morphometrics` for comparison with landmark methods
+- {doc}`visualization` for the visualization pipeline design
 - {doc}`../tutorials/harmonic/elliptic_Fourier_analysis` for practical examples
 ```
 

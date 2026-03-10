@@ -71,6 +71,7 @@ doc = [
   "sphinx-multiversion @ git+https://github.com/sphinx-contrib/multiversion.git",
   "sphinx-sitemap>=2.6",
   "sphinxcontrib-bibtex>=2.6",
+  "sphinxcontrib-mermaid>=2.0",
 ]
 
 [tool.uv]
