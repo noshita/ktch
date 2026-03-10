@@ -246,14 +246,27 @@ Do not manually edit `pyproject.toml` version — let Release Please manage it.
 ### Pre-release Checklist
 
 1. Verify CI is green on `main`
-2. Update `doc/_static/versions.json` for the new stable version.
+2. Update `doc/_static/versions.json` on the release-please branch.
+   Push the change to the release-please branch (not `main`) so that
+   it only reaches `main` when the release PR is merged. This avoids
+   triggering a push-based Docs build before the release tag exists.
+
+   ```bash
+   git fetch origin release-please--branches--main
+   git checkout release-please--branches--main
+   # edit doc/_static/versions.json
+   git add doc/_static/versions.json
+   git commit -m "docs: update versions.json for vX.Y.Z"
+   git push origin release-please--branches--main
+   ```
+
    Edit the `"name"` and `"version"` fields in the stable entry:
 
    ```json
    [
      {
-       "name": "0.8.0 (stable)",
-       "version": "0.8.0",
+       "name": "0.8.1 (stable)",
+       "version": "0.8.1",
        "url": "https://doc.ktch.dev/stable/",
        "preferred": true
      },
@@ -265,9 +278,10 @@ Do not manually edit `pyproject.toml` version — let Release Please manage it.
    ]
    ```
 
-   Commit this change to `main` before merging the release PR,
-   so that the tagged commit includes the correct version switcher
-   configuration.
+   For minor releases that use `Release-As`, add the `Release-As`
+   footer to a commit on `main` first to let release-please set the
+   target version, then update `versions.json` on the release-please
+   branch as described above.
 
 3. If remote datasets were added or changed, update
    [`registry.toml`](#registrytoml) and run the

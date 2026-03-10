@@ -108,22 +108,37 @@ jobs:
 
           # Create /stable/ directory as a copy of the versioned directory
           # This allows URLs like /stable/api/index.html to work directly
+          #
+          # Safety net: if versions.json references a version whose tag
+          # does not yet exist, sphinx-multiversion won't build that
+          # directory. Fall back to the latest available versioned
+          # directory so /stable/ always serves valid content.
           SOURCE_DIR="doc/_build/html/${STABLE_VERSION}"
-          if [ -d "$SOURCE_DIR" ]; then
-            echo "Creating /stable/ directory as copy of ${STABLE_VERSION}"
-            cp -r "$SOURCE_DIR" doc/_build/html/stable
-
-            # Fix sitemap URLs in stable: replace version number with "stable"
-            # e.g., https://doc.ktch.dev/0.6.1/index.html -> https://doc.ktch.dev/stable/index.html
-            if [ -f "doc/_build/html/stable/sitemap.xml" ]; then
-              echo "Fixing sitemap URLs in /stable/sitemap.xml"
-              sed -i "s|/${STABLE_VERSION}/|/stable/|g" doc/_build/html/stable/sitemap.xml
+          ACTUAL_STABLE="${STABLE_VERSION}"
+          if [ ! -d "$SOURCE_DIR" ]; then
+            echo "Warning: $SOURCE_DIR not found (tag v${STABLE_VERSION} may not exist yet)"
+            # Find the latest versioned directory (highest semver, excluding dev)
+            ACTUAL_STABLE=$(ls -d doc/_build/html/[0-9]* 2>/dev/null \
+              | xargs -I{} basename {} \
+              | sort -t. -k1,1n -k2,2n -k3,3n \
+              | tail -1)
+            if [ -n "$ACTUAL_STABLE" ]; then
+              SOURCE_DIR="doc/_build/html/${ACTUAL_STABLE}"
+              echo "Falling back to latest available version: ${ACTUAL_STABLE}"
+            else
+              echo "Error: no versioned directory found"
+              ls -la doc/_build/html/
+              exit 1
             fi
-          else
-            echo "Error: $SOURCE_DIR directory not found"
-            echo "Available directories:"
-            ls -la doc/_build/html/
-            exit 1
+          fi
+
+          echo "Creating /stable/ directory as copy of ${ACTUAL_STABLE}"
+          cp -r "$SOURCE_DIR" doc/_build/html/stable
+
+          # Fix sitemap URLs in stable
+          if [ -f "doc/_build/html/stable/sitemap.xml" ]; then
+            echo "Fixing sitemap URLs in /stable/sitemap.xml"
+            sed -i "s|/${ACTUAL_STABLE}/|/stable/|g" doc/_build/html/stable/sitemap.xml
           fi
 
           # Create root index.html (redirect to /stable/)
