@@ -19,15 +19,12 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from scipy.interpolate import make_interp_spline
 from sklearn.base import (
     BaseEstimator,
     ClassNamePrefixFeaturesOutMixin,
     TransformerMixin,
 )
-from sklearn.decomposition import PCA
 from sklearn.utils.parallel import Parallel, delayed
-
 
 # Tolerance for detecting degenerate (near-zero) geometric quantities
 # (arc length, semi-axes, phase-angle denominator).
@@ -282,33 +279,19 @@ class EllipticFourierAnalysis(
         """
         X_list = []
         sp_num = X_transformed.shape[0]
+        col_names = ["x", "y", "z"][: self.n_dim]
 
         for i in range(sp_num):
             if as_frame:
                 coef = X_transformed.loc[i]
-                if self.n_dim == 2:
-                    X = self._inverse_transform_single_2d(
-                        coef, as_frame=as_frame, t_num=t_num
-                    )
-                    df_X = pd.DataFrame(X, columns=["x", "y"])
-                elif self.n_dim == 3:
-                    X = self._inverse_transform_single_3d(
-                        coef, as_frame=as_frame, t_num=t_num
-                    )
-                    df_X = pd.DataFrame(X, columns=["x", "y", "z"])
-                df_X["coord_id"] = [coord_id for coord_id in range(len(X))]
+                X = self._inverse_transform_single(coef, t_num=t_num)
+                df_X = pd.DataFrame(X, columns=col_names)
+                df_X["coord_id"] = list(range(len(X)))
                 df_X["specimen_id"] = i
                 X_list.append(df_X)
             else:
                 coef = X_transformed[i]
-                if self.n_dim == 2:
-                    X = self._inverse_transform_single_2d(
-                        coef, as_frame=as_frame, t_num=t_num
-                    )
-                elif self.n_dim == 3:
-                    X = self._inverse_transform_single_3d(
-                        coef, as_frame=as_frame, t_num=t_num
-                    )
+                X = self._inverse_transform_single(coef, t_num=t_num)
                 X_list.append(X)
 
         if as_frame:
@@ -351,57 +334,11 @@ class EllipticFourierAnalysis(
         """
         n_harmonics = self.n_harmonics
 
-        X_arr = np.append(
-            X[-1].reshape(1, self.n_dim), np.array(X), axis=0
-        )  # 1 <= i <= k
-
-        if not np.all(np.isfinite(X_arr)):
-            raise ValueError("Input coordinates must not contain NaN or Inf values.")
-
-        dx = X_arr[1:, 0] - X_arr[:-1, 0]  # 1 <= i <= k
-        dy = X_arr[1:, 1] - X_arr[:-1, 1]  # 1 <= i <= k
-
-        if t is None:
-            dt = np.sqrt(dx**2 + dy**2)
-            tp = np.cumsum(dt)
-        else:
-            t_ = np.append(0, t)
-            dt = t_[1:] - t_[:-1]  # 1 <= i <= k
-            tp = np.cumsum(dt)
-
-        if len(tp) != len(X):
-            raise ValueError(
-                "len(t) must have a same len(X), len(t): "
-                + str(len(tp))
-                + ", len(X): "
-                + str(len(X))
-            )
-
-        if tp[-1] < _DEGENERACY_TOL:
-            raise ValueError(
-                "Degenerate outline: total arc length is near zero. "
-                "All points may be identical."
-            )
-
-        if duplicated_points == "infinitesimal":
-            dt[dt < _INFINITESIMAL_DT] = _INFINITESIMAL_DT
-        elif duplicated_points == "deletion":
-            idx_duplicated_points = np.where(dt == 0)[0]
-            if len(idx_duplicated_points) > 0:
-                dx = np.delete(dx, idx_duplicated_points)
-                dy = np.delete(dy, idx_duplicated_points)
-
-                dt = np.delete(dt, idx_duplicated_points)
-                X_arr = np.delete(X_arr, idx_duplicated_points, 0)
-        else:
-            raise ValueError(
-                "'duplicated_points' must be 'infinitesimal' or 'deletion'"
-            )
-
-        tp = np.cumsum(dt)
+        X_arr, diffs, dt = _preprocess_outline(X, t, duplicated_points)
+        dx, dy = diffs[:, 0], diffs[:, 1]
 
         # Fourier series expansion
-        T = tp[-1]
+        T = np.sum(dt)
         a0 = 2 * np.sum(X_arr[1:, 0] * dt) / T
         c0 = 2 * np.sum(X_arr[1:, 1] * dt) / T
         an = np.append(a0, _cse(dx, dt, n_harmonics))
@@ -482,48 +419,46 @@ class EllipticFourierAnalysis(
 
         return An, Bn, Cn, Dn, psi, scale
 
-    def _inverse_transform_single_2d(
-        self,
-        X_transformed,
-        t_num=100,
-        as_frame=False,
-    ):
+    def _inverse_transform_single(self, X_transformed, t_num=100):
         coef_array = np.asarray(X_transformed, dtype=float)
-        expected_base = 4 * (self.n_harmonics + 1)
-        if coef_array.shape[0] == expected_base + 2:
+        n_axes = 2 * self.n_dim
+        n_extras = {2: 2, 3: 5}[self.n_dim]
+        expected_base = n_axes * (self.n_harmonics + 1)
+
+        if coef_array.shape[0] == expected_base + n_extras:
             coef_core = coef_array[:expected_base]
         elif coef_array.shape[0] == expected_base:
             coef_core = coef_array
         else:
             raise ValueError(
-                f"Expected {expected_base} or {expected_base + 2} coefficients, got {coef_array.shape[0]}."
+                f"Expected {expected_base} or {expected_base + n_extras} "
+                f"coefficients, got {coef_array.shape[0]}."
             )
 
-        an, bn, cn, dn = coef_core.reshape([2 * self.n_dim, -1])
-        a0 = an[0]
-        c0 = cn[0]
-        an = an[1:]
-        bn = bn[1:]
-        cn = cn[1:]
-        dn = dn[1:]
+        # Reshape to (n_axes, n_harmonics+1).
+        # Axes are ordered [cos0, sin0, cos1, sin1, ...] per coordinate.
+        axes = coef_core.reshape([n_axes, -1])
 
+        # Offsets sit at index 0 of the cos rows.
+        offsets = axes[::2, 0].copy()
         if self.norm:
-            a0 = 0
-            c0 = 0
+            offsets[:] = 0.0
 
-        n_max = len(an)
+        # (n_dim, n_harmonics)
+        cos_coefs = axes[::2, 1:]
+        sin_coefs = axes[1::2, 1:]
 
+        n_max = cos_coefs.shape[1]
         theta = np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
+        ns = np.arange(1, n_max + 1)
+        # (n_max, t_num)
+        cos_basis = np.cos(np.outer(ns, theta))
+        sin_basis = np.sin(np.outer(ns, theta))
 
-        cos = np.cos(np.tensordot(np.arange(1, n_max + 1, 1), theta, 0))
-        sin = np.sin(np.tensordot(np.arange(1, n_max + 1, 1), theta, 0))
+        # Reconstruct coordinates: (n_dim, t_num)
+        coords = offsets[:, None] / 2 + cos_coefs @ cos_basis + sin_coefs @ sin_basis
 
-        x = a0 / 2 + np.dot(an, cos) + np.dot(bn, sin)
-        y = c0 / 2 + np.dot(cn, cos) + np.dot(dn, sin)
-
-        X_coords = np.stack([x, y], 1)
-
-        return X_coords
+        return coords.T
 
     ###########################################################
     #
@@ -555,59 +490,11 @@ class EllipticFourierAnalysis(
         """
         n_harmonics = self.n_harmonics
 
-        X_arr = np.append(
-            X[-1].reshape(1, self.n_dim), np.array(X), axis=0
-        )  # 1 <= i <= k
-
-        if not np.all(np.isfinite(X_arr)):
-            raise ValueError("Input coordinates must not contain NaN or Inf values.")
-
-        dx = X_arr[1:, 0] - X_arr[:-1, 0]  # 1 <= i <= k
-        dy = X_arr[1:, 1] - X_arr[:-1, 1]  # 1 <= i <= k
-        dz = X_arr[1:, 2] - X_arr[:-1, 2]  # 1 <= i <= k
-
-        if t is None:
-            dt = np.sqrt(dx**2 + dy**2 + dz**2)
-            tp = np.cumsum(dt)
-        else:
-            t_ = np.append(0, t)
-            dt = t_[1:] - t_[:-1]  # 1 <= i <= k
-            tp = np.cumsum(dt)
-
-        if len(tp) != len(X):
-            raise ValueError(
-                "len(t) must have a same len(X), len(t): "
-                + str(len(tp))
-                + ", len(X): "
-                + str(len(X))
-            )
-
-        if tp[-1] < _DEGENERACY_TOL:
-            raise ValueError(
-                "Degenerate outline: total arc length is near zero. "
-                "All points may be identical."
-            )
-
-        if duplicated_points == "infinitesimal":
-            dt[dt < _INFINITESIMAL_DT] = _INFINITESIMAL_DT
-        elif duplicated_points == "deletion":
-            idx_duplicated_points = np.where(dt == 0)[0]
-            if len(idx_duplicated_points) > 0:
-                dx = np.delete(dx, idx_duplicated_points)
-                dy = np.delete(dy, idx_duplicated_points)
-                dz = np.delete(dz, idx_duplicated_points)
-
-                dt = np.delete(dt, idx_duplicated_points)
-                X_arr = np.delete(X_arr, idx_duplicated_points, 0)
-        else:
-            raise ValueError(
-                "'duplicated_points' must be 'infinitesimal' or 'deletion'"
-            )
-
-        tp = np.cumsum(dt)
+        X_arr, diffs, dt = _preprocess_outline(X, t, duplicated_points)
+        dx, dy, dz = diffs[:, 0], diffs[:, 1], diffs[:, 2]
 
         # Fourier series expansion
-        T = tp[-1]
+        T = np.sum(dt)
         a0 = 2 * np.sum(X_arr[1:, 0] * dt) / T
         c0 = 2 * np.sum(X_arr[1:, 1] * dt) / T
         e0 = 2 * np.sum(X_arr[1:, 2] * dt) / T
@@ -754,54 +641,6 @@ class EllipticFourierAnalysis(
 
         return An, Bn, Cn, Dn, En, Fn, alpha1, beta1, gamma1, phi1, scale
 
-    def _inverse_transform_single_3d(
-        self,
-        X_transformed,
-        t_num: int = 100,
-        as_frame: bool = False,
-    ):
-        coef_array = np.asarray(X_transformed, dtype=float)
-        expected_base = 6 * (self.n_harmonics + 1)
-        if coef_array.shape[0] == expected_base + 5:
-            coef_core = coef_array[:expected_base]
-        elif coef_array.shape[0] == expected_base:
-            coef_core = coef_array
-        else:
-            raise ValueError(
-                f"Expected {expected_base} or {expected_base + 5} coefficients, got {coef_array.shape[0]}."
-            )
-
-        an, bn, cn, dn, en, fn = coef_core.reshape([2 * self.n_dim, -1])
-        a0 = an[0]
-        c0 = cn[0]
-        e0 = en[0]
-        an = an[1:]
-        bn = bn[1:]
-        cn = cn[1:]
-        dn = dn[1:]
-        en = en[1:]
-        fn = fn[1:]
-
-        n_max = len(an)
-
-        theta = np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
-
-        if self.norm:
-            a0 = 0
-            c0 = 0
-            e0 = 0
-
-        cos = np.cos(np.tensordot(np.arange(1, n_max + 1, 1), theta, 0))
-        sin = np.sin(np.tensordot(np.arange(1, n_max + 1, 1), theta, 0))
-
-        x = a0 / 2 + np.dot(an, cos) + np.dot(bn, sin)
-        y = c0 / 2 + np.dot(cn, cos) + np.dot(dn, sin)
-        z = e0 / 2 + np.dot(en, cos) + np.dot(fn, sin)
-
-        X_coords = np.stack([x, y, z], 1)
-
-        return X_coords
-
     ###########################################################
     #
     #   set_output API
@@ -864,6 +703,76 @@ class EllipticFourierAnalysis(
 #   utility functions
 #
 ###########################################################
+
+
+def _preprocess_outline(X, t, duplicated_points="infinitesimal"):
+    """Prepare an outline for EFA.
+
+    Wraps the contour (prepends last point), computes coordinate differences
+    and arc-length parameterization, validates inputs, and handles duplicated
+    (zero-length) segments.
+
+    Parameters
+    ----------
+    X : ndarray of shape (n_coords, n_dim)
+        Coordinate values of an outline.
+    t : ndarray of shape (n_coords,) or None
+        Positional parameter.
+        If None, arc-length parameterization is used.
+    duplicated_points : str
+        Strategy for zero-length segments:
+        ``"infinitesimal"`` (default) or ``"deletion"``.
+
+    Returns
+    -------
+    X_arr : ndarray of shape (n_coords + 1, n_dim)
+        Wrapped coordinate array (last point prepended).
+    diffs : ndarray of shape (m, n_dim)
+        Per-axis coordinate differences (m <= n_coords after deletion).
+    dt : ndarray of shape (m,)
+        Parameter increments.
+    """
+    X_arr = np.vstack([X[-1:], np.asarray(X)])
+
+    if not np.all(np.isfinite(X_arr)):
+        raise ValueError("Input coordinates must not contain NaN or Inf values.")
+
+    diffs = X_arr[1:] - X_arr[:-1]
+
+    if t is None:
+        dt = np.linalg.norm(diffs, axis=1)
+    else:
+        t_ = np.append(0, t)
+        dt = t_[1:] - t_[:-1]
+
+    tp = np.cumsum(dt)
+
+    if len(tp) != len(X):
+        raise ValueError(
+            "len(t) must have a same len(X), len(t): "
+            + str(len(tp))
+            + ", len(X): "
+            + str(len(X))
+        )
+
+    if tp[-1] < _DEGENERACY_TOL:
+        raise ValueError(
+            "Degenerate outline: total arc length is near zero. "
+            "All points may be identical."
+        )
+
+    if duplicated_points == "infinitesimal":
+        dt[dt < _INFINITESIMAL_DT] = _INFINITESIMAL_DT
+    elif duplicated_points == "deletion":
+        idx_duplicated_points = np.where(dt == 0)[0]
+        if len(idx_duplicated_points) > 0:
+            diffs = np.delete(diffs, idx_duplicated_points, axis=0)
+            dt = np.delete(dt, idx_duplicated_points)
+            X_arr = np.delete(X_arr, idx_duplicated_points, 0)
+    else:
+        raise ValueError("'duplicated_points' must be 'infinitesimal' or 'deletion'")
+
+    return X_arr, diffs, dt
 
 
 def rotation_matrix_2d(theta):
