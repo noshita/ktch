@@ -1,5 +1,50 @@
 # Changelog
 
+## [0.8.0](https://github.com/noshita/ktch/compare/v0.7.2...v0.8.0) (2026-03-10)
+
+
+### Features
+
+* **plot:** ✨add shape_variation_plot and morphospace_plot ([9b37e1d](https://github.com/noshita/ktch/commit/9b37e1d5a8f93c62e137a072ead9d091c82a7fa2))
+
+
+### Bug Fixes
+
+* 🐛 remove plot_shapes_along_pcs from tests ([a9e389e](https://github.com/noshita/ktch/commit/a9e389e1122d624a1eaeccf2b274093d48057ebd))
+* 🐛 rename to _elliptic_fourier_analysis.py ([7328832](https://github.com/noshita/ktch/commit/7328832253398c5b41148c8c804bf0ef8ada2722))
+* 🐛 return_orientation_scale requires norm=True ([0a231d8](https://github.com/noshita/ktch/commit/0a231d800d1df8a1f2df93d0f591c47ba313a95e))
+* **harmonic:** 🐛 fix inverse_transform return type and add set_output to SHA ([0f66d6a](https://github.com/noshita/ktch/commit/0f66d6adc9dcb9fa8bd7ac79a0940df29a2073fd))
+* **io:** harden TPS write/read for semilandmarks ([c7c7678](https://github.com/noshita/ktch/commit/c7c76783783fe93dcfe788b5173ea9a40e93b550))
+* **landmark:** 🐛 improve sklearn API compliance in GPA ([cf6bcdb](https://github.com/noshita/ktch/commit/cf6bcdb7f2dbed4244c252ffe895fe6fac5fdc2d)), closes [#104](https://github.com/noshita/ktch/issues/104)
+
+
+### Documentation
+
+* 📚  update tutorials to current API and use morphospace_plot ([2977783](https://github.com/noshita/ktch/commit/2977783bb40e82d0b3626a6456344ef23dadf891))
+* **harmonic,io:** 📚 improve docstrings and extract tolerance constants ([a957540](https://github.com/noshita/ktch/commit/a957540d85f58b580fef84536a6f19f6af503636)), closes [#115](https://github.com/noshita/ktch/issues/115) [#118](https://github.com/noshita/ktch/issues/118)
+* **plot:** 📚 add visualization API design docs and how-to guides ([45e6d48](https://github.com/noshita/ktch/commit/45e6d481e674e1e071a9516594de2a400e451462))
+* update versions.json for v0.8.0 release ([372e561](https://github.com/noshita/ktch/commit/372e56173b22f27fae29defa847c219d36c81424))
+
+
+### Miscellaneous Chores
+
+* 🔧 clean up test directories ([f9897ea](https://github.com/noshita/ktch/commit/f9897ea15c15916590a5121043410e9707cabe89))
+* 🔧 enable ruff pydocstyle (D) rules with incremental adoption ([8b0227e](https://github.com/noshita/ktch/commit/8b0227ee3e7e8dd49acc95336fe805337be1fc15))
+* 🔧 remove bottle dataset ([839b595](https://github.com/noshita/ktch/commit/839b595538c67cfa005560008712bdd32246a0ea))
+* 🔧 remove update_versions_json.py script ([1ef2f4c](https://github.com/noshita/ktch/commit/1ef2f4cb125a47ac3be8301852caef13f6f3a02e))
+* **harmonic:** 🔧 add robustness tests and fix edge-case bugs in EFA/SHA ([1cdec79](https://github.com/noshita/ktch/commit/1cdec7990edeab3b03a9057177ce6e9aa14bd424)), closes [#117](https://github.com/noshita/ktch/issues/117)
+
+
+### Code Refactoring
+
+* ♻️  rename module files to PEP 8 snake_case ([f8a367e](https://github.com/noshita/ktch/commit/f8a367e1385a69d516fe9a566ee4243c3656408d)), closes [#116](https://github.com/noshita/ktch/issues/116)
+* ♻️ move validations from __init__ into transform following scikit-learn convention ([bb2ed26](https://github.com/noshita/ktch/commit/bb2ed26d8ee04b3dafcebb7dc1d2c44ef7e23611))
+* **harmonic:** ♻  align EFA/SHA API with scikit-learn transformer contract ([4080f00](https://github.com/noshita/ktch/commit/4080f001e87b4315a6c202a3776364136da14681))
+* **harmonic:** ♻️ improve EFA/SHA sklearn compliance ([6942834](https://github.com/noshita/ktch/commit/6942834bb1d8dc5065b9d24cbba7fcd4fcd9ca8e))
+* **harmonic:** ♻️ remove duplicate parts in 2D/3D transform in EFA ([b15f195](https://github.com/noshita/ktch/commit/b15f195fd45d674ccd926372d7b9956d814ebb2d)), closes [#114](https://github.com/noshita/ktch/issues/114)
+* **landmark:** ♻️  align GPA with scikit-learn estimator contract ([72d8a8b](https://github.com/noshita/ktch/commit/72d8a8bcace92d424a7dd221bd0da549a60cd4be))
+* **landmark:** ♻️ remove _slide_semilandmarks function ([3f387a2](https://github.com/noshita/ktch/commit/3f387a2e374add1e0b847d3fabe0d408d3373baa))
+
 ## [0.7.2](https://github.com/noshita/ktch/compare/v0.7.1...v0.7.2) (2026-02-20)
 
 
