@@ -18,7 +18,7 @@ The :mod:`ktch.landmark` module implements landmark-based morphometrics.
 
 import warnings
 
-from ._Procrustes_analysis import (
+from ._procrustes_analysis import (
     GeneralizedProcrustesAnalysis,
     centroid_size,
     combine_landmarks_and_curves,

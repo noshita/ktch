@@ -11,7 +11,7 @@ from scipy.stats import wasserstein_distance_nd
 
 from ktch.datasets import load_outline_mosquito_wings
 from ktch.harmonic import EllipticFourierAnalysis
-from ktch.harmonic._elliptic_Fourier_analysis import (
+from ktch.harmonic._elliptic_fourier_analysis import (
     _compute_ellipse_geometry_3d,
     rotation_matrix_3d_euler_zxz,
 )

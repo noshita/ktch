@@ -17,7 +17,7 @@ The :mod:`ktch.io` module implements I/O interface for morphometrics file format
 # limitations under the License.
 
 from ._chc import read_chc, write_chc
-from ._SPHARM_PDM import (
+from ._spharm_pdm import (
     cvt_spharm_coef_list_to_spharmpdm,
     cvt_spharm_coef_spharmpdm_to_list,
     read_spharmpdm_coef,

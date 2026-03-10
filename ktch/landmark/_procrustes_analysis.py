@@ -323,7 +323,7 @@ class GeneralizedProcrustesAnalysis(
             warnings.warn(
                 "The 'debug' parameter is deprecated and will be removed in "
                 "v0.9.0. Use logging.getLogger('ktch.landmark."
-                "_Procrustes_analysis').setLevel(logging.DEBUG) instead.",
+                "_procrustes_analysis').setLevel(logging.DEBUG) instead.",
                 FutureWarning,
                 stacklevel=2,
             )
