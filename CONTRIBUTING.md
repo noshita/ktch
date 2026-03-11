@@ -343,7 +343,14 @@ After the PyPI package is published:
 3. Review the PR — the bot does not update dependency version
    constraints, so check `pyproject.toml` against `meta.yaml` and
    fix any mismatches. To apply fixes, close the bot PR and create
-   a new one from a personal fork:
+   a new one from a personal fork.
+
+   Note: the bot's PR branch lives on the bot's own fork
+   (`regro-cf-autotick-bot/ktch-feedstock`), not on
+   `conda-forge/ktch-feedstock`. You cannot push commits to the
+   bot's branch even though the PR description says "Feel free to
+   push to the bot's branch." Always create a new PR from your
+   personal fork instead.
 
    The local clone used here is `noshita/ktch-feedstock` (personal fork),
    with `origin` pointing to the personal fork. The `--repo` flag tells
