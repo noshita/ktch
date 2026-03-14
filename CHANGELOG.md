@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.8.2](https://github.com/noshita/ktch/compare/v0.8.1...v0.8.2) (2026-03-14)
+
+
+### Bug Fixes
+
+* **docs:** 🐛 add stable version fallback and update release procedure ([f6d1210](https://github.com/noshita/ktch/commit/f6d12103e76c71e797512dfb5c1af274e9724577))
+* **docs:** 🐛 fix SEO issues preventing Google Search Console indexing ([275d625](https://github.com/noshita/ktch/commit/275d625dbd260b6c7c218b15cd9b8be648e89a9e))
+
+
+### Documentation
+
+* 📚 update CONTRIBUTING.md ([cb49c26](https://github.com/noshita/ktch/commit/cb49c26c3fe5021b657fa3d58489c9d3a81364a0))
+* 📚 update versions.json for v0.8.1 ([579a7b4](https://github.com/noshita/ktch/commit/579a7b492f2ba40cf038261ccf225069fdb9f061))
+
+
+### Miscellaneous Chores
+
+* **deps:** bump tornado from 6.5.4 to 6.5.5 ([10544c2](https://github.com/noshita/ktch/commit/10544c264bd2655d3a7d7f568126b5e3fc90d37d))
+* **deps:** bump tornado from 6.5.4 to 6.5.5 ([dbbe90c](https://github.com/noshita/ktch/commit/dbbe90c4ae68ced4b1413698d3edf5636205d856))
+
 ## [0.8.1](https://github.com/noshita/ktch/compare/v0.8.0...v0.8.1) (2026-03-10)
 
 
