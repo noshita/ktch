@@ -55,7 +55,7 @@ jobs:
             git+https://github.com/sphinx-contrib/multiversion.git \
             sphinx-gallery sphinxcontrib-bibtex sphinxcontrib-mermaid myst-nb \
             numpydoc matplotlib seaborn 'plotly>=6.0' \
-            sphinx-sitemap sphinx-favicon vtk opencv-python pooch
+            sphinx-sitemap sphinx-favicon sphinxext-opengraph vtk opencv-python pooch
           uv pip install --system -e .
 
       - name: Restore notebook execution cache
@@ -135,11 +135,17 @@ jobs:
           echo "Creating /stable/ directory as copy of ${ACTUAL_STABLE}"
           cp -r "$SOURCE_DIR" doc/_build/html/stable
 
-          # Fix sitemap URLs in stable
+          # Fix canonical URLs and sitemap in stable to use /stable/ instead of versioned path
+          echo "Fixing URLs in /stable/ (${ACTUAL_STABLE} -> stable)"
+          find doc/_build/html/stable -name "*.html" -exec \
+            sed -i "s|https://doc.ktch.dev/${ACTUAL_STABLE}/|https://doc.ktch.dev/stable/|g" {} +
           if [ -f "doc/_build/html/stable/sitemap.xml" ]; then
-            echo "Fixing sitemap URLs in /stable/sitemap.xml"
-            sed -i "s|/${ACTUAL_STABLE}/|/stable/|g" doc/_build/html/stable/sitemap.xml
+            sed -i "s|https://doc.ktch.dev/${ACTUAL_STABLE}/|https://doc.ktch.dev/stable/|g" doc/_build/html/stable/sitemap.xml
           fi
+
+          # Copy robots.txt to site root (html_extra_path places it inside each
+          # version subdirectory, but Google expects it at the domain root)
+          cp doc/_build/html/stable/robots.txt doc/_build/html/robots.txt
 
           # Create root index.html (redirect to /stable/)
           cat > doc/_build/html/index.html << EOF

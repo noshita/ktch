@@ -51,6 +51,7 @@ extensions = [
     "myst_nb",
     "sphinx_sitemap",
     "sphinx_favicon",
+    "sphinxext.opengraph",
     "override_pst_pagetoc",
 ]
 
@@ -318,7 +319,7 @@ html_extra_path = ["robots.txt"]
 # If true, an OpenSearch description file will be output, and all pages will
 # contain a <link> tag referring to it.  The value of this option must be the
 # base URL from which the finished HTML is served.
-html_use_opensearch = "https://doc.ktch.dev/"
+# NOTE: set after html_baseurl block below (depends on versioned html_baseurl)
 
 # This is the file name suffix for HTML files (e.g. ".xhtml").
 # html_file_suffix = None
@@ -327,22 +328,27 @@ html_use_opensearch = "https://doc.ktch.dev/"
 htmlhelp_basename = "ktchdoc"
 
 # sphinx-sitemap configuration for multi-version docs
-html_baseurl = "https://doc.ktch.dev/"
+# html_baseurl includes the version prefix so that both canonical tags and
+# sitemap URLs are consistent (sphinx_sitemap uses html_baseurl for canonical
+# but sitemap_url_scheme only for sitemap.xml).
 sitemap_locales = [None]
+sitemap_url_scheme = "{link}"
 
-# Set sitemap URL scheme based on build target
-# Each version generates sitemap with its own path
 if _smv_name == "main":
-    # dev version: /dev/
-    sitemap_url_scheme = "dev/{link}"
+    html_baseurl = "https://doc.ktch.dev/dev/"
 elif _smv_name.startswith("v"):
-    # Tagged releases: use version number without 'v' prefix
-    # e.g., "v0.6.1" -> "0.6.1/{link}"
-    _sitemap_version = _smv_name[1:]
-    sitemap_url_scheme = f"{_sitemap_version}/{{link}}"
+    html_baseurl = f"https://doc.ktch.dev/{_smv_name[1:]}/"
 else:
-    # Local/single-version builds
-    sitemap_url_scheme = "{link}"
+    html_baseurl = "https://doc.ktch.dev/"
+
+# OpenSearch: derive from html_baseurl, stripping trailing slash to avoid
+# double-slash in the generated template URL (e.g. ".../dev//search.html")
+html_use_opensearch = html_baseurl.rstrip("/")
+
+# sphinxext-opengraph: generates og:title, og:url, og:description, og:image
+# og:url is derived from html_baseurl automatically
+ogp_site_name = "ktch"
+ogp_image = "_static/img/logo.svg"
 
 # -- Options for LaTeX output ---------------------------------------------
 
