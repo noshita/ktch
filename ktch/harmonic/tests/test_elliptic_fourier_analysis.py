@@ -133,9 +133,10 @@ def test_orientation_and_scale_2d(export_figures=False):
 
     t = np.linspace(0, 2 * np.pi, 17)
 
-    x_o = np.random.uniform(low=-5, high=5, size=2)
-    psi = np.random.rand() * 2 * np.pi
-    scale = np.random.uniform(low=0.5, high=1.5)
+    rng = np.random.default_rng(42)
+    x_o = rng.uniform(-5, 5, size=2)
+    psi = rng.random() * 2 * np.pi
+    scale = rng.uniform(0.5, 1.5)
 
     x = np.array(
         [
@@ -363,7 +364,8 @@ def test_dc_component_3d_weighted():
 
     # Known coefficients
     a0, c0, e0 = 2.0, 3.0, 1.0
-    an, bn, cn, dn, en, fn = np.random.rand(6, n_harmonics) * 0.5
+    rng = np.random.default_rng(42)
+    an, bn, cn, dn, en, fn = rng.random((6, n_harmonics)) * 0.5
 
     cos = np.cos(np.tensordot(np.arange(1, n_harmonics + 1, 1), t, 0))
     sin = np.sin(np.tensordot(np.arange(1, n_harmonics + 1, 1), t, 0))

@@ -138,8 +138,9 @@ class TestExplainedVarianceRatioPlot:
     def test_verbose_output(self, fitted_pca, capsys):
         explained_variance_ratio_plot(fitted_pca, verbose=True)
         captured = capsys.readouterr()
-        assert "Explained variance ratio:" in captured.out
-        assert "Cumsum of Explained variance ratio:" in captured.out
+        assert "EVR" in captured.out
+        assert "Cumsum" in captured.out
+        assert "PC1" in captured.out
 
     def test_axes_has_plot_elements(self, fitted_pca):
         ax = explained_variance_ratio_plot(fitted_pca)

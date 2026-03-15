@@ -81,11 +81,13 @@ def explained_variance_ratio_plot(
     pc_cum = np.cumsum(pc_evr)
 
     if verbose:
-        print("Explained variance ratio:")
-        print(["PC" + str(i + 1) + " " + str(val) for i, val in enumerate(pc_evr)])
-
-        print("Cumsum of Explained variance ratio:")
-        print(["PC" + str(i + 1) + " " + str(val) for i, val in enumerate(pc_cum)])
+        label_width = 32
+        header = "".join(f"{'PC' + str(i + 1):>12s}" for i in range(n_components))
+        evr_row = "".join(f"{val:12.4f}" for val in pc_evr)
+        cum_row = "".join(f"{val:12.4f}" for val in pc_cum)
+        print(f"{'':>{label_width}s}{header}")
+        print(f"{'Explained Variance Ratio (EVR)':>{label_width}s}{evr_row}")
+        print(f"{'Cumsum of EVR':>{label_width}s}{cum_row}")
 
     sns.barplot(
         x=["PC" + str(i + 1) for i in range(n_components)],

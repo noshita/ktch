@@ -28,7 +28,8 @@ def test_gpa_shape():
 
 @pytest.mark.parametrize("n_dim", [2, 3])
 def test_centroid_size(n_dim):
-    x = np.random.uniform(0, 100, (10, n_dim))
+    rng = np.random.default_rng(42)
+    x = rng.uniform(0, 100, (10, n_dim))
     cs_r = np.sqrt(np.sum((x - x.mean(axis=0)) ** 2))
     cs_t = centroid_size(x)
 
@@ -169,7 +170,7 @@ def test_combine_landmarks_and_curves_with_curve_landmarks():
 @pytest.fixture
 def semilandmark_test_data():
     """Create test data for GPA with semilandmarks."""
-    np.random.seed(42)
+    rng = np.random.default_rng(42)
     base = np.array(
         [
             [0.0, 0.0],
@@ -181,9 +182,9 @@ def semilandmark_test_data():
     )
     X = np.array(
         [
-            base + np.random.randn(5, 2) * 0.1,
-            base + np.random.randn(5, 2) * 0.1,
-            base + np.random.randn(5, 2) * 0.1,
+            base + rng.standard_normal((5, 2)) * 0.1,
+            base + rng.standard_normal((5, 2)) * 0.1,
+            base + rng.standard_normal((5, 2)) * 0.1,
         ]
     )
     X_flat = X.reshape(3, -1)
@@ -367,17 +368,17 @@ def test_gpa_fit_then_transform():
 
 def test_gpa_transform_new_data():
     """Test that transform aligns unseen data to the learned mean."""
-    np.random.seed(42)
+    rng = np.random.default_rng(42)
     n_landmarks, n_dim = 5, 2
-    base = np.random.randn(n_landmarks, n_dim)
+    base = rng.standard_normal((n_landmarks, n_dim))
 
     # Training data: rotated/scaled copies of base
     X_train = []
     for _ in range(5):
-        angle = np.random.uniform(0, 2 * np.pi)
+        angle = rng.uniform(0, 2 * np.pi)
         R = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
-        scale = np.random.uniform(0.5, 2.0)
-        offset = np.random.randn(n_dim)
+        scale = rng.uniform(0.5, 2.0)
+        offset = rng.standard_normal(n_dim)
         X_train.append((scale * (base @ R.T) + offset).ravel())
     X_train = np.array(X_train)
 
@@ -385,7 +386,7 @@ def test_gpa_transform_new_data():
     gpa.fit(X_train)
 
     # New data: another rotated/scaled copy
-    angle = np.random.uniform(0, 2 * np.pi)
+    angle = rng.uniform(0, 2 * np.pi)
     R = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
     X_new = (1.5 * (base @ R.T) + np.array([3.0, -2.0])).ravel().reshape(1, -1)
 
@@ -493,7 +494,8 @@ def test_gpa_n_features_in_set_after_fit():
 
 def test_gpa_invalid_sliding_criterion():
     """Test that invalid sliding_criterion raises error."""
-    X = np.random.randn(3, 10)
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((3, 10))
     gpa = GeneralizedProcrustesAnalysis(
         n_dim=2,
         curves=np.array([[0, 1, 2]]),
@@ -505,7 +507,8 @@ def test_gpa_invalid_sliding_criterion():
 
 def test_gpa_invalid_curves_shape():
     """Test that invalid curves shape raises error."""
-    X = np.random.randn(3, 10)
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((3, 10))
     gpa = GeneralizedProcrustesAnalysis(
         n_dim=2,
         curves=np.array([0, 1, 2]),  # 1D instead of 2D
@@ -516,7 +519,8 @@ def test_gpa_invalid_curves_shape():
 
 def test_gpa_curves_index_out_of_range():
     """Test that out-of-range curve indices raise error."""
-    X = np.random.randn(3, 10)  # 5 landmarks * 2 dims
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((3, 10))  # 5 landmarks * 2 dims
     gpa = GeneralizedProcrustesAnalysis(
         n_dim=2,
         curves=np.array([[0, 1, 100]]),  # index 100 is out of range
@@ -527,7 +531,8 @@ def test_gpa_curves_index_out_of_range():
 
 def test_gpa_surfaces_not_implemented():
     """Test that surfaces parameter raises NotImplementedError."""
-    X = np.random.randn(3, 10)
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((3, 10))
     gpa = GeneralizedProcrustesAnalysis(
         n_dim=2,
         surfaces=np.array([0, 1, 2]),
@@ -560,7 +565,7 @@ def test_bending_energy_sliding_reduces_energy():
     """Test that sliding reduces bending energy."""
     from ktch.landmark._kernels import tps_bending_energy
 
-    np.random.seed(42)
+    rng = np.random.default_rng(42)
     base = np.array(
         [
             [0.0, 0.0],
@@ -597,7 +602,7 @@ def test_bending_energy_sliding_reduces_energy():
 
 def test_bending_energy_sliding_only_moves_sliders():
     """Test that sliding only moves slider points, not anchors."""
-    np.random.seed(42)
+    rng = np.random.default_rng(42)
     base = np.array(
         [
             [0.0, 0.0],
@@ -607,7 +612,7 @@ def test_bending_energy_sliding_only_moves_sliders():
             [4.0, 0.0],
         ]
     )
-    specimen = base + np.random.randn(5, 2) * 0.1
+    specimen = base + rng.standard_normal((5, 2)) * 0.1
 
     curves = define_curve_sliders([0, 1, 2, 3, 4])
     # Sliders are indices 1, 2, 3; anchors are 0, 4
@@ -782,7 +787,7 @@ def test_sliding_with_reprojection_reduces_energy():
     """Test that sliding with re-projection still reduces bending energy."""
     from ktch.landmark._kernels import tps_bending_energy
 
-    np.random.seed(42)
+    rng = np.random.default_rng(42)
     base = np.array(
         [
             [0.0, 0.0],
@@ -824,7 +829,7 @@ def test_sliding_with_reprojection_reduces_energy():
 @pytest.fixture
 def semilandmark_3d_test_data():
     """Create 3D test data for GPA with curve semilandmarks."""
-    np.random.seed(123)
+    rng = np.random.default_rng(123)
     base = np.array(
         [
             [0.0, 0.0, 0.0],
@@ -836,9 +841,9 @@ def semilandmark_3d_test_data():
     )
     X = np.array(
         [
-            base + np.random.randn(5, 3) * 0.05,
-            base + np.random.randn(5, 3) * 0.05,
-            base + np.random.randn(5, 3) * 0.05,
+            base + rng.standard_normal((5, 3)) * 0.05,
+            base + rng.standard_normal((5, 3)) * 0.05,
+            base + rng.standard_normal((5, 3)) * 0.05,
         ]
     )
     X_flat = X.reshape(3, -1)
@@ -1049,6 +1054,7 @@ def test_gpa_transform_rejects_wrong_n_features():
     gpa = GeneralizedProcrustesAnalysis(n_dim=2)
     gpa.fit(X)
 
-    X_wrong = np.random.randn(5, X.shape[1] + 2)
+    rng = np.random.default_rng(0)
+    X_wrong = rng.standard_normal((5, X.shape[1] + 2))
     with pytest.raises(ValueError):
         gpa.transform(X_wrong)
