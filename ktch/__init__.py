@@ -27,16 +27,3 @@ __all__ = [
     "plot",
     "__version__",
 ]
-
-
-# for deprecated modules
-def __getattr__(name: str):
-    if name == "outline":
-        from . import outline
-
-        return outline
-    raise AttributeError(f"'ktch' has no attribute '{name}'")
-
-
-def __dir__():
-    return list(globals().keys()) + ["outline"]

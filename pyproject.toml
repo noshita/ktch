@@ -23,8 +23,8 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-  "numpy>=1.26",
-  "pandas[pyarrow]>=2.1",
+  "numpy>=2.0",
+  "pandas[pyarrow]>=3.0",
   "scikit-learn>=1.5",
   "scipy>=1.15",
 ]
@@ -155,7 +155,7 @@ ignore = [
   "D415", # missing-terminal-punctuation
   "D417", # undocumented-param
 ]
-select = ["E", "F", "W", "I", "D"]
+select = ["E", "F", "W", "I", "D", "NPY201"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]

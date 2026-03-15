@@ -196,7 +196,7 @@ sns.scatterplot(
 def render_curve_3d_fixed_view(coords, ax, *, color="gray", alpha=0.7, **kw):
     kw.pop("links", None)
     ax.plot(coords[:, 0], coords[:, 1], coords[:, 2], color=color, alpha=alpha)
-    ptp = [max(np.ptp(coords[:, i]), 1e-10) for i in range(3)]
+    ptp = [max(np.max(coords[:, i]) - np.min(coords[:, i]), 1e-10) for i in range(3)]
     ax.set_box_aspect(ptp)
     ax.view_init(elev=60, azim=-120)
 ```

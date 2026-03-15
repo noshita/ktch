@@ -15,13 +15,9 @@ The :mod:`ktch.plot` module implements plotting functions for morphometrics.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
-
 from ._kriging import tps_grid_2d_plot
 from ._morphospace import morphospace_plot
 from ._pca import explained_variance_ratio_plot, shape_variation_plot
-
-_RENAMED_FUNCTIONS = {"plot_explained_variance_ratio": "explained_variance_ratio_plot"}
 
 __all__ = [
     "explained_variance_ratio_plot",
@@ -29,28 +25,3 @@ __all__ = [
     "shape_variation_plot",
     "tps_grid_2d_plot",
 ]
-
-
-def __getattr__(name: str):
-    if name in _RENAMED_FUNCTIONS:
-        new_name = _RENAMED_FUNCTIONS[name]
-        warnings.warn(
-            f"'{name}' has been renamed to '{new_name}'. "
-            f"The {name} is deprecated and will be removed in version v0.9.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        try:
-            return globals()[new_name]
-        except KeyError:
-            raise AttributeError(
-                f"module {__name__!r} has no attribute {new_name!r} "
-                f"(rename target for deprecated {name!r})"
-            ) from None
-
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-def __dir__():
-    """Include old function names in dir() and autocompletion."""
-    return list(__all__) + list(_RENAMED_FUNCTIONS.keys())

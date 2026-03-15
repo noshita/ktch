@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
 
 import numpy as np
 import pytest
@@ -147,25 +146,6 @@ class TestExplainedVarianceRatioPlot:
         assert len(ax.patches) > 0, "Expected bar patches"
         assert len(ax.lines) > 0, "Expected line plot"
         assert len(ax.collections) > 0, "Expected scatter points"
-
-
-# ===========================================================================
-# Deprecated aliases
-# ===========================================================================
-
-
-class TestDeprecatedAlias:
-    def test_plot_explained_variance_ratio(self, fitted_pca):
-        from ktch import plot
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            ax = plot.plot_explained_variance_ratio(fitted_pca)
-
-        assert len(w) == 1
-        assert issubclass(w[0].category, DeprecationWarning)
-        assert "renamed" in str(w[0].message)
-        assert isinstance(ax, mpl.axes.Axes)
 
 
 # ===========================================================================

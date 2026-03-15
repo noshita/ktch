@@ -94,7 +94,7 @@ def _render_curve_3d(coords, ax, *, color="gray", alpha=1.0, **kw):
         alpha=alpha,
         **kw,
     )
-    ptp = [np.ptp(coords[:, i]) for i in range(3)]
+    ptp = [np.max(coords[:, i]) - np.min(coords[:, i]) for i in range(3)]
     # Avoid zero-extent axes
     ptp = [max(p, 1e-10) for p in ptp]
     ax.set_box_aspect(ptp)
@@ -119,7 +119,7 @@ def _render_surface_3d(coords, ax, *, color="orange", alpha=1.0, **kw):
     kw.pop("links", None)
     X, Y, Z = coords[..., 0], coords[..., 1], coords[..., 2]
     ax.plot_surface(X, Y, Z, color=color, alpha=alpha, **kw)
-    ptp = [np.ptp(X), np.ptp(Y), np.ptp(Z)]
+    ptp = [np.max(X) - np.min(X), np.max(Y) - np.min(Y), np.max(Z) - np.min(Z)]
     ptp = [max(p, 1e-10) for p in ptp]
     ax.set_box_aspect(ptp)
 
@@ -197,7 +197,7 @@ def _render_landmarks_3d(coords, ax, *, color="gray", alpha=1.0, links=None, **k
         s=s,
         **kw,
     )
-    ptp = [np.ptp(coords[:, i]) for i in range(3)]
+    ptp = [np.max(coords[:, i]) - np.min(coords[:, i]) for i in range(3)]
     ptp = [max(p, 1e-10) for p in ptp]
     ax.set_box_aspect(ptp)
 

@@ -1449,8 +1449,8 @@ doc = [
 [package.metadata]
 requires-dist = [
     { name = "matplotlib", marker = "extra == 'plot'", specifier = ">=3.10" },
-    { name = "numpy", specifier = ">=1.26" },
-    { name = "pandas", extras = ["pyarrow"], specifier = ">=2.1" },
+    { name = "numpy", specifier = ">=2.0" },
+    { name = "pandas", extras = ["pyarrow"], specifier = ">=3.0" },
     { name = "pillow", marker = "extra == 'data'", specifier = ">=9.0" },
     { name = "plotly", marker = "extra == 'plot'", specifier = ">=6.0" },
     { name = "pooch", marker = "extra == 'data'", specifier = ">=1.3" },

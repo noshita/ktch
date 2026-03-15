@@ -123,12 +123,10 @@ class GeneralizedProcrustesAnalysis(
         surfaces: npt.ArrayLike | None = None,
         sliding_criterion: str = "bending_energy",
         n_jobs: int | None = None,
-        debug=False,
     ):
         self.tol = tol
         self.max_iter = max_iter
         self.scaling = scaling
-        self.debug = debug
         self.n_dim = n_dim
         self.curves = curves
         self.surfaces = surfaces
@@ -225,7 +223,7 @@ class GeneralizedProcrustesAnalysis(
         return X_aligned.reshape(n_specimen, n_landmarks * n_dim)
 
     def _fit_shape(self, X):
-        X_ = np.array(X, dtype=np.double, copy=True)
+        X_ = np.array(X, dtype=np.float64, copy=True)
         X_ = self._center(X_)
         X_ = self._scale(X_)
         mu = np.sum(X_, axis=0) / len(X_)
@@ -289,7 +287,7 @@ class GeneralizedProcrustesAnalysis(
         return X_
 
     def _fit_size_and_shape(self, X):
-        X_ = np.array(X, dtype=np.double, copy=True)
+        X_ = np.array(X, dtype=np.float64, copy=True)
         X_ = self._center(X_)
         mu = np.sum(X_, axis=0) / len(X_)
 
@@ -351,15 +349,6 @@ class GeneralizedProcrustesAnalysis(
         X_aligned : ndarray, shape (n_specimens, n_landmarks * n_dim)
             Aligned configurations.
         """
-        if self.debug:
-            warnings.warn(
-                "The 'debug' parameter is deprecated and will be removed in "
-                "v0.9.0. Use logging.getLogger('ktch.landmark."
-                "_procrustes_analysis').setLevel(logging.DEBUG) instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-
         n_dim = self.n_dim
         if n_dim not in (2, 3):
             raise ValueError("n_dim must be 2 or 3.")

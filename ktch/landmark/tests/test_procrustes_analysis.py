@@ -448,32 +448,13 @@ def test_gpa_clone():
         n_dim=2,
         tol=1e-5,
         scaling=False,
-        debug=True,
     )
     gpa_cloned = clone(gpa)
 
     assert gpa_cloned.n_dim == 2
     assert gpa_cloned.tol == 1e-5
     assert gpa_cloned.scaling is False
-    assert gpa_cloned.debug is True
     assert not hasattr(gpa_cloned, "mu_")
-
-
-def test_gpa_debug_warning_not_in_init():
-    """Test that debug warning fires on fit, not on construction."""
-    import warnings as _warnings
-
-    # Construction should NOT warn
-    with _warnings.catch_warnings(record=True) as record:
-        _warnings.simplefilter("always")
-        GeneralizedProcrustesAnalysis(n_dim=2, debug=True)
-    future_warnings = [w for w in record if issubclass(w.category, FutureWarning)]
-    assert len(future_warnings) == 0
-
-    # Fit SHOULD warn
-    gpa = GeneralizedProcrustesAnalysis(n_dim=2, debug=True)
-    with pytest.warns(FutureWarning, match="debug"):
-        gpa.fit(X)
 
 
 def test_gpa_n_features_in_set_after_fit():
@@ -1061,28 +1042,3 @@ def test_gpa_transform_rejects_wrong_n_features():
         gpa.transform(X_wrong)
 
 
-###########################################################
-#
-#   Deprecated imports
-#
-###########################################################
-
-
-def test_deprecated_tps_grid_2d_plot_import():
-    """Importing tps_grid_2d_plot from ktch.landmark emits DeprecationWarning."""
-    import ktch.landmark
-
-    with pytest.warns(DeprecationWarning, match="moved to 'ktch.plot'"):
-        func = ktch.landmark.tps_grid_2d_plot
-
-    from ktch.plot import tps_grid_2d_plot
-
-    assert func is tps_grid_2d_plot
-
-
-def test_landmark_getattr_unknown():
-    """Accessing an unknown attribute raises AttributeError."""
-    import ktch.landmark
-
-    with pytest.raises(AttributeError):
-        _ = ktch.landmark.nonexistent_function
