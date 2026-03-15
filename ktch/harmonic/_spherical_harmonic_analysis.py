@@ -449,7 +449,13 @@ def cvt_spharm_coef_to_list(
         ``coef_list[l]`` has shape ``(2*l+1, 3)`` for degree ``l``.
     """
     coef_ = coef.reshape((-1, 3))
-    lmax = int(np.sqrt(coef_.shape[0]) - 1)
+    lmax_plus_one = np.sqrt(coef_.shape[0])
+    if not lmax_plus_one.is_integer():
+        raise ValueError(
+            f"Invalid coefficient count: {coef_.shape[0]} is not a perfect square "
+            f"((lmax+1)^2)."
+        )
+    lmax = int(lmax_plus_one) - 1
     coef_list = [
         np.array([coef_[l**2 + l + m] for m in range(-l, l + 1, 1)])
         for l in range(0, lmax + 1, 1)

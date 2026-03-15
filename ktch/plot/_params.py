@@ -157,7 +157,8 @@ def _detect_shape_type(
             return "landmarks_3d"
 
     raise ValueError(
-        "Cannot auto-detect shape_type. Please specify shape_type explicitly."
+        f"Cannot auto-detect shape_type from array of shape {sample_coords.shape} "
+        f"(n_dim={n_dim}). Please specify shape_type explicitly."
     )
 
 

@@ -42,6 +42,9 @@ def make_landmarks_from_reference(
         Standard deviation of the Gaussian noise added to the reference.
     random_state : int, RandomState instance or None, default=None
         Pass an int for reproducible output across multiple function calls.
+    allow_collinearity : bool, default=False
+        If True, allow collinear configurations in the generated dataset.
+        Not yet implemented.
     allow_dup : bool, default=False
         If True, allow duplicate configurations in the generated dataset.
     as_frame : bool, default=False
@@ -52,6 +55,11 @@ def make_landmarks_from_reference(
     X : array-like, shape (n_samples, n_landmarks, n_dim)
         Generated landmark dataset.
     """
+    if allow_collinearity:
+        raise NotImplementedError(
+            "allow_collinearity is not yet implemented."
+        )
+
     ref = np.asarray(reference)
 
     generator = check_random_state(random_state)

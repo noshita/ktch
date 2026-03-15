@@ -55,6 +55,22 @@ class TPSData:
     curves: list[np.ndarray] = None
     comments: str = None
 
+    def __post_init__(self):
+        if self.image_path is not None and (
+            "\n" in self.image_path or "\r" in self.image_path
+        ):
+            raise ValueError(
+                "image_path must not contain newline characters. "
+                "The TPS format uses line-based key=value pairs."
+            )
+        if self.comments is not None and (
+            "\n" in self.comments or "\r" in self.comments
+        ):
+            raise ValueError(
+                "comments must not contain newline characters. "
+                "The TPS format uses line-based key=value pairs."
+            )
+
     @property
     def landmarks(self) -> np.ndarray:
         return self._landmarks
@@ -262,7 +278,10 @@ def _normalize_landmarks_input(landmarks) -> list[np.ndarray]:
         return [np.asarray(lm) for lm in landmarks]
 
     if isinstance(landmarks, pd.DataFrame):
-        raise NotImplementedError()
+        raise NotImplementedError(
+            "Passing a DataFrame for landmarks is not yet supported. "
+            "Use a numpy array or a list of per-specimen arrays."
+        )
 
     raise ValueError(
         "landmarks must be a numpy array or a list of per-specimen arrays."
@@ -428,25 +447,13 @@ def _read_tps_single(specimen_str: str) -> TPSData:
             raise ValueError(f"Invalid metadata line in TPS specimen: {row!r}")
         meta_dict[m_meta["key"]] = m_meta["value"]
 
-    if "ID" in meta_dict.keys():
-        idx = meta_dict["ID"]
-    else:
+    idx = meta_dict.get("ID")
+    if idx is None:
         raise ValueError("Missing required 'ID' field in TPS specimen")
 
-    if "IMAGE" in meta_dict.keys():
-        image_path = meta_dict["IMAGE"]
-    else:
-        image_path = None
-
-    if "SCALE" in meta_dict.keys():
-        scale = meta_dict["SCALE"]
-    else:
-        scale = None
-
-    if "COMMENTS" in meta_dict.keys():
-        comments = meta_dict["COMMENTS"]
-    else:
-        comments = None
+    image_path = meta_dict.get("IMAGE")
+    scale = meta_dict.get("SCALE")
+    comments = meta_dict.get("COMMENTS")
 
     m = PTN_CURVES.search(specimen_str)
     if m is not None:
