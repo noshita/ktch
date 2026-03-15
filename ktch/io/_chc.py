@@ -311,13 +311,6 @@ def write_chc(
 
     chc_data_list = []
     for i in range(n_samples):
-        if validate and not np.all((chain_codes[i] >= 0) & (chain_codes[i] <= 7)):
-            invalid_values = chain_codes[i][(chain_codes[i] < 0) | (chain_codes[i] > 7)]
-            raise ValueError(
-                f"Chain code contains invalid values: {invalid_values}. "
-                f"Values must be between 0 and 7 (inclusive)."
-            )
-
         chc_data_list.append(
             ChainCodeData(
                 sample_name=sample_names[i],
@@ -371,35 +364,15 @@ def _read_chc(file_path, validate=True):
             except ValueError:
                 chain_code = np.array(parts[5:], dtype=int)
 
-            try:
-                chc_data = ChainCodeData(
-                    sample_name=sample_name,
-                    x=x,
-                    y=y,
-                    area_per_pixel=area_per_pixel,
-                    area_pixels=area_pixels,
-                    chain_code=chain_code,
-                )
-            except ValueError as e:
-                if validate:
-                    raise e
-                original_post_init = ChainCodeData.__post_init__
-                try:
-                    ChainCodeData.__post_init__ = (
-                        lambda self: None
-                        if not isinstance(self.chain_code, np.ndarray)
-                        else setattr(self, "chain_code", np.array(self.chain_code))
-                    )
-                    chc_data = ChainCodeData(
-                        sample_name=sample_name,
-                        x=x,
-                        y=y,
-                        area_per_pixel=area_per_pixel,
-                        area_pixels=area_pixels,
-                        chain_code=chain_code,
-                    )
-                finally:
-                    ChainCodeData.__post_init__ = original_post_init
+            chc_data = ChainCodeData(
+                sample_name=sample_name,
+                x=x,
+                y=y,
+                area_per_pixel=area_per_pixel,
+                area_pixels=area_pixels,
+                chain_code=chain_code,
+                validate=validate,
+            )
 
             chc_data_list.append(chc_data)
 

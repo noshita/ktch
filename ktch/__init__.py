@@ -22,7 +22,6 @@ __version__ = version(__name__)
 __all__ = [
     "landmark",
     "harmonic",
-    "outline",
     "io",
     "datasets",
     "plot",
