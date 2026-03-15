@@ -1416,7 +1416,6 @@ dev = [
     { name = "licensecheck" },
     { name = "llvmlite" },
     { name = "matplotlib" },
-    { name = "module-name" },
     { name = "networkx" },
     { name = "numba" },
     { name = "opencv-python" },
@@ -1468,7 +1467,6 @@ dev = [
     { name = "licensecheck", specifier = ">=2025.1" },
     { name = "llvmlite", specifier = ">=0.44" },
     { name = "matplotlib", specifier = ">=3.10" },
-    { name = "module-name", specifier = ">=0.6.0" },
     { name = "networkx", specifier = ">=3.6" },
     { name = "numba", specifier = ">=0.61" },
     { name = "opencv-python", specifier = ">=4.11" },
@@ -1787,15 +1785,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/9d/55/d01f0c4b45ade6536c51170b9043db8b2ec6ddf4a35c7ea3f5f559ac935b/mistune-3.2.0.tar.gz", hash = "sha256:708487c8a8cdd99c9d90eb3ed4c3ed961246ff78ac82f03418f5183ab70e398a", size = 95467, upload-time = "2025-12-23T11:36:34.994Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9b/f7/4a5e785ec9fbd65146a27b6b70b6cdc161a66f2024e4b04ac06a67f5578b/mistune-3.2.0-py3-none-any.whl", hash = "sha256:febdc629a3c78616b94393c6580551e0e34cc289987ec6c35ed3f4be42d0eee1", size = 53598, upload-time = "2025-12-23T11:36:33.211Z" },
-]
-
-[[package]]
-name = "module-name"
-version = "0.6.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/11/25/ff4b1ad56270798ecd0ed7c1bbe5674c3e5f7c2f60a229331d00dd27fba2/module_name-0.6.0.tar.gz", hash = "sha256:e16c2425f779b2f193d24bc858afa94aed36869df38bdc42e14a7028d0b2ed6b", size = 3773, upload-time = "2023-03-20T19:41:14.519Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/12/c3/743e1a310c8c5cba0703115736539dae488d9f6de80fde9cafac190a1ec8/module_name-0.6.0-py2.py3-none-any.whl", hash = "sha256:b07eedb8ed8f46729b6a1575af9066c6d9c4f21f01b33936546a5a1c62f16132", size = 4520, upload-time = "2023-03-20T19:41:13.52Z" },
 ]
 
 [[package]]

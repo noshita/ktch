@@ -52,7 +52,7 @@ jobs:
           # SPHINX_MULTIVERSION_NAME environment variable support
           uv pip install --system \
             "sphinx>=8.1,<9.0" pydata-sphinx-theme \
-            git+https://github.com/sphinx-contrib/multiversion.git \
+            git+https://github.com/sphinx-contrib/multiversion.git@cd4c0db66473f04d7e037188f5f13444574b4b0e \
             sphinx-gallery sphinxcontrib-bibtex sphinxcontrib-mermaid myst-nb \
             numpydoc matplotlib seaborn 'plotly>=6.0' \
             sphinx-sitemap sphinx-favicon sphinxext-opengraph vtk opencv-python pooch
