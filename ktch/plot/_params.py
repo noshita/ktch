@@ -216,7 +216,7 @@ def _validate_components(
         If any index >= n_components.
     """
     for idx in components:
-        if idx >= n_components:
+        if not (0 <= idx < n_components):
             raise ValueError(
-                f"Component index {idx} exceeds number of components ({n_components})"
+                f"Component index {idx} is out of range [0, {n_components})"
             )

@@ -147,7 +147,7 @@ def read_tps(file_path, as_frame=False):
     if not path.exists():
         raise FileNotFoundError(f"{path} does not exist.")
 
-    if not path.suffix == ".tps":
+    if path.suffix.lower() != ".tps":
         raise ValueError(f"{path} is not a TPS file.")
 
     tps_data = _read_tps(path)
@@ -158,15 +158,12 @@ def read_tps(file_path, as_frame=False):
         else:
             return tps_data.to_numpy()
     elif isinstance(tps_data, list):
-        semilandmark_flag = sum(
-            [False if tps_datum.curves is None else True for tps_datum in tps_data]
-        )
-        if (semilandmark_flag == 0) or (semilandmark_flag == len(tps_data)):
-            pass
-        else:
+        has_curves = [tps_datum.curves is not None for tps_datum in tps_data]
+        if any(has_curves) and not all(has_curves):
             raise ValueError("Some specimens have semilandmarks and others do not.")
+        use_curves = all(has_curves)
         if as_frame:
-            if semilandmark_flag == 0:
+            if not use_curves:
                 landmarks = [tps_datum.to_dataframe() for tps_datum in tps_data]
                 landmarks = pd.concat(landmarks)
                 return landmarks
@@ -176,7 +173,7 @@ def read_tps(file_path, as_frame=False):
                 semilandmarks = [tps_datum.to_dataframe()[1] for tps_datum in tps_data]
                 return landmarks, semilandmarks
         else:
-            if semilandmark_flag == 0:
+            if not use_curves:
                 landmarks = np.array([tps_datum.to_numpy() for tps_datum in tps_data])
                 return landmarks
             else:

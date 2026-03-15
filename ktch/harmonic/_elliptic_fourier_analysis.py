@@ -377,8 +377,8 @@ class EllipticFourierAnalysis(
         c1 = cn[1]
         d1 = dn[1]
 
-        theta = (1 / 2) * np.arctan(
-            2 * (a1 * b1 + c1 * d1) / (a1**2 + c1**2 - b1**2 - d1**2)
+        theta = 0.5 * np.arctan2(
+            2 * (a1 * b1 + c1 * d1), a1**2 + c1**2 - b1**2 - d1**2
         )
 
         [[a_s, b_s], [c_s, d_s]] = np.array([[a1, b1], [c1, d1]]).dot(

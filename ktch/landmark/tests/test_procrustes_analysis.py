@@ -993,6 +993,7 @@ _EXPECTED_FAILURES = {
     "check_fit_idempotent": _SINGLE_LM_REASON,
     "check_fit_check_is_fitted": _SINGLE_LM_REASON,
     "check_n_features_in": _SINGLE_LM_REASON,
+    "check_transformer_n_iter": _N_DIM_REASON,
 }
 
 
@@ -1058,3 +1059,30 @@ def test_gpa_transform_rejects_wrong_n_features():
     X_wrong = rng.standard_normal((5, X.shape[1] + 2))
     with pytest.raises(ValueError):
         gpa.transform(X_wrong)
+
+
+###########################################################
+#
+#   Deprecated imports
+#
+###########################################################
+
+
+def test_deprecated_tps_grid_2d_plot_import():
+    """Importing tps_grid_2d_plot from ktch.landmark emits DeprecationWarning."""
+    import ktch.landmark
+
+    with pytest.warns(DeprecationWarning, match="moved to 'ktch.plot'"):
+        func = ktch.landmark.tps_grid_2d_plot
+
+    from ktch.plot import tps_grid_2d_plot
+
+    assert func is tps_grid_2d_plot
+
+
+def test_landmark_getattr_unknown():
+    """Accessing an unknown attribute raises AttributeError."""
+    import ktch.landmark
+
+    with pytest.raises(AttributeError):
+        _ = ktch.landmark.nonexistent_function

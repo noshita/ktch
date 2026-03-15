@@ -88,7 +88,7 @@ def read_spharmpdm_coef(path: str | Path) -> list[npt.NDArray[np.complex128]]:
     # Convert to numpy array and validate dimensions
     try:
         coef_array = np.array(coef[1:]).reshape((n_coef_per_coord, 3))
-    except Exception as e:
+    except ValueError as e:
         raise ValueError(f"Failed to convert coefficients to numpy array: {e}")
 
     if coef_array.size == 0:
