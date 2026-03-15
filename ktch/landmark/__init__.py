@@ -34,7 +34,6 @@ __all__ = [
     "centroid_size",
     "combine_landmarks_and_curves",
     "define_curve_sliders",
-    "tps_grid_2d_plot",
 ]
 
 

@@ -14,18 +14,61 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+_DIRECTIONS = np.array(
+    [
+        [1, 0],  # 0: right
+        [1, -1],  # 1: up-right
+        [0, -1],  # 2: up
+        [-1, -1],  # 3: up-left
+        [-1, 0],  # 4: left
+        [-1, 1],  # 5: down-left
+        [0, 1],  # 6: down
+        [1, 1],  # 7: down-right
+    ]
+)
+
+
+def _chain_code_area(chain_code):
+    """Compute enclosed area in pixels from a chain code.
+
+    Coordinates represent pixel centers. The polygon area from
+    the Shoelace formula is converted to pixel count using Pick's theorem:
+    ``pixel_count = polygon_area + boundary_points / 2 + 1``.
+
+    Each chain code step (orthogonal or diagonal) has gcd(|dx|, |dy|) = 1,
+    so there are no intermediate lattice points on edges, and
+    ``boundary_points = len(chain_code)``.
+
+    Parameters
+    ----------
+    chain_code : np.ndarray
+        Chain code sequence with values from 0 to 7.
+
+    Returns
+    -------
+    area : int
+        Enclosed area in pixels.
+    """
+    steps = _DIRECTIONS[chain_code]
+    coords = np.vstack([np.zeros((1, 2)), np.cumsum(steps, axis=0)])
+    x, y = coords[:, 0], coords[:, 1]
+    polygon_area = 0.5 * abs(np.sum(x[:-1] * y[1:] - x[1:] * y[:-1]))
+    boundary_points = len(chain_code)
+    return int(round(polygon_area + boundary_points / 2 + 1))
+
 
 @dataclass
 class ChainCodeData:
     """Chain code data class.
 
-    Chain codes represent 2D contours using directional codes from 0 to 7:
+    Chain codes represent 2D contours using directional codes from 0 to 7::
 
         3 2 1
         4 * 0
@@ -41,29 +84,41 @@ class ChainCodeData:
         Y coordinate.
     area_per_pixel : float
         Area (mm2) per pixel.
-    area_pixels : int
-        Area in pixels.
     chain_code : np.ndarray
         Chain code sequence with values from 0 to 7 representing directions.
-    validate : bool, default=True
-        If True, validate that chain code values are between 0 and 7.
+    area_pixels : int or None, optional
+        Area in pixels.
+        If None, computed from the chain code using the Shoelace formula.
+        If provided and differs from the computed value,
+        a warning is issued and the computed value is used.
     """
 
     sample_name: str
     x: float
     y: float
     area_per_pixel: float
-    area_pixels: int
     chain_code: np.ndarray
-    validate: bool = True
+    area_pixels: int | None = None
 
     def __post_init__(self):
         if not isinstance(self.chain_code, np.ndarray):
             self.chain_code = np.array(self.chain_code)
 
-        if self.validate and not np.all(
-            (self.chain_code >= 0) & (self.chain_code <= 7)
-        ):
+        self._validate_chain_code()
+
+        computed_area = _chain_code_area(self.chain_code)
+        if self.area_pixels is not None and self.area_pixels != computed_area:
+            warnings.warn(
+                f"area_pixels ({self.area_pixels}) differs from the value "
+                f"computed from chain code ({computed_area}). "
+                f"Using computed value.",
+                stacklevel=2,
+            )
+        self.area_pixels = computed_area
+
+    def _validate_chain_code(self):
+        """Validate that chain code values are between 0 and 7."""
+        if not np.all((self.chain_code >= 0) & (self.chain_code <= 7)):
             invalid_values = self.chain_code[
                 (self.chain_code < 0) | (self.chain_code > 7)
             ]
@@ -90,7 +145,7 @@ class ChainCodeData:
         based on the chain code values. The coordinates are scaled
         using the area_per_pixel value.
 
-        Chain codes represent 2D contours using directional codes from 0 to 7:
+        Chain codes represent 2D contours using directional codes from 0 to 7::
 
             3 2 1
             4 * 0
@@ -102,24 +157,8 @@ class ChainCodeData:
             2D coordinates with shape (n, 2) where n is the number of points.
             The first column is the x-coordinate and the second column is the y-coordinate.
         """
-        directions = np.array(
-            [
-                [1, 0],  # 0: right
-                [1, -1],  # 1: up-right
-                [0, -1],  # 2: up
-                [-1, -1],  # 3: up-left
-                [-1, 0],  # 4: left
-                [-1, 1],  # 5: down-left
-                [0, 1],  # 6: down
-                [1, 1],  # 7: down-right
-            ]
-        )
-
-        coords = np.zeros((len(self.chain_code) + 1, 2))
-
-        for i, code in enumerate(self.chain_code):
-            valid_code = min(max(0, code), 7)
-            coords[i + 1] = coords[i] + directions[valid_code]
+        steps = _DIRECTIONS[self.chain_code]
+        coords = np.vstack([np.zeros((1, 2)), np.cumsum(steps, axis=0)])
 
         scale_factor = np.sqrt(self.area_per_pixel)
         coords *= scale_factor
@@ -137,7 +176,7 @@ class ChainCodeData:
         based on the chain code values. The coordinates are scaled
         using the area_per_pixel value.
 
-        Chain codes represent 2D contours using directional codes from 0 to 7:
+        Chain codes represent 2D contours using directional codes from 0 to 7::
 
             3 2 1
             4 * 0
@@ -171,10 +210,10 @@ class ChainCodeData:
         return df
 
 
-def read_chc(file_path, as_frame=False, validate=True, as_coordinates=True):
+def read_chc(file_path, as_frame=False, as_coordinates=True):
     """Read chain code (.chc) file.
 
-    Chain codes represent 2D contours using directional codes from 0 to 7:
+    Chain codes represent 2D contours using directional codes from 0 to 7::
 
         3 2 1
         4 * 0
@@ -189,9 +228,6 @@ def read_chc(file_path, as_frame=False, validate=True, as_coordinates=True):
         Path to the chain code file.
     as_frame : bool, default=False
         If True, return pandas.DataFrame. Otherwise, return numpy.ndarray.
-    validate : bool, default=True
-        If True, validate that chain code values are between 0 and 7.
-        Set to False to skip validation for legacy files that may contain other values.
     as_coordinates : bool, default=True
         If True, convert chain codes to 2D coordinates.
         If False, return the raw chain code values.
@@ -205,10 +241,10 @@ def read_chc(file_path, as_frame=False, validate=True, as_coordinates=True):
     if not path.exists():
         raise FileNotFoundError(f"{path} does not exist.")
 
-    if not path.suffix == ".chc":
+    if path.suffix.lower() != ".chc":
         raise ValueError(f"{path} is not a chain code file.")
 
-    chc_data_list = _read_chc(path, validate=validate)
+    chc_data_list = _read_chc(path)
 
     if len(chc_data_list) == 1:
         if as_frame:
@@ -236,12 +272,11 @@ def write_chc(
     xs=None,
     ys=None,
     area_per_pixels=None,
-    area_pixels_values=None,
-    validate=True,
+    area_pixels=None,
 ):
     """Write chain code to .chc file.
 
-    Chain codes represent 2D contours using directional codes from 0 to 7:
+    Chain codes represent 2D contours using directional codes from 0 to 7::
 
         3 2 1
         4 * 0
@@ -264,11 +299,8 @@ def write_chc(
         Y coordinates.
     area_per_pixels : list of float or float, optional
         Area (mm2) per pixel.
-    area_pixels_values : list of int or int, optional
+    area_pixels : list of int or int, optional
         Area in pixels.
-    validate : bool, default=True
-        If True, validate that chain code values are between 0 and 7.
-        Set to False to skip validation for legacy files that may contain other values.
     """
     path = Path(file_path)
 
@@ -304,10 +336,23 @@ def write_chc(
     elif isinstance(area_per_pixels, (int, float)):
         area_per_pixels = [area_per_pixels] * n_samples
 
-    if area_pixels_values is None:
-        area_pixels_values = [len(code) for code in chain_codes]
-    elif isinstance(area_pixels_values, int):
-        area_pixels_values = [area_pixels_values] * n_samples
+    if area_pixels is None:
+        area_pixels = [None] * n_samples
+    elif isinstance(area_pixels, int):
+        area_pixels = [area_pixels] * n_samples
+
+    for name, lst in [
+        ("sample_names", sample_names),
+        ("xs", xs),
+        ("ys", ys),
+        ("area_per_pixels", area_per_pixels),
+        ("area_pixels", area_pixels),
+    ]:
+        if len(lst) != n_samples:
+            raise ValueError(
+                f"Length of {name} ({len(lst)}) does not match "
+                f"number of chain codes ({n_samples})."
+            )
 
     chc_data_list = []
     for i in range(n_samples):
@@ -317,24 +362,21 @@ def write_chc(
                 x=xs[i],
                 y=ys[i],
                 area_per_pixel=area_per_pixels[i],
-                area_pixels=area_pixels_values[i],
                 chain_code=chain_codes[i],
-                validate=validate,
+                area_pixels=area_pixels[i],
             )
         )
 
     _write_chc(path, chc_data_list)
 
 
-def _read_chc(file_path, validate=True):
+def _read_chc(file_path):
     """Read chain code file.
 
     Parameters
     ----------
     file_path : str or Path
         Path to the chain code file.
-    validate : bool, default=True
-        If True, validate that chain code values are between 0 and 7.
 
     Returns
     -------
@@ -349,7 +391,10 @@ def _read_chc(file_path, validate=True):
             if not line:
                 continue
 
-            parts = line.split(" ")
+            parts = line.split()
+
+            if len(parts) < 6:
+                raise ValueError(f"Malformed line in {file_path}: {line!r}")
 
             sample_name = parts[0]
 
@@ -369,9 +414,8 @@ def _read_chc(file_path, validate=True):
                 x=x,
                 y=y,
                 area_per_pixel=area_per_pixel,
-                area_pixels=area_pixels,
                 chain_code=chain_code,
-                validate=validate,
+                area_pixels=area_pixels,
             )
 
             chc_data_list.append(chc_data)

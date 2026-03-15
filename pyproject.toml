@@ -23,7 +23,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-  "numpy>=1.23",
+  "numpy>=1.26",
   "pandas[pyarrow]>=2.1",
   "scikit-learn>=1.5",
   "scipy>=1.15",
@@ -64,7 +64,7 @@ doc = [
   "pooch>=1.3",
   "pydata-sphinx-theme>=0.16",
   "sphinx>=8.1",
-  "sphinx-autobuild~=2024.10",
+  "sphinx-autobuild>=2024.10,<2026.0",
   "sphinx-favicon>=1.0.1",
   "sphinx-gallery>=0.18",
   # NOTE: GitHub version required for SPHINX_MULTIVERSION_NAME env var support

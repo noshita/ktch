@@ -51,6 +51,9 @@ class GeneralizedProcrustesAnalysis(
     tol: float, default=10^-7
         Tolerance for convergence of Procrustes analysis.
 
+    max_iter: int, default=2000
+        Maximum number of iterations for convergence.
+
     scaling: bool, default=True
         If True, scale configurations to unit centroid size (shape analysis).
         If False, only translate and rotate (size-and-shape analysis).
@@ -113,6 +116,7 @@ class GeneralizedProcrustesAnalysis(
     def __init__(
         self,
         tol=10**-7,
+        max_iter=2000,
         scaling=True,
         n_dim=2,
         curves: npt.ArrayLike | None = None,
@@ -122,6 +126,7 @@ class GeneralizedProcrustesAnalysis(
         debug=False,
     ):
         self.tol = tol
+        self.max_iter = max_iter
         self.scaling = scaling
         self.debug = debug
         self.n_dim = n_dim
@@ -236,7 +241,10 @@ class GeneralizedProcrustesAnalysis(
 
         diff_disp = np.inf
         total_disp_prev = np.inf
-        while diff_disp > self.tol:
+        for n_iter in range(self.max_iter):
+            if diff_disp <= self.tol:
+                break
+
             if curves is not None:
                 # GPA with semilandmarks
                 if self.sliding_criterion == "procrustes_distance":
@@ -268,6 +276,13 @@ class GeneralizedProcrustesAnalysis(
             mu = mu / centroid_size(mu)
 
             logger.debug("total_disp: %s, diff_disp: %s", total_disp, diff_disp)
+        else:
+            warnings.warn(
+                f"GPA did not converge after {self.max_iter} iterations "
+                f"(diff_disp={diff_disp:.2e}, tol={self.tol:.2e}). "
+                "Increase max_iter or tol.",
+                stacklevel=2,
+            )
 
         self.mu_ = mu
 
@@ -280,7 +295,10 @@ class GeneralizedProcrustesAnalysis(
 
         diff_disp = np.inf
         total_disp_prev = np.inf
-        while diff_disp > self.tol:
+        for n_iter in range(self.max_iter):
+            if diff_disp <= self.tol:
+                break
+
             results = Parallel(n_jobs=self.n_jobs)(
                 delayed(self._align_single_size_and_shape)(x, mu) for x in X_
             )
@@ -292,6 +310,13 @@ class GeneralizedProcrustesAnalysis(
             mu = np.sum(X_, axis=0) / len(X_)
 
             logger.debug("total_disp: %s, diff_disp: %s", total_disp, diff_disp)
+        else:
+            warnings.warn(
+                f"GPA did not converge after {self.max_iter} iterations "
+                f"(diff_disp={diff_disp:.2e}, tol={self.tol:.2e}). "
+                "Increase max_iter or tol.",
+                stacklevel=2,
+            )
 
         self.mu_ = mu
 

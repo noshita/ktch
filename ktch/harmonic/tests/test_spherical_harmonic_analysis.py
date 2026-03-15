@@ -141,6 +141,10 @@ class TestNHarmonicsOneSHA:
     l_max=1 produces (1+1)^2 = 4 coefficients per axis (12 total).
     This is the minimum non-trivial harmonic count that includes both
     the constant term (l=0) and the first-order dipole (l=1).
+
+    Test surfaces use parametric ellipsoids (exactly representable at
+    l_max=1) to avoid passing real-only coefficients to spharm(), which
+    would produce complex coordinates and trigger a UserWarning.
     """
 
     def test_shape(self):
@@ -149,15 +153,13 @@ class TestNHarmonicsOneSHA:
         n_terms = (l_max + 1) ** 2  # 4
         theta_range = np.linspace(0.1, np.pi - 0.1, 6)
         phi_range = np.linspace(0, 2 * np.pi, 12)
-
-        coef_list = [
-            np.array([[1.0, 0.5, -0.3]]),
-            np.array([[0.2, -0.1, 0.3], [0.1, 0.4, -0.2], [0.0, 0.1, 0.2]]),
-        ]
-
-        x, y, z = spharm(l_max, coef_list, theta_range=theta_range, phi_range=phi_range)
-        coords = np.stack([x, y, z], axis=-1).reshape(-1, 3)
         theta_grid, phi_grid = np.meshgrid(theta_range, phi_range, indexing="ij")
+
+        x = 1.0 * np.sin(theta_grid) * np.cos(phi_grid)
+        y = 0.5 * np.sin(theta_grid) * np.sin(phi_grid)
+        z = 0.3 * np.cos(theta_grid)
+
+        coords = np.stack([x, y, z], axis=-1).reshape(-1, 3)
         theta_phi = np.stack([theta_grid.ravel(), phi_grid.ravel()], axis=-1)
 
         sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_jobs=1)
@@ -170,15 +172,13 @@ class TestNHarmonicsOneSHA:
         l_max = 1
         theta_range = np.linspace(0.1, np.pi - 0.1, 6)
         phi_range = np.linspace(0, 2 * np.pi, 12)
-
-        coef_list = [
-            np.array([[1.0, 0.5, -0.3]]),
-            np.array([[0.2, -0.1, 0.3], [0.1, 0.4, -0.2], [0.0, 0.1, 0.2]]),
-        ]
-
-        x, y, z = spharm(l_max, coef_list, theta_range=theta_range, phi_range=phi_range)
-        coords = np.stack([x, y, z], axis=-1).reshape(-1, 3)
         theta_grid, phi_grid = np.meshgrid(theta_range, phi_range, indexing="ij")
+
+        x = 1.0 * np.sin(theta_grid) * np.cos(phi_grid)
+        y = 0.5 * np.sin(theta_grid) * np.sin(phi_grid)
+        z = 0.3 * np.cos(theta_grid)
+
+        coords = np.stack([x, y, z], axis=-1).reshape(-1, 3)
         theta_phi = np.stack([theta_grid.ravel(), phi_grid.ravel()], axis=-1)
 
         sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_jobs=1)
@@ -272,17 +272,12 @@ class TestXyz2SphericalDegenerate:
 
 
 class TestSHARoundTripMixedSpectrum:
-    """Round-trip test with non-trivial (mixed) spectrum.
+    """Round-trip test with a surface that spans multiple harmonic degrees.
 
-    The existing test uses only l=0 coefficients. This tests with non-zero
-    coefficients at l=0, l=1, and l=2 to verify the coordinate-level
-    round-trip (coords -> coefficients -> inverse -> coords).
-
-    Note: Coefficient-level recovery is not tested because random real
-    coefficients produce complex-valued surfaces (Y_l^m is complex for m!=0).
-    spharm() discards imaginary parts via np.real(), so the recovered
-    coefficients differ from the inputs. The coordinate-level round-trip
-    is the correct invariant.
+    Uses an asymmetrically scaled ellipsoid with an axis-dependent offset,
+    generating non-trivial content in both l=0, l=1, and l=2 harmonics.
+    The coordinate-level round-trip (coords -> coefficients -> inverse ->
+    coords) is the correct invariant.
     """
 
     def test_mixed_spectrum_round_trip(self):
@@ -290,17 +285,14 @@ class TestSHARoundTripMixedSpectrum:
         l_max = 2
         theta_range = np.linspace(0.1, np.pi - 0.1, 8)
         phi_range = np.linspace(0, 2 * np.pi, 16)
-
-        rng = np.random.default_rng(123)
-        coef_list = [
-            rng.standard_normal((1, 3)) * 0.5 + np.array([[2.0, 1.5, 1.0]]),
-            rng.standard_normal((3, 3)) * 0.3,
-            rng.standard_normal((5, 3)) * 0.1,
-        ]
-
-        x, y, z = spharm(l_max, coef_list, theta_range=theta_range, phi_range=phi_range)
-        coords = np.stack([x, y, z], axis=-1).reshape(-1, 3)
         theta_grid, phi_grid = np.meshgrid(theta_range, phi_range, indexing="ij")
+
+        # Asymmetric ellipsoid with offset
+        x = 2.0 * np.sin(theta_grid) * np.cos(phi_grid) + 0.5
+        y = 1.5 * np.sin(theta_grid) * np.sin(phi_grid) - 0.3
+        z = 1.0 * np.cos(theta_grid) + 0.2
+
+        coords = np.stack([x, y, z], axis=-1).reshape(-1, 3)
         theta_phi = np.stack([theta_grid.ravel(), phi_grid.ravel()], axis=-1)
 
         sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_jobs=1)
@@ -309,7 +301,6 @@ class TestSHARoundTripMixedSpectrum:
         n_terms = (l_max + 1) ** 2
         assert transformed.shape == (1, 3 * n_terms)
 
-        # Inverse round-trip: recovered coords must match the real surface
         reconstructed = sha.inverse_transform(
             transformed.reshape(1, 3, -1),
             theta_range=theta_range,
