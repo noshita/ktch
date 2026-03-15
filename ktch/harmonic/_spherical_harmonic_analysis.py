@@ -209,6 +209,12 @@ class SphericalHarmonicAnalysis(
         else:
             X_ = X
 
+        if len(theta_phi) != len(X_):
+            raise ValueError(
+                f"theta_phi ({len(theta_phi)}) must have the same length "
+                f"as X ({len(X_)})"
+            )
+
         X_transformed = np.stack(
             Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
                 delayed(self._transform_single)(X_[i], theta_phi[i])

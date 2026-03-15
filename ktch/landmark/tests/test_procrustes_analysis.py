@@ -993,6 +993,7 @@ _EXPECTED_FAILURES = {
     "check_fit_idempotent": _SINGLE_LM_REASON,
     "check_fit_check_is_fitted": _SINGLE_LM_REASON,
     "check_n_features_in": _SINGLE_LM_REASON,
+    "check_transformer_n_iter": _N_DIM_REASON,
 }
 
 

@@ -68,12 +68,21 @@ def make_landmarks_from_reference(
     X = ref + sd * generator.standard_normal(rand_size)
 
     if not allow_dup:
+        _MAX_DEDUP_ITER = 100
         X = _remove_duplicated_configurations(X)
-        while X.shape[0] < n_samples:
+        for _ in range(_MAX_DEDUP_ITER):
+            if X.shape[0] >= n_samples:
+                break
             rand_size = (n_samples - X.shape[0],) + ref.shape
             X_comp = ref + sd * generator.standard_normal(rand_size)
             X = np.concatenate([X, X_comp])
             X = _remove_duplicated_configurations(X)
+        else:
+            raise RuntimeError(
+                f"Could not generate {n_samples} unique configurations "
+                f"after {_MAX_DEDUP_ITER} iterations. "
+                f"Try increasing sd (current: {sd})."
+            )
 
     if as_frame:
         n_landmarks = X.shape[1]
