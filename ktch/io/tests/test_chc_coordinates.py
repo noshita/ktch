@@ -24,7 +24,6 @@ def test_chain_code_to_coordinates():
             xs=0,
             ys=0,
             area_per_pixels=1.0,
-            area_pixels_values=4
         )
 
         coords = read_chc(temp_file)
@@ -61,7 +60,6 @@ def test_scaled_coordinates():
             xs=10,
             ys=20,
             area_per_pixels=4.0,
-            area_pixels_values=4
         )
 
         coords = read_chc(temp_file)
@@ -95,7 +93,6 @@ def test_dataframe_output():
             xs=0,
             ys=0,
             area_per_pixels=1.0,
-            area_pixels_values=4
         )
 
         df = read_chc(temp_file, as_frame=True)
@@ -134,7 +131,6 @@ def test_multiple_chain_codes_as_coordinates():
             xs=[0, 10],
             ys=[0, 10],
             area_per_pixels=[1.0, 1.0],
-            area_pixels_values=[4, 8]
         )
 
         coords_list = read_chc(temp_file)
