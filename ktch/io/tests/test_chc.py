@@ -133,9 +133,7 @@ def test_invalid_chain_code():
         chain_code = read_chc(temp_file, validate=False, as_coordinates=False)
         assert np.array_equal(chain_code, invalid_chain_code)
 
-        coords = read_chc(temp_file, validate=False, as_coordinates=True)
-        assert isinstance(coords, np.ndarray)
-        assert coords.shape[0] == 6  # 6 points (including start and end)
-        assert coords.shape[1] == 2  # 2D coordinates (x, y)
+        with pytest.raises(ValueError, match="invalid values"):
+            read_chc(temp_file, validate=False, as_coordinates=True)
     finally:
         os.unlink(temp_file)

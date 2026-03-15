@@ -115,11 +115,19 @@ class ChainCodeData:
             ]
         )
 
+        if not np.all((self.chain_code >= 0) & (self.chain_code <= 7)):
+            invalid = self.chain_code[
+                (self.chain_code < 0) | (self.chain_code > 7)
+            ]
+            raise ValueError(
+                f"Chain code contains invalid values: {invalid}. "
+                f"Values must be between 0 and 7 (inclusive)."
+            )
+
         coords = np.zeros((len(self.chain_code) + 1, 2))
 
         for i, code in enumerate(self.chain_code):
-            valid_code = min(max(0, code), 7)
-            coords[i + 1] = coords[i] + directions[valid_code]
+            coords[i + 1] = coords[i] + directions[code]
 
         scale_factor = np.sqrt(self.area_per_pixel)
         coords *= scale_factor
@@ -205,7 +213,7 @@ def read_chc(file_path, as_frame=False, validate=True, as_coordinates=True):
     if not path.exists():
         raise FileNotFoundError(f"{path} does not exist.")
 
-    if not path.suffix == ".chc":
+    if path.suffix.lower() != ".chc":
         raise ValueError(f"{path} is not a chain code file.")
 
     chc_data_list = _read_chc(path, validate=validate)
