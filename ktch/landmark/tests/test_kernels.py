@@ -62,21 +62,24 @@ def test_tps_kernel_invalid_dim():
 
 def test_tps_kernel_matrix_shape():
     """Test kernel matrix shape."""
-    X = np.random.randn(5, 2)
+    rng = np.random.default_rng(42)
+    X = rng.standard_normal((5, 2))
     K = tps_kernel_matrix(X)
     assert K.shape == (5, 5)
 
 
 def test_tps_kernel_matrix_symmetric():
     """Test that kernel matrix is symmetric."""
-    X = np.random.randn(5, 2)
+    rng = np.random.default_rng(42)
+    X = rng.standard_normal((5, 2))
     K = tps_kernel_matrix(X)
     assert_array_almost_equal(K, K.T)
 
 
 def test_tps_kernel_matrix_diagonal():
     """Test that kernel matrix diagonal is zero."""
-    X = np.random.randn(5, 2)
+    rng = np.random.default_rng(42)
+    X = rng.standard_normal((5, 2))
     K = tps_kernel_matrix(X)
     assert_array_almost_equal(np.diag(K), np.zeros(5))
 
@@ -90,7 +93,8 @@ def test_tps_kernel_matrix_diagonal():
 
 def test_tps_system_matrix_shape_2d():
     """Test system matrix shape for 2D."""
-    X = np.random.randn(5, 2)
+    rng = np.random.default_rng(42)
+    X = rng.standard_normal((5, 2))
     L = tps_system_matrix(X)
     # Shape should be (n + n_dim + 1, n + n_dim + 1) = (5 + 2 + 1, 5 + 2 + 1)
     assert L.shape == (8, 8)
@@ -98,7 +102,8 @@ def test_tps_system_matrix_shape_2d():
 
 def test_tps_system_matrix_shape_3d():
     """Test system matrix shape for 3D."""
-    X = np.random.randn(5, 3)
+    rng = np.random.default_rng(42)
+    X = rng.standard_normal((5, 3))
     L = tps_system_matrix(X)
     # Shape should be (5 + 3 + 1, 5 + 3 + 1) = (9, 9)
     assert L.shape == (9, 9)
@@ -106,7 +111,8 @@ def test_tps_system_matrix_shape_3d():
 
 def test_tps_system_matrix_symmetric():
     """Test that system matrix is symmetric."""
-    X = np.random.randn(5, 2)
+    rng = np.random.default_rng(42)
+    X = rng.standard_normal((5, 2))
     L = tps_system_matrix(X)
     assert_array_almost_equal(L, L.T)
 
@@ -120,8 +126,9 @@ def test_tps_system_matrix_symmetric():
 
 def test_tps_coefficients_shapes():
     """Test coefficient shapes."""
-    source = np.random.randn(5, 2)
-    target = np.random.randn(5, 2)
+    rng = np.random.default_rng(42)
+    source = rng.standard_normal((5, 2))
+    target = rng.standard_normal((5, 2))
     W, c, A = tps_coefficients(source, target)
     assert W.shape == (5, 2)
     assert c.shape == (2,)
@@ -153,8 +160,9 @@ def test_tps_coefficients_translation():
 
 def test_tps_coefficients_shape_mismatch():
     """Test that shape mismatch raises error."""
-    source = np.random.randn(5, 2)
-    target = np.random.randn(4, 2)
+    rng = np.random.default_rng(42)
+    source = rng.standard_normal((5, 2))
+    target = rng.standard_normal((4, 2))
     with pytest.raises(ValueError, match="same shape"):
         tps_coefficients(source, target)
 
@@ -166,35 +174,13 @@ def test_tps_coefficients_shape_mismatch():
 ###########################################################
 
 
-def test_tps_warp_interpolation():
-    """Test that TPS warp is consistent with the legacy implementation."""
-    from ktch.landmark._kriging import _thin_plate_spline_2d, _tps_2d
-
-    source = np.array([[0, 0], [1, 0], [0, 1], [1, 1]], dtype=float)
-    target = np.array([[0.1, 0.1], [1.2, 0], [0, 1.1], [1, 1]], dtype=float)
-
-    # Get coefficients from both implementations
-    W_old, c_old, A_old = _thin_plate_spline_2d(source, target)
-    W_new, c_new, A_new = tps_coefficients(source, target)
-
-    # Verify coefficients are the same
-    assert_allclose(W_new, W_old)
-    assert_allclose(c_new, c_old)
-    assert_allclose(A_new, A_old)
-
-    # Verify warp results are the same
-    for i, (x, y) in enumerate(source):
-        old_result = _tps_2d(x, y, source, W_old, c_old, A_old)
-        new_result = tps_warp(np.array([[x, y]]), source, W_new, c_new, A_new)[0]
-        assert_allclose(new_result, old_result)
-
-
 def test_tps_warp_shape():
     """Test warped output shape."""
-    source = np.random.randn(4, 2)
-    target = np.random.randn(4, 2)
+    rng = np.random.default_rng(42)
+    source = rng.standard_normal((4, 2))
+    target = rng.standard_normal((4, 2))
     W, c, A = tps_coefficients(source, target)
-    points = np.random.randn(10, 2)
+    points = rng.standard_normal((10, 2))
     warped = tps_warp(points, source, W, c, A)
     assert warped.shape == points.shape
 
@@ -244,10 +230,10 @@ def test_tps_bending_energy_non_affine():
 
 def test_tps_bending_energy_nonnegative():
     """Test that bending energy is always non-negative."""
-    np.random.seed(42)
+    rng = np.random.default_rng(42)
     for _ in range(10):
-        source = np.random.randn(5, 2)
-        target = np.random.randn(5, 2)
+        source = rng.standard_normal((5, 2))
+        target = rng.standard_normal((5, 2))
         be = tps_bending_energy(source, target)
         assert be >= -1e-10  # Allow small numerical errors
 

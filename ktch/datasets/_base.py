@@ -22,7 +22,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.datasets._base import load_descr
 from sklearn.utils import Bunch
 
 from ._registry import BASE_URL, dataset_registry, default_versions
@@ -34,6 +33,15 @@ except ImportError:
 
 DATA_MODULE = "ktch.datasets.data"
 DESCR_MODULE = "ktch.datasets.descr"
+
+
+def _load_descr(descr_file_name, *, descr_module=DESCR_MODULE, encoding="utf-8"):
+    """Load a dataset description file using importlib.resources.
+
+    Adapted from sklearn.datasets._base.load_descr (scikit-learn).
+    """
+    path = resources.files(descr_module) / descr_file_name
+    return path.read_text(encoding=encoding)
 
 
 def _sort_versions(version_keys):
@@ -153,7 +161,7 @@ def load_landmark_mosquito_wings(*, as_frame: bool = False) -> Bunch:
     meta = pd.read_csv(
         _resolve_data_path(dataset_name, metadata_file_name), index_col=[0]
     )
-    fdescr = load_descr(
+    fdescr = _load_descr(
         descr_module=DESCR_MODULE,
         descr_file_name=descr_file_name,
     )
@@ -234,7 +242,7 @@ def load_landmark_trilobite_cephala(*, as_frame: bool = False) -> Bunch:
     meta = pd.read_csv(
         _resolve_data_path(dataset_name, metadata_file_name), index_col=[0]
     )
-    fdescr = load_descr(
+    fdescr = _load_descr(
         descr_module=DESCR_MODULE,
         descr_file_name=descr_file_name,
     )
@@ -310,7 +318,7 @@ def load_outline_mosquito_wings(*, as_frame: bool = False) -> Bunch:
     meta = pd.read_csv(
         _resolve_data_path(dataset_name, metadata_file_name), index_col=[0]
     )
-    fdescr = load_descr(
+    fdescr = _load_descr(
         descr_module=DESCR_MODULE,
         descr_file_name=descr_file_name,
     )
@@ -376,7 +384,7 @@ def load_outline_leaf_bending(*, as_frame: bool = False) -> Bunch:
     meta = pd.read_csv(
         _resolve_data_path(dataset_name, metadata_file_name), index_col=[0]
     )
-    fdescr = load_descr(
+    fdescr = _load_descr(
         descr_module=DESCR_MODULE,
         descr_file_name=descr_file_name,
     )
@@ -734,7 +742,7 @@ def load_image_passiflora_leaves(
     meta_path = data_dir / "metadata.csv"
     meta = pd.read_csv(meta_path, index_col=0)
 
-    fdescr = load_descr(
+    fdescr = _load_descr(
         descr_module=DESCR_MODULE,
         descr_file_name=descr_file_name,
     )

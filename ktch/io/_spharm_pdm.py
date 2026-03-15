@@ -14,14 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from pathlib import Path
-from typing import List, Union
 
 import numpy as np
 import numpy.typing as npt
 
 
-def read_spharmpdm_coef(path: Union[str, Path]) -> List[npt.NDArray[np.complex128]]:
+def read_spharmpdm_coef(path: str | Path) -> list[npt.NDArray[np.complex128]]:
     """Read .coef file of SPHARM-PDM.
     The .coef file is an output of the `ParaToSPHARMMesh` step
     of `SPHARM-PDM <https://www.nitrc.org/projects/spharm-pdm>`_,
@@ -39,7 +40,7 @@ def read_spharmpdm_coef(path: Union[str, Path]) -> List[npt.NDArray[np.complex12
 
     Returns
     -------
-    coef : List[npt.NDArray[np.complex128]]
+    coef : list[npt.NDArray[np.complex128]]
         List of numpy arrays containing SPHARM coefficients for each coordinate.
 
     Raises
@@ -104,7 +105,7 @@ def read_spharmpdm_coef(path: Union[str, Path]) -> List[npt.NDArray[np.complex12
 
 def cvt_spharm_coef_spharmpdm_to_list(
     coef_spharmpdm: npt.NDArray[np.float64],
-) -> List[npt.NDArray[np.complex128]]:
+) -> list[npt.NDArray[np.complex128]]:
     """Convert SPHARM-PDM format coefficients to list format.
 
     SPHARM-PDM stores coefficients in a specific order:
@@ -168,7 +169,7 @@ def cvt_spharm_coef_spharmpdm_to_list(
 
 
 def cvt_spharm_coef_list_to_spharmpdm(
-    coef_list: List[npt.NDArray[np.complex128]],
+    coef_list: list[npt.NDArray[np.complex128]],
 ) -> npt.NDArray[np.float64]:
     """Convert list format coefficients to SPHARM-PDM format.
 

@@ -19,6 +19,9 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 
+# NOTE: Intentional cross-boundary import from landmark's private module.
+# plot._kriging is the only external consumer of these TPS functions.
+# If _kernels is refactored, update this import accordingly.
 from ..landmark._kernels import tps_coefficients, tps_warp
 from ._base import require_dependencies
 

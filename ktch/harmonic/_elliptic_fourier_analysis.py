@@ -220,15 +220,13 @@ class EllipticFourierAnalysis(
             raise ValueError("return_orientation_scale requires norm=True.")
 
         if t is None:
-            t_ = [None for i in range(len(X))]
+            t_ = [None] * len(X)
         else:
             t_ = t
 
         if len(t_) != len(X):
             raise ValueError(
-                "t ({t_len}) must have a same length of X ({X_len})".format(
-                    t_len=len(t_), X_len=len(X)
-                )
+                f"t ({len(t_)}) must have the same length as X ({len(X)})"
             )
 
         if isinstance(X, pd.DataFrame):
@@ -919,12 +917,7 @@ def _compute_ellipse_geometry_3d(
     if abs(np.sin(beta)) < _GIMBAL_TOL:
         # Gimbal lock
         gamma = 0.0
-        if beta < np.pi / 2:
-            # beta ≈ 0: R reduces to rotation about Z by (alpha+gamma)
-            alpha = float(np.arctan2(Omega_21, Omega_11))
-        else:
-            # beta ≈ pi: R reduces to rotation about Z by (alpha-gamma)
-            alpha = float(np.arctan2(Omega_21, Omega_11))
+        alpha = float(np.arctan2(Omega_21, Omega_11))
     else:
         sin_beta = np.sin(beta)
         gamma = float(np.arctan2(Omega_31 / sin_beta, Omega_32 / sin_beta))
@@ -950,8 +943,6 @@ def _cse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
     coef : np.ndarray
         coefficients of cos series expansion
     """
-    # t = np.concatenate([[0], np.cumsum(dt)]) - dt[0]  # t_{i-1}
-    # T = t[-1] + dt[0]
     t = np.concatenate([[0], np.cumsum(dt)])
     T = t[-1]
 
@@ -971,8 +962,6 @@ def _cse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
 
 def _sse(dx: np.ndarray, dt: np.ndarray, n_harmonics: int) -> np.ndarray:
     """Sin series expansion n>=1"""
-    # t = np.concatenate([[np.sum(dt)], np.cumsum(dt)]) - dt[0]  # t_{i-1}
-    # T = t[-1] + dt[0]
     t = np.concatenate([[0], np.cumsum(dt)])
     T = t[-1]
 

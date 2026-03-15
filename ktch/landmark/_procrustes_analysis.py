@@ -28,6 +28,13 @@ from sklearn.utils.validation import check_is_fitted, validate_data
 
 logger = logging.getLogger(__name__)
 
+# Floor value for tangent vector norms to avoid division by zero.
+_NORM_FLOOR = 1e-10
+
+# Threshold for squared segment length below which a curve segment
+# is considered degenerate (effectively zero-length).
+_DEGENERATE_SEGMENT_TOL = 1e-30
+
 from ._kernels import tps_bending_energy_matrix
 
 
@@ -447,7 +454,7 @@ class GeneralizedProcrustesAnalysis(
 
         tangent_vectors = X[after_idx] - X[before_idx]
         norms = np.linalg.norm(tangent_vectors, axis=1, keepdims=True)
-        norms = np.maximum(norms, 1e-10)  # Avoid division by zero
+        norms = np.maximum(norms, _NORM_FLOOR)
         tangents = tangent_vectors / norms
 
         return tangents
@@ -582,7 +589,7 @@ class GeneralizedProcrustesAnalysis(
             # Project P onto B-S_orig
             BS = S_orig - B
             denom_bs = np.dot(BS, BS)
-            if denom_bs > 1e-30:
+            if denom_bs > _DEGENERATE_SEGMENT_TOL:
                 t_bs = np.clip(np.dot(P - B, BS) / denom_bs, 0.0, 1.0)
                 proj_bs = B + t_bs * BS
             else:
@@ -591,7 +598,7 @@ class GeneralizedProcrustesAnalysis(
             # Project P onto S_orig-A
             SA = A - S_orig
             denom_sa = np.dot(SA, SA)
-            if denom_sa > 1e-30:
+            if denom_sa > _DEGENERATE_SEGMENT_TOL:
                 t_sa = np.clip(np.dot(P - S_orig, SA) / denom_sa, 0.0, 1.0)
                 proj_sa = S_orig + t_sa * SA
             else:
