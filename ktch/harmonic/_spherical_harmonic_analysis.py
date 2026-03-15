@@ -29,6 +29,9 @@ from sklearn.base import (
 )
 from sklearn.utils.parallel import Parallel, delayed
 
+# Tolerance for detecting pole singularity in xyz2spherical.
+_POLE_TOL = 1e-12
+
 
 class SphericalHarmonicAnalysis(
     ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator
@@ -364,11 +367,12 @@ def xyz2spherical(xyz: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """
     theta = np.arccos(xyz[:, 2])
     xy_norm = np.linalg.norm(xyz[:, 0:2], axis=1)
+    is_pole = xy_norm < _POLE_TOL
     phi = np.where(
-        xy_norm == 0,
+        is_pole,
         0.0,
         np.sign(xyz[:, 1])
-        * np.arccos(xyz[:, 0] / np.where(xy_norm == 0, 1.0, xy_norm)),
+        * np.arccos(xyz[:, 0] / np.where(is_pole, 1.0, xy_norm)),
     )
     return np.array([theta, phi]).T
 

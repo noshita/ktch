@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
+from dataclasses import InitVar, dataclass
 from pathlib import Path
 
 import numpy as np
@@ -55,13 +55,13 @@ class ChainCodeData:
     area_per_pixel: float
     area_pixels: int
     chain_code: np.ndarray
-    validate: bool = True
+    validate: InitVar[bool] = True
 
-    def __post_init__(self):
+    def __post_init__(self, validate):
         if not isinstance(self.chain_code, np.ndarray):
             self.chain_code = np.array(self.chain_code)
 
-        if self.validate and not np.all(
+        if validate and not np.all(
             (self.chain_code >= 0) & (self.chain_code <= 7)
         ):
             invalid_values = self.chain_code[
