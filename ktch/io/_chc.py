@@ -141,9 +141,17 @@ class ChainCodeData:
         """Convert chain code to 2D coordinates as a numpy array.
 
         The chain code is converted to a sequence of 2D coordinates,
-        starting from (0, 0) and applying the directional changes
-        based on the chain code values. The coordinates are scaled
-        using the area_per_pixel value.
+        starting from ``(x, y)`` and applying the directional changes
+        based on the chain code values. Displacements are scaled by
+        ``sqrt(area_per_pixel)``; when ``area_per_pixel <= 0`` (e.g.
+        no scale marker was set in SHAPE), pixel units are used
+        (scale factor = 1).
+
+        The returned coordinates are in image coordinates where X
+        increases rightward and Y increases downward. The starting
+        point ``(x, y)`` and displacements share the same coordinate
+        system (pixels when ``area_per_pixel <= 0``, physical units
+        otherwise).
 
         Chain codes represent 2D contours using directional codes from 0 to 7::
 
@@ -160,8 +168,9 @@ class ChainCodeData:
         steps = _DIRECTIONS[self.chain_code]
         coords = np.vstack([np.zeros((1, 2)), np.cumsum(steps, axis=0)])
 
-        scale_factor = np.sqrt(self.area_per_pixel)
-        coords *= scale_factor
+        if self.area_per_pixel > 0:
+            scale_factor = np.sqrt(self.area_per_pixel)
+            coords *= scale_factor
 
         coords[:, 0] += self.x
         coords[:, 1] += self.y
@@ -373,6 +382,19 @@ def write_chc(
 def _read_chc(file_path):
     """Read chain code file.
 
+    Record consists of a header followed by chain code values terminated by ``-1``.
+    The header and chain code may appear on a single line
+    or be split across multiple lines (as documented in the SHAPE manual).
+
+    Single-line::
+
+        [Sample name] [X] [Y] [Area per pixel] [Area (pixels)] [Chain code...] -1
+
+    Multi-line::
+
+        [Sample name] [X] [Y] [Area per pixel] [Area (pixels)]
+        [Chain code...] -1
+
     Parameters
     ----------
     file_path : str or Path
@@ -386,39 +408,61 @@ def _read_chc(file_path):
     chc_data_list = []
 
     with open(file_path, "r") as f:
+        tokens = []
         for line in f:
             line = line.strip()
             if not line:
                 continue
+            tokens.extend(line.split())
 
-            parts = line.split()
+    # Parse tokens: each record ends with the sentinel "-1"
+    pos = 0
+    while pos < len(tokens):
+        # Need at least header (5 fields) + 1 chain code value + sentinel
+        if pos + 6 >= len(tokens):
+            remaining = tokens[pos:]
+            if remaining:
+                raise ValueError(
+                    f"Incomplete record at end of {file_path}: {' '.join(remaining)!r}"
+                )
+            break
 
-            if len(parts) < 6:
-                raise ValueError(f"Malformed line in {file_path}: {line!r}")
+        sample_name = tokens[pos]
+        x = float(tokens[pos + 1])
+        y = float(tokens[pos + 2])
+        area_per_pixel = float(tokens[pos + 3])
+        area_pixels = int(tokens[pos + 4])
+        pos += 5
 
-            sample_name = parts[0]
+        # Collect chain code values until sentinel "-1"
+        cc_values = []
+        found_sentinel = False
+        while pos < len(tokens):
+            if tokens[pos] == "-1":
+                pos += 1
+                found_sentinel = True
+                break
+            cc_values.append(int(tokens[pos]))
+            pos += 1
 
-            x = float(parts[1])
-            y = float(parts[2])
-            area_per_pixel = float(parts[3])
-            area_pixels = int(parts[4])
+        if not found_sentinel:
+            # No sentinel: treat all remaining values as chain code
+            pass
 
-            try:
-                end_idx = parts.index("-1")
-                chain_code = np.array(parts[5:end_idx], dtype=int)
-            except ValueError:
-                chain_code = np.array(parts[5:], dtype=int)
-
-            chc_data = ChainCodeData(
-                sample_name=sample_name,
-                x=x,
-                y=y,
-                area_per_pixel=area_per_pixel,
-                chain_code=chain_code,
-                area_pixels=area_pixels,
+        if not cc_values:
+            raise ValueError(
+                f"Empty chain code for record {sample_name!r} in {file_path}"
             )
 
-            chc_data_list.append(chc_data)
+        chc_data = ChainCodeData(
+            sample_name=sample_name,
+            x=x,
+            y=y,
+            area_per_pixel=area_per_pixel,
+            chain_code=np.array(cc_values, dtype=int),
+            area_pixels=area_pixels,
+        )
+        chc_data_list.append(chc_data)
 
     return chc_data_list
 

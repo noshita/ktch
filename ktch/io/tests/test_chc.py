@@ -138,6 +138,7 @@ def test_area_pixels_mismatch_warning():
             )
             assert len(w) == 1
             assert "area_pixels" in str(w[0].message)
+            assert "Using computed value" in str(w[0].message)
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
