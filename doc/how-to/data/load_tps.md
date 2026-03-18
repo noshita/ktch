@@ -17,6 +17,7 @@ TPS is a standard format for landmark data, commonly used with tpsDig software.
 
 ```{code-cell} ipython3
 import tempfile
+import numpy as np
 from ktch.io import read_tps, write_tps
 
 # Create a sample TPS file for demonstration
@@ -40,15 +41,19 @@ with tempfile.NamedTemporaryFile(mode='w', suffix='.tps', delete=False) as f:
     tps_path = f.name
 
 # Read the TPS file
-landmarks = read_tps(tps_path)
-print(f"Shape: {landmarks.shape}")  # (n_specimens, n_landmarks, n_dim)
+tps_data = read_tps(tps_path)
+print(f"Number of specimens: {len(tps_data)}")
+print(f"First specimen: {tps_data[0].specimen_name}")
+print(f"Landmark shape: {tps_data[0].to_numpy().shape}")
+
+# Stack into a single array if needed
+landmarks = np.array([t.to_numpy() for t in tps_data])
+print(f"Stacked shape: {landmarks.shape}")  # (n_specimens, n_landmarks, n_dim)
 ```
 
 ## Write landmarks to a TPS file
 
 ```{code-cell} ipython3
-import numpy as np
-
 # Prepare data
 landmarks = np.array([
     [[0, 0], [1, 0], [1, 1], [0, 1]],
@@ -62,8 +67,8 @@ with tempfile.NamedTemporaryFile(mode='w', suffix='.tps', delete=False) as f:
 write_tps(output_path, landmarks)
 
 # Verify
-coords = read_tps(output_path)
-print(f"Written and read back: {coords.shape}")
+tps_data = read_tps(output_path)
+print(f"Written and read back: {len(tps_data)} specimens")
 ```
 
 ```{seealso}

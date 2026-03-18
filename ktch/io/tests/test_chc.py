@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 
 from ktch.io import read_chc, write_chc
+from ktch.io._chc import ChainCodeData
 
 
 def test_read_chc():
@@ -22,26 +23,27 @@ def test_read_chc():
     try:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            chain_code = read_chc(temp_file, as_coordinates=False)
+            result = read_chc(temp_file)
             assert len(w) == 1
             assert "area_pixels" in str(w[0].message)
 
-        assert isinstance(chain_code, np.ndarray)
-        assert np.array_equal(chain_code, np.array([0, 1, 2, 3, 4, 5, 6, 7, 0]))
+        assert isinstance(result, ChainCodeData)
+        assert result.specimen_name == "Sample1"
+        assert np.array_equal(
+            result.get_chain_code(), np.array([0, 1, 2, 3, 4, 5, 6, 7, 0])
+        )
 
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            coords = read_chc(temp_file, as_coordinates=True)
+        coords = result.to_numpy()
         assert isinstance(coords, np.ndarray)
-        assert coords.shape[0] == 10  # 10 points (including start and end)
-        assert coords.shape[1] == 2  # 2D coordinates (x, y)
+        assert coords.shape[0] == 10
+        assert coords.shape[1] == 2
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             df = read_chc(temp_file, as_frame=True)
         assert isinstance(df, pd.DataFrame)
-        assert df.shape[0] == 10  # 10 coordinate points
-        assert len(df.index.levels[0]) == 1  # 1 sample
+        assert df.shape[0] == 10
+        assert len(df.index.levels[0]) == 1
         assert "x" in df.columns
         assert "y" in df.columns
         assert "chain_code" in df.columns
@@ -66,13 +68,14 @@ def test_write_chc():
             area_per_pixels=1.5,
         )
 
-        chain_code_read = read_chc(temp_file, as_coordinates=False)
-        assert np.array_equal(chain_code, chain_code_read)
+        result = read_chc(temp_file)
+        assert isinstance(result, ChainCodeData)
+        assert np.array_equal(chain_code, result.get_chain_code())
 
-        coords = read_chc(temp_file, as_coordinates=True)
+        coords = result.to_numpy()
         assert isinstance(coords, np.ndarray)
-        assert coords.shape[0] == 10  # 10 points (including start and end)
-        assert coords.shape[1] == 2  # 2D coordinates (x, y)
+        assert coords.shape[0] == 10
+        assert coords.shape[1] == 2
     finally:
         os.unlink(temp_file)
 
@@ -95,19 +98,16 @@ def test_multiple_chain_codes():
             area_per_pixels=[1.0, 2.0],
         )
 
-        chain_codes_read = read_chc(temp_file, as_coordinates=False)
+        result = read_chc(temp_file)
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert isinstance(result[0], ChainCodeData)
 
-        assert isinstance(chain_codes_read, list)
-        assert len(chain_codes_read) == 2
+        assert np.array_equal(chain_code1, result[0].get_chain_code())
+        assert np.array_equal(chain_code2, result[1].get_chain_code())
 
-        assert np.array_equal(chain_code1, chain_codes_read[0])
-        assert np.array_equal(chain_code2, chain_codes_read[1])
-
-        coords_list = read_chc(temp_file, as_coordinates=True)
-        assert isinstance(coords_list, list)
-        assert len(coords_list) == 2
-        assert coords_list[0].shape[0] == 6  # 6 points (including start and end)
-        assert coords_list[1].shape[0] == 6  # 6 points (including start and end)
+        assert result[0].to_numpy().shape[0] == 6
+        assert result[1].to_numpy().shape[0] == 6
     finally:
         os.unlink(temp_file)
 

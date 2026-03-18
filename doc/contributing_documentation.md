@@ -85,7 +85,7 @@ This guide shows how to load landmark data from TPS files.
 ## Steps
 
 from ktch.io import read_tps
-coords = read_tps("landmarks.tps")
+tps_data = read_tps("landmarks.tps")
 
 ## See also
 - {doc}`../explanation/landmark` for GPA theory

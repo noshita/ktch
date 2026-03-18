@@ -4,46 +4,40 @@ import numpy as np
 import pytest
 
 from ktch.io import read_tps, write_tps
+from ktch.io._tps import TPSData
 
 
-def test_read_tps_shape():
+def test_read_tps_returns_list_of_tpsdata():
     path = Path(__file__).parent / "data" / "landmarks_triangle.tps"
 
-    landmarks = read_tps(path)
+    result = read_tps(path)
 
-    assert landmarks.shape == (50, 3, 2)
+    assert isinstance(result, list)
+    assert len(result) == 50
+    assert isinstance(result[0], TPSData)
+    assert result[0].to_numpy().shape == (3, 2)
 
 
 def test_read_tps_with_curves():
-    """Test that the read_tps function correctly handles TPS files with CURVES data."""
+    """Test that read_tps correctly handles TPS files with CURVES data."""
     path = Path(__file__).parent / "data" / "sample_curve_data.tps"
 
     result = read_tps(path)
 
-    assert isinstance(result, tuple), (
-        "Result should be a tuple when file contains CURVES data"
-    )
-    assert len(result) == 2, "Result should contain landmarks and curves"
+    assert isinstance(result, TPSData)
+    assert result.to_numpy().shape == (1, 2)
+    assert np.isclose(result.to_numpy()[0, 0], 150.0)
+    assert np.isclose(result.to_numpy()[0, 1], 250.0)
 
-    landmarks, curves = result
+    assert result.curves is not None
+    assert len(result.curves) == 1
+    assert isinstance(result.curves[0], np.ndarray)
+    assert result.curves[0].shape == (50, 2)
 
-    assert landmarks.shape == (1, 2), "Landmarks array should have one landmark"
-    assert np.isclose(landmarks[0, 0], 150.0), "Landmark x coordinate should be 150.0"
-    assert np.isclose(landmarks[0, 1], 250.0), "Landmark y coordinate should be 250.0"
-
-    # Verify curves data
-    assert isinstance(curves, list), "Curves should be a list"
-    assert len(curves) == 1, "There should be 1 curve (CURVES=1)"
-    assert isinstance(curves[0], np.ndarray), "Each curve should be a numpy array"
-    assert curves[0].shape == (50, 2), (
-        "The curve should have 50 points with 2 coordinates each"
-    )
-
-    # Verify specific coordinates
-    assert np.isclose(curves[0][0, 0], 320.0), "First x coordinate should be 320.0"
-    assert np.isclose(curves[0][0, 1], 145.0), "First y coordinate should be 145.0"
-    assert np.isclose(curves[0][49, 0], 375.0), "Last x coordinate should be 375.0"
-    assert np.isclose(curves[0][49, 1], 465.0), "Last y coordinate should be 465.0"
+    assert np.isclose(result.curves[0][0, 0], 320.0)
+    assert np.isclose(result.curves[0][0, 1], 145.0)
+    assert np.isclose(result.curves[0][49, 0], 375.0)
+    assert np.isclose(result.curves[0][49, 1], 465.0)
 
 
 def test_write_tps_single_with_semilandmarks_roundtrip(tmp_path):
@@ -61,12 +55,11 @@ def test_write_tps_single_with_semilandmarks_roundtrip(tmp_path):
     )
 
     result = read_tps(path)
-    assert isinstance(result, tuple)
-
-    landmarks_out, curves_out = result
-    np.testing.assert_allclose(landmarks_out, landmarks)
-    assert len(curves_out) == 1
-    np.testing.assert_allclose(curves_out[0], semilandmarks[0])
+    assert isinstance(result, TPSData)
+    np.testing.assert_allclose(result.to_numpy(), landmarks)
+    assert result.curves is not None
+    assert len(result.curves) == 1
+    np.testing.assert_allclose(result.curves[0], semilandmarks[0])
 
     text = path.read_text(encoding="utf-8")
     assert "CURVES=1\nPOINTS=3\n" in text
@@ -101,18 +94,18 @@ def test_write_tps_multi_specimens_with_semilandmarks_roundtrip(tmp_path):
     )
 
     result = read_tps(path)
-    assert isinstance(result, tuple)
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert isinstance(result[0], TPSData)
 
-    landmarks_out, curves_out = result
-    assert landmarks_out.shape == (2, 2, 2)
-    np.testing.assert_allclose(landmarks_out[0], landmarks[0])
-    np.testing.assert_allclose(landmarks_out[1], landmarks[1])
+    np.testing.assert_allclose(result[0].to_numpy(), landmarks[0])
+    np.testing.assert_allclose(result[1].to_numpy(), landmarks[1])
 
-    assert len(curves_out) == 2
-    assert len(curves_out[0]) == 2
-    assert len(curves_out[1]) == 2
-    np.testing.assert_allclose(curves_out[0][0], semilandmarks[0][0])
-    np.testing.assert_allclose(curves_out[1][1], semilandmarks[1][1])
+    assert result[0].curves is not None
+    assert len(result[0].curves) == 2
+    assert len(result[1].curves) == 2
+    np.testing.assert_allclose(result[0].curves[0], semilandmarks[0][0])
+    np.testing.assert_allclose(result[1].curves[1], semilandmarks[1][1])
 
 
 def test_write_tps_multi_specimens_invalid_semilandmarks_length(tmp_path):

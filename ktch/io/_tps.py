@@ -185,18 +185,20 @@ def read_tps(file_path, as_frame=False):
     file_path : str or path-like
         Path to the TPS file.
     as_frame : bool, default=False
-        If True, return pandas DataFrame(s). Otherwise, return ndarray(s).
+        If True, return a :class:`~pandas.DataFrame`.
 
     Returns
     -------
-    landmarks : ndarray of shape (n_specimens, n_landmarks, n_dim) or DataFrame
-        Landmark coordinates. For a single specimen without semilandmarks,
-        the shape is ``(n_landmarks, n_dim)``.
-    semilandmarks : list, optional
-        Returned only when the file contains CURVES data.
-        When ``as_frame=False``, a list of per-specimen curve lists
-        (each curve is an ndarray of shape ``(n_points, n_dim)``).
-        When ``as_frame=True``, a list of per-specimen DataFrame lists.
+    result : TPSData or list of TPSData or pd.DataFrame
+        If ``as_frame=False``, returns a :class:`TPSData` for a single
+        specimen or a list of :class:`TPSData` for multiple specimens.
+        Landmark coordinates are accessible via
+        :meth:`TPSData.to_numpy`, and semilandmark curves via the
+        :attr:`TPSData.curves` attribute.
+
+        If ``as_frame=True``, returns a concatenated DataFrame.
+        When the file contains CURVES data, returns a tuple
+        ``(landmarks, semilandmarks)`` of DataFrames.
     """
     path = Path(file_path)
     if not path.exists():
@@ -207,46 +209,32 @@ def read_tps(file_path, as_frame=False):
 
     tps_data = _read_tps(path)
 
+    if not as_frame:
+        # Return TPSData or list[TPSData] directly
+        return tps_data
+
+    # as_frame=True: return DataFrame(s)
     if isinstance(tps_data, TPSData):
-        if as_frame:
-            if tps_data.curves is not None:
-                return tps_data.to_dataframe_with_curves()
-            return tps_data.to_dataframe()
-        else:
-            if tps_data.curves is not None:
-                return tps_data.to_numpy_with_curves()
-            return tps_data.to_numpy()
-    elif isinstance(tps_data, list):
+        if tps_data.curves is not None:
+            return tps_data.to_dataframe_with_curves()
+        return tps_data.to_dataframe()
+    else:
         has_curves = [tps_datum.curves is not None for tps_datum in tps_data]
         if any(has_curves) and not all(has_curves):
             raise ValueError("Some specimens have semilandmarks and others do not.")
         use_curves = all(has_curves)
-        if as_frame:
-            if not use_curves:
-                landmarks = pd.concat(
-                    [tps_datum.to_dataframe() for tps_datum in tps_data]
-                )
-                return landmarks
-            else:
-                landmarks = []
-                semilandmarks = []
-                for tps_datum in tps_data:
-                    df_lm, df_curves = tps_datum.to_dataframe_with_curves()
-                    landmarks.append(df_lm)
-                    semilandmarks.append(df_curves)
-                return landmarks, semilandmarks
+        if not use_curves:
+            return pd.concat(
+                [tps_datum.to_dataframe() for tps_datum in tps_data]
+            )
         else:
-            if not use_curves:
-                landmarks = np.array(
-                    [tps_datum.to_numpy() for tps_datum in tps_data]
-                )
-                return landmarks
-            else:
-                landmarks = np.array(
-                    [tps_datum.to_numpy() for tps_datum in tps_data]
-                )
-                semilandmarks = [tps_datum.curves for tps_datum in tps_data]
-                return landmarks, semilandmarks
+            landmarks = []
+            semilandmarks = []
+            for tps_datum in tps_data:
+                df_lm, df_curves = tps_datum.to_dataframe_with_curves()
+                landmarks.append(df_lm)
+                semilandmarks.append(df_curves)
+            return landmarks, semilandmarks
 
 
 def write_tps(

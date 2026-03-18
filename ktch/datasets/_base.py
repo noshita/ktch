@@ -237,7 +237,6 @@ def load_landmark_trilobite_cephala(*, as_frame: bool = False) -> Bunch:
     descr_file_name = "data_landmark_trilobite_cephala.rst"
 
     tps_path = str(_resolve_data_path(dataset_name, data_file_name))
-    landmarks, curves = read_tps(tps_path, as_frame=as_frame)
 
     meta = pd.read_csv(
         _resolve_data_path(dataset_name, metadata_file_name), index_col=[0]
@@ -250,10 +249,13 @@ def load_landmark_trilobite_cephala(*, as_frame: bool = False) -> Bunch:
     curve_landmarks = [(1, 6), (9, 11), (12, 14), (3, 14)]
 
     if as_frame:
-        # read_tps returns a list of DataFrames when as_frame=True with curves;
-        # concatenate into a single DataFrame for consistency.
+        # returns (list[DataFrame], list[curves])
+        landmarks, curves = read_tps(tps_path, as_frame=True)
         landmarks = pd.concat(landmarks)
     else:
+        tps_list = read_tps(tps_path)
+        landmarks = np.array([t.to_numpy() for t in tps_list])
+        curves = [t.curves for t in tps_list]
         meta = meta.to_dict()
 
     return Bunch(

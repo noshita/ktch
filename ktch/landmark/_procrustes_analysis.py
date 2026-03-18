@@ -694,8 +694,14 @@ def combine_landmarks_and_curves(
 ):
     """Combine TPS landmarks and curves into unified GPA format.
 
-    Converts the separate landmarks and curves format from `read_tps()`
-    into the combined format required by `GeneralizedProcrustesAnalysis`.
+    Converts separate landmarks and curves into the combined format
+    required by `GeneralizedProcrustesAnalysis`.
+    When using `read_tps()`, extract landmarks and curves from the
+    returned `TPSData` objects::
+
+        tps_list = read_tps(path)
+        landmarks = np.array([t.to_numpy() for t in tps_list])
+        curves = [t.curves for t in tps_list]
 
     Parameters
     ----------

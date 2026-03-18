@@ -234,7 +234,7 @@ class ChainCodeData(MorphoDataMixin):
         return df
 
 
-def read_chc(file_path, as_frame=False, as_coordinates=True):
+def read_chc(file_path, as_frame=False):
     """Read chain code (.chc) file.
 
     Chain codes represent 2D contours using directional codes from 0 to 7::
@@ -251,15 +251,15 @@ def read_chc(file_path, as_frame=False, as_coordinates=True):
     file_path : str
         Path to the chain code file.
     as_frame : bool, default=False
-        If True, return pandas.DataFrame. Otherwise, return numpy.ndarray.
-    as_coordinates : bool, default=True
-        If True, convert chain codes to 2D coordinates.
-        If False, return the raw chain code values.
+        If True, return a :class:`~pandas.DataFrame`.
 
     Returns
     -------
-    chain_codes : list of np.ndarray or pd.DataFrame
-        Chain codes or coordinates.
+    result : ChainCodeData or list of ChainCodeData or pd.DataFrame
+        If a single record and ``as_frame=False``, returns a
+        :class:`ChainCodeData`.  If multiple records and
+        ``as_frame=False``, returns a list of :class:`ChainCodeData`.
+        If ``as_frame=True``, returns a concatenated DataFrame.
     """
     path = Path(file_path)
     if not path.exists():
@@ -270,23 +270,15 @@ def read_chc(file_path, as_frame=False, as_coordinates=True):
 
     chc_data_list = _read_chc(path)
 
+    if as_frame:
+        dfs = [chc_data.to_dataframe() for chc_data in chc_data_list]
+        if len(dfs) == 1:
+            return dfs[0]
+        return pd.concat(dfs)
+
     if len(chc_data_list) == 1:
-        if as_frame:
-            return chc_data_list[0].to_dataframe()
-        else:
-            if as_coordinates:
-                return chc_data_list[0].to_numpy()
-            else:
-                return chc_data_list[0].get_chain_code()
-    else:
-        if as_frame:
-            dfs = [chc_data.to_dataframe() for chc_data in chc_data_list]
-            return pd.concat(dfs)
-        else:
-            if as_coordinates:
-                return [chc_data.to_numpy() for chc_data in chc_data_list]
-            else:
-                return [chc_data.get_chain_code() for chc_data in chc_data_list]
+        return chc_data_list[0]
+    return chc_data_list
 
 
 def write_chc(

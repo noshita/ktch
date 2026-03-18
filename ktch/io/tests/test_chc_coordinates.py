@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from ktch.io import read_chc, write_chc
+from ktch.io._chc import ChainCodeData
 
 
 def test_chain_code_to_coordinates():
@@ -26,21 +27,22 @@ def test_chain_code_to_coordinates():
             area_per_pixels=1.0,
         )
 
-        coords = read_chc(temp_file)
+        result = read_chc(temp_file)
+        assert isinstance(result, ChainCodeData)
 
+        coords = result.to_numpy()
         expected_coords = np.array([
             [0, 0],  # Starting point
             [1, 0],  # After going right
-            [1, -1], # After going up
-            [0, -1], # After going left
-            [0, 0]   # After going down (back to start)
+            [1, -1],  # After going up
+            [0, -1],  # After going left
+            [0, 0],  # After going down (back to start)
         ])
 
-        assert coords.shape == (5, 2)  # 5 points (including start and end)
+        assert coords.shape == (5, 2)
         assert np.allclose(coords, expected_coords)
 
-        raw_chain_code = read_chc(temp_file, as_coordinates=False)
-        assert np.array_equal(raw_chain_code, chain_code)
+        assert np.array_equal(result.get_chain_code(), chain_code)
     finally:
         os.unlink(temp_file)
 
@@ -62,14 +64,15 @@ def test_scaled_coordinates():
             area_per_pixels=4.0,
         )
 
-        coords = read_chc(temp_file)
+        result = read_chc(temp_file)
+        coords = result.to_numpy()
 
         expected_coords = np.array([
-            [10, 20],   # Starting point
-            [12, 20],   # After going right (scaled by 2)
-            [12, 18],   # After going up (scaled by 2)
-            [10, 18],   # After going left (scaled by 2)
-            [10, 20]    # After going down (scaled by 2)
+            [10, 20],  # Starting point
+            [12, 20],  # After going right (scaled by 2)
+            [12, 18],  # After going up (scaled by 2)
+            [10, 18],  # After going left (scaled by 2)
+            [10, 20],  # After going down (scaled by 2)
         ])
 
         assert coords.shape == (5, 2)
@@ -107,16 +110,16 @@ def test_dataframe_output():
 
         assert df.shape[0] == 5  # 5 points (including start and end)
         assert df.loc[("Square", 0), "chain_code"] == -1  # First point has no direction
-        assert df.loc[("Square", 1), "chain_code"] == 0   # Right
-        assert df.loc[("Square", 2), "chain_code"] == 2   # Up
-        assert df.loc[("Square", 3), "chain_code"] == 4   # Left
-        assert df.loc[("Square", 4), "chain_code"] == 6   # Down
+        assert df.loc[("Square", 1), "chain_code"] == 0  # Right
+        assert df.loc[("Square", 2), "chain_code"] == 2  # Up
+        assert df.loc[("Square", 3), "chain_code"] == 4  # Left
+        assert df.loc[("Square", 4), "chain_code"] == 6  # Down
     finally:
         os.unlink(temp_file)
 
 
-def test_multiple_chain_codes_as_coordinates():
-    """Test reading multiple chain codes as coordinates."""
+def test_multiple_chain_codes():
+    """Test reading multiple chain codes."""
     chain_code1 = np.array([0, 2, 4, 6])  # Square
     chain_code2 = np.array([0, 0, 2, 2, 4, 4, 6, 6])  # Rectangle
 
@@ -133,21 +136,15 @@ def test_multiple_chain_codes_as_coordinates():
             area_per_pixels=[1.0, 1.0],
         )
 
-        coords_list = read_chc(temp_file)
+        result = read_chc(temp_file)
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert isinstance(result[0], ChainCodeData)
 
-        assert isinstance(coords_list, list)
-        assert len(coords_list) == 2
+        assert result[0].to_numpy().shape == (5, 2)
+        assert result[1].to_numpy().shape == (9, 2)
 
-        square_coords = coords_list[0]
-        assert square_coords.shape == (5, 2)
-
-        rectangle_coords = coords_list[1]
-        assert rectangle_coords.shape == (9, 2)
-
-        raw_codes = read_chc(temp_file, as_coordinates=False)
-        assert isinstance(raw_codes, list)
-        assert len(raw_codes) == 2
-        assert np.array_equal(raw_codes[0], chain_code1)
-        assert np.array_equal(raw_codes[1], chain_code2)
+        assert np.array_equal(result[0].get_chain_code(), chain_code1)
+        assert np.array_equal(result[1].get_chain_code(), chain_code2)
     finally:
         os.unlink(temp_file)
