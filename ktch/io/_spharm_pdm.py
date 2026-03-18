@@ -16,14 +16,87 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
+
+from ._protocols import MorphoDataMixin
 
 
-def read_spharmpdm_coef(path: str | Path) -> list[npt.NDArray[np.complex128]]:
+@dataclass(repr=False)
+class SpharmPdmData(MorphoDataMixin):
+    """SPHARM-PDM coefficient data for a single specimen.
+
+    Stores spherical harmonic coefficients in the nested list format
+    where ``coeffs[l]`` has shape ``(2*l+1, 3)`` for degree ``l``.
+
+    Parameters
+    ----------
+    specimen_name : str
+        Specimen name.
+    coeffs : list of np.ndarray
+        Nested list of complex128 coefficient arrays.
+        ``coeffs[l]`` has shape ``(2*l+1, 3)`` for degree ``l``.
+    """
+
+    specimen_name: str
+    coeffs: list[np.ndarray]
+
+    @property
+    def l_max(self) -> int:
+        """Maximum spherical harmonic degree."""
+        return len(self.coeffs) - 1
+
+    @property
+    def n_degrees(self) -> int:
+        """Number of spherical harmonic degrees (l_max + 1)."""
+        return len(self.coeffs)
+
+    def _repr_detail(self):
+        return f"l_max={self.l_max}"
+
+    def to_numpy(self) -> np.ndarray:
+        """Return flat coefficient array.
+
+        Returns
+        -------
+        coeffs : np.ndarray of shape ((l_max+1)^2, 3), complex128
+            Concatenated coefficient matrix.
+        """
+        return np.vstack(self.coeffs)
+
+    def to_dataframe(self) -> pd.DataFrame:
+        """Return coefficients as a DataFrame.
+
+        Returns
+        -------
+        df : pd.DataFrame
+            DataFrame with columns ``x``, ``y``, ``z``.
+            Index is a MultiIndex ``(specimen_id, (l, m))``.
+        """
+        rows = []
+        index_tuples = []
+        for l_val, coef_l in enumerate(self.coeffs):
+            for idx, m_val in enumerate(range(-l_val, l_val + 1)):
+                rows.append(coef_l[idx])
+                index_tuples.append((self.specimen_name, (l_val, m_val)))
+
+        return pd.DataFrame(
+            rows,
+            columns=["x", "y", "z"],
+            index=pd.MultiIndex.from_tuples(
+                index_tuples,
+                names=["specimen_id", "l_m"],
+            ),
+        )
+
+
+def read_spharmpdm_coef(path: str | Path) -> SpharmPdmData:
     """Read .coef file of SPHARM-PDM.
+
     The .coef file is an output of the `ParaToSPHARMMesh` step
     of `SPHARM-PDM <https://www.nitrc.org/projects/spharm-pdm>`_,
     and contains SPHARM coefficients.
@@ -40,8 +113,8 @@ def read_spharmpdm_coef(path: str | Path) -> list[npt.NDArray[np.complex128]]:
 
     Returns
     -------
-    coef : list[npt.NDArray[np.complex128]]
-        List of numpy arrays containing SPHARM coefficients for each coordinate.
+    data : SpharmPdmData
+        SPHARM-PDM coefficient data.
 
     Raises
     ------
@@ -100,7 +173,8 @@ def read_spharmpdm_coef(path: str | Path) -> list[npt.NDArray[np.complex128]]:
 
     coef = cvt_spharm_coef_spharmpdm_to_list(coef_array)
 
-    return coef
+    specimen_name = Path(path).stem
+    return SpharmPdmData(specimen_name=specimen_name, coeffs=coef)
 
 
 def cvt_spharm_coef_spharmpdm_to_list(

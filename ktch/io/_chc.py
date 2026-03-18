@@ -21,6 +21,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from ._protocols import MorphoDataMixin
+
 _DIRECTIONS = np.array(
     [
         [1, 0],  # 0: right
@@ -64,8 +66,8 @@ def _chain_code_area(chain_code):
     return int(round(polygon_area + boundary_points / 2 + 1))
 
 
-@dataclass
-class ChainCodeData:
+@dataclass(repr=False)
+class ChainCodeData(MorphoDataMixin):
     """Chain code data class.
 
     Chain codes represent 2D contours using directional codes from 0 to 7::
@@ -76,8 +78,8 @@ class ChainCodeData:
 
     Parameters
     ----------
-    sample_name : str
-        Sample name.
+    specimen_name : str
+        Specimen name.
     x : float
         X coordinate.
     y : float
@@ -93,12 +95,25 @@ class ChainCodeData:
         a warning is issued and the computed value is used.
     """
 
-    sample_name: str
+    specimen_name: str
     x: float
     y: float
     area_per_pixel: float
     chain_code: np.ndarray
     area_pixels: int | None = None
+
+    @property
+    def sample_name(self) -> str:
+        """Deprecated. Use ``specimen_name`` instead."""
+        warnings.warn(
+            "sample_name is deprecated, use specimen_name",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.specimen_name
+
+    def _repr_detail(self):
+        return f"n_points={len(self.chain_code)}"
 
     def __post_init__(self):
         if not isinstance(self.chain_code, np.ndarray):
@@ -211,7 +226,7 @@ class ChainCodeData:
                 "chain_code": chain_code_values,
             },
             index=pd.MultiIndex.from_tuples(
-                [[self.sample_name, i] for i in range(len(coords))],
+                [[self.specimen_name, i] for i in range(len(coords))],
                 name=["specimen_id", "coord_id"],
             ),
         )
@@ -367,7 +382,7 @@ def write_chc(
     for i in range(n_samples):
         chc_data_list.append(
             ChainCodeData(
-                sample_name=sample_names[i],
+                specimen_name=sample_names[i],
                 x=xs[i],
                 y=ys[i],
                 area_per_pixel=area_per_pixels[i],
@@ -455,7 +470,7 @@ def _read_chc(file_path):
             )
 
         chc_data = ChainCodeData(
-            sample_name=sample_name,
+            specimen_name=sample_name,
             x=x,
             y=y,
             area_per_pixel=area_per_pixel,
@@ -480,7 +495,7 @@ def _write_chc(file_path, chc_data_list):
     with open(file_path, "w") as f:
         for chc_data in chc_data_list:
             f.write(
-                f"{chc_data.sample_name} {chc_data.x} {chc_data.y} "
+                f"{chc_data.specimen_name} {chc_data.x} {chc_data.y} "
                 f"{chc_data.area_per_pixel} {chc_data.area_pixels} "
             )
 

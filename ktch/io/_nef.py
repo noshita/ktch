@@ -14,15 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+from ._protocols import MorphoDataMixin
 
-@dataclass
-class NefData:
+
+@dataclass(repr=False)
+class NefData(MorphoDataMixin):
     """Normalized elliptic Fourier descriptor data.
 
     Stores the normalized EFD coefficients produced by
@@ -31,8 +34,8 @@ class NefData:
 
     Parameters
     ----------
-    sample_name : str
-        Sample name (e.g. ``"Sample1_1"``).
+    specimen_name : str
+        Specimen name (e.g. ``"Sample1_1"``).
     coeffs : np.ndarray
         Coefficient matrix with shape ``(n_harmonics, 4)``.
         Columns are ``[a, b, c, d]`` for each harmonic (1 .. n).
@@ -42,9 +45,19 @@ class NefData:
         first-ellipse normalization (a1=1, b1=0, c1=0, d1 varies).
     """
 
-    sample_name: str
+    specimen_name: str
     coeffs: np.ndarray
     const_flags: tuple[int, int, int, int] = (1, 1, 1, 0)
+
+    @property
+    def sample_name(self) -> str:
+        """Deprecated. Use ``specimen_name`` instead."""
+        warnings.warn(
+            "sample_name is deprecated, use specimen_name",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.specimen_name
 
     def __post_init__(self):
         if not isinstance(self.coeffs, np.ndarray):
@@ -58,6 +71,31 @@ class NefData:
     def n_harmonics(self):
         """Number of harmonics."""
         return self.coeffs.shape[0]
+
+    def _repr_detail(self):
+        return f"n_harmonics={self.n_harmonics}"
+
+    @classmethod
+    def from_efa_coeffs(cls, coeffs, specimen_name=""):
+        """Create NefData from a 2D EFA flat coefficient vector.
+
+        Parameters
+        ----------
+        coeffs : np.ndarray of shape (n_features,)
+            Flat EFA coefficient vector (with or without orientation/scale).
+        specimen_name : str
+            Specimen name for the record.
+
+        Returns
+        -------
+        nef_data : NefData
+        """
+        from ._converters import efa_coeffs_to_nef
+
+        result = efa_coeffs_to_nef(
+            np.atleast_2d(coeffs), specimen_names=[specimen_name]
+        )
+        return result[0]
 
     def to_numpy(self):
         """Return the coefficient matrix.
@@ -85,7 +123,7 @@ class NefData:
             columns=["a", "b", "c", "d"],
             index=pd.MultiIndex.from_arrays(
                 [
-                    [self.sample_name] * self.n_harmonics,
+                    [self.specimen_name] * self.n_harmonics,
                     harmonics,
                 ],
                 names=["specimen_id", "harmonic"],
@@ -195,7 +233,7 @@ def read_nef(file_path, as_frame=False):
 
         nef_data_list.append(
             NefData(
-                sample_name=sample_name,
+                specimen_name=sample_name,
                 coeffs=coeffs,
                 const_flags=const_flags,
             )

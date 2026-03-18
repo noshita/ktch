@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import re
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,19 +24,21 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from ._protocols import MorphoDataMixin
+
 ####################################
 # TPS dataclass
 ####################################
 
 
-@dataclass
-class TPSData:
+@dataclass(repr=False)
+class TPSData(MorphoDataMixin):
     """Data for a single specimen in TPS format.
 
     Attributes
     ----------
-    idx : str
-        Specimen identifier (ID field in TPS).
+    specimen_name : str
+        Specimen name (ID field in TPS).
     landmarks : ndarray of shape (n_landmarks, n_dim)
         Landmark coordinates. ``n_dim`` is 2 or 3.
     image_path : str, optional
@@ -48,7 +51,7 @@ class TPSData:
         Free-text comments (COMMENTS field in TPS).
     """
 
-    idx: str
+    specimen_name: str
     landmarks: np.ndarray
     image_path: str = None
     scale: float = None
@@ -72,6 +75,22 @@ class TPSData:
             )
 
     @property
+    def idx(self) -> str:
+        """Deprecated. Use ``specimen_name`` instead."""
+        warnings.warn(
+            "idx is deprecated, use specimen_name",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.specimen_name
+
+    def _repr_detail(self):
+        return (
+            f"n_landmarks={self.landmarks.shape[0]}, "
+            f"n_dim={self.landmarks.shape[1]}"
+        )
+
+    @property
     def landmarks(self) -> np.ndarray:
         return self._landmarks
 
@@ -80,41 +99,77 @@ class TPSData:
         self._landmarks = np.array(value)
 
     def to_numpy(self):
-        if self.curves is None:
-            return self.landmarks
-        else:
-            return self.landmarks, self.curves
+        """Return landmark coordinates as a numpy array.
 
-    def to_dataframe(self):
+        Returns
+        -------
+        landmarks : np.ndarray of shape (n_landmarks, n_dim)
+        """
+        return self.landmarks
+
+    def to_numpy_with_curves(self):
+        """Return landmarks and optional semilandmark curves.
+
+        Returns
+        -------
+        landmarks : np.ndarray of shape (n_landmarks, n_dim)
+        curves : list of np.ndarray or None
+        """
+        return self.landmarks, self.curves
+
+    def _column_names(self):
         if self.landmarks.shape[1] == 2:
-            columns = ["x", "y"]
+            return ["x", "y"]
         elif self.landmarks.shape[1] == 3:
-            columns = ["x", "y", "z"]
-        else:
-            raise ValueError("n_dim must be 2 or 3.")
+            return ["x", "y", "z"]
+        raise ValueError("n_dim must be 2 or 3.")
 
-        df_landmarks = pd.DataFrame(
+    def _make_landmark_dataframe(self):
+        columns = self._column_names()
+        return pd.DataFrame(
             self.landmarks,
             columns=columns,
             index=pd.MultiIndex.from_tuples(
-                [[self.idx, i] for i in range(len(self.landmarks))],
+                [[self.specimen_name, i] for i in range(len(self.landmarks))],
                 name=["specimen_id", "coord_id"],
             ),
         )
+
+    def to_dataframe(self):
+        """Return landmark coordinates as a DataFrame.
+
+        Returns
+        -------
+        df : pd.DataFrame
+            DataFrame with columns ``x``, ``y`` (and ``z`` for 3D).
+            Index is a MultiIndex ``(specimen_id, coord_id)``.
+        """
+        return self._make_landmark_dataframe()
+
+    def to_dataframe_with_curves(self):
+        """Return landmark and optional curve DataFrames.
+
+        Returns
+        -------
+        df_landmarks : pd.DataFrame
+        df_curves : list of pd.DataFrame or None
+        """
+        df_landmarks = self._make_landmark_dataframe()
         if self.curves is None:
-            return df_landmarks
-        else:
-            return df_landmarks, [
-                pd.DataFrame(
-                    curve,
-                    columns=columns,
-                    index=pd.MultiIndex.from_tuples(
-                        [[self.idx, i] for i in range(len(curve))],
-                        name=["specimen_id", "coord_id"],
-                    ),
-                )
-                for curve in self.curves
-            ]
+            return df_landmarks, None
+        columns = self._column_names()
+        df_curves = [
+            pd.DataFrame(
+                curve,
+                columns=columns,
+                index=pd.MultiIndex.from_tuples(
+                    [[self.specimen_name, i] for i in range(len(curve))],
+                    name=["specimen_id", "coord_id"],
+                ),
+            )
+            for curve in self.curves
+        ]
+        return df_landmarks, df_curves
 
 
 ####################################
@@ -154,8 +209,12 @@ def read_tps(file_path, as_frame=False):
 
     if isinstance(tps_data, TPSData):
         if as_frame:
+            if tps_data.curves is not None:
+                return tps_data.to_dataframe_with_curves()
             return tps_data.to_dataframe()
         else:
+            if tps_data.curves is not None:
+                return tps_data.to_numpy_with_curves()
             return tps_data.to_numpy()
     elif isinstance(tps_data, list):
         has_curves = [tps_datum.curves is not None for tps_datum in tps_data]
@@ -164,23 +223,29 @@ def read_tps(file_path, as_frame=False):
         use_curves = all(has_curves)
         if as_frame:
             if not use_curves:
-                landmarks = [tps_datum.to_dataframe() for tps_datum in tps_data]
-                landmarks = pd.concat(landmarks)
+                landmarks = pd.concat(
+                    [tps_datum.to_dataframe() for tps_datum in tps_data]
+                )
                 return landmarks
             else:
-                landmarks = [tps_datum.to_dataframe()[0] for tps_datum in tps_data]
-
-                semilandmarks = [tps_datum.to_dataframe()[1] for tps_datum in tps_data]
+                landmarks = []
+                semilandmarks = []
+                for tps_datum in tps_data:
+                    df_lm, df_curves = tps_datum.to_dataframe_with_curves()
+                    landmarks.append(df_lm)
+                    semilandmarks.append(df_curves)
                 return landmarks, semilandmarks
         else:
             if not use_curves:
-                landmarks = np.array([tps_datum.to_numpy() for tps_datum in tps_data])
+                landmarks = np.array(
+                    [tps_datum.to_numpy() for tps_datum in tps_data]
+                )
                 return landmarks
             else:
                 landmarks = np.array(
-                    [tps_datum.to_numpy()[0] for tps_datum in tps_data]
+                    [tps_datum.to_numpy() for tps_datum in tps_data]
                 )
-                semilandmarks = [tps_datum.to_numpy()[1] for tps_datum in tps_data]
+                semilandmarks = [tps_datum.curves for tps_datum in tps_data]
                 return landmarks, semilandmarks
 
 
@@ -244,7 +309,7 @@ def write_tps(
 
     tps_data = [
         TPSData(
-            idx=idx_[i],
+            specimen_name=idx_[i],
             landmarks=landmarks_list[i],
             image_path=image_path_[i],
             scale=scale_[i],
@@ -464,7 +529,7 @@ def _read_tps_single(specimen_str: str) -> TPSData:
         curves = None
 
     tps_data = TPSData(
-        idx=idx,
+        specimen_name=idx,
         landmarks=landmarks,
         image_path=image_path,
         scale=scale,
@@ -507,7 +572,7 @@ def _write_tps_single(file_path, tps_data, write_mode="w"):
         if tps_data.image_path is not None:
             f.write("IMAGE=" + tps_data.image_path + "\n")
 
-        f.write("ID=" + str(tps_data.idx) + "\n")
+        f.write("ID=" + str(tps_data.specimen_name) + "\n")
 
         if tps_data.scale is not None:
             f.write("SCALE=" + str(tps_data.scale) + "\n")

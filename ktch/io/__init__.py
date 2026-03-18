@@ -16,16 +16,33 @@ The :mod:`ktch.io` module implements I/O interface for morphometrics file format
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._chc import read_chc, write_chc
-from ._nef import read_nef, write_nef
+from ._chc import ChainCodeData, read_chc, write_chc
+from ._converters import (
+    convert_coords_df_to_df_sklearn_transform,
+    convert_coords_df_to_list,
+    efa_coeffs_to_nef,
+    nef_to_efa_coeffs,
+)
+from ._nef import NefData, read_nef, write_nef
+from ._protocols import MorphoData, MorphoDataMixin
 from ._spharm_pdm import (
+    SpharmPdmData,
     cvt_spharm_coef_list_to_spharmpdm,
     cvt_spharm_coef_spharmpdm_to_list,
     read_spharmpdm_coef,
 )
-from ._tps import read_tps, write_tps
+from ._tps import TPSData, read_tps, write_tps
 
 __all__ = [
+    # Protocols and mixins
+    "MorphoData",
+    "MorphoDataMixin",
+    # Data containers
+    "NefData",
+    "ChainCodeData",
+    "TPSData",
+    "SpharmPdmData",
+    # I/O functions
     "read_tps",
     "write_tps",
     "read_spharmpdm_coef",
@@ -35,4 +52,9 @@ __all__ = [
     "write_chc",
     "read_nef",
     "write_nef",
+    # Converter functions
+    "nef_to_efa_coeffs",
+    "efa_coeffs_to_nef",
+    "convert_coords_df_to_list",
+    "convert_coords_df_to_df_sklearn_transform",
 ]

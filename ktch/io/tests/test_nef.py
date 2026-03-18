@@ -27,29 +27,29 @@ def _make_coeffs(n_harmonics=3, seed=42):
 class TestNefData:
     def test_basic(self):
         coeffs = _make_coeffs()
-        data = NefData(sample_name="S1", coeffs=coeffs)
+        data = NefData(specimen_name="S1", coeffs=coeffs)
         assert data.n_harmonics == 3
         assert data.const_flags == (1, 1, 1, 0)
 
     def test_list_input_converted(self):
         data = NefData(
-            sample_name="S1", coeffs=[[1, 0, 0, 0.2], [0.01, 0.02, 0.03, 0.04]]
+            specimen_name="S1", coeffs=[[1, 0, 0, 0.2], [0.01, 0.02, 0.03, 0.04]]
         )
         assert isinstance(data.coeffs, np.ndarray)
         assert data.coeffs.shape == (2, 4)
 
     def test_invalid_shape_raises(self):
         with pytest.raises(ValueError, match="n_harmonics, 4"):
-            NefData(sample_name="S1", coeffs=np.zeros((3, 5)))
+            NefData(specimen_name="S1", coeffs=np.zeros((3, 5)))
 
     def test_to_numpy(self):
         coeffs = _make_coeffs()
-        data = NefData(sample_name="S1", coeffs=coeffs)
+        data = NefData(specimen_name="S1", coeffs=coeffs)
         np.testing.assert_array_equal(data.to_numpy(), coeffs)
 
     def test_to_dataframe(self):
         coeffs = _make_coeffs(n_harmonics=2)
-        data = NefData(sample_name="S1", coeffs=coeffs)
+        data = NefData(specimen_name="S1", coeffs=coeffs)
         df = data.to_dataframe()
 
         assert isinstance(df, pd.DataFrame)
@@ -76,7 +76,7 @@ class TestReadWriteNef:
             result = read_nef(temp)
 
             assert isinstance(result, NefData)
-            assert result.sample_name == "Test1"
+            assert result.specimen_name == "Test1"
             assert result.n_harmonics == 3
             np.testing.assert_allclose(result.coeffs, coeffs, atol=1e-7)
         finally:
@@ -95,8 +95,8 @@ class TestReadWriteNef:
 
             assert isinstance(result, list)
             assert len(result) == 2
-            assert result[0].sample_name == "A"
-            assert result[1].sample_name == "B"
+            assert result[0].specimen_name == "A"
+            assert result[1].specimen_name == "B"
             np.testing.assert_allclose(result[0].coeffs, c1, atol=1e-7)
             np.testing.assert_allclose(result[1].coeffs, c2, atol=1e-7)
         finally:
@@ -159,7 +159,7 @@ class TestHeaderParsing:
 
         try:
             result = read_nef(temp)
-            assert result.sample_name == "Sample_1"
+            assert result.specimen_name == "Sample_1"
             assert result.n_harmonics == 2
             assert result.const_flags == (1, 1, 1, 0)  # default
         finally:

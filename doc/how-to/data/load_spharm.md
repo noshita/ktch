@@ -23,9 +23,10 @@ from ktch.io import read_spharmpdm_coef
 # Path to a sample .coef file (from ktch test data)
 sample_coef_path = "../../../ktch/io/tests/data/andesred_07_allSegments_SPHARM.coef"
 
-coefficients = read_spharmpdm_coef(sample_coef_path)
-print(f"Number of coefficient arrays: {len(coefficients)}")
-print(f"First array shape: {coefficients[0].shape}")
+data = read_spharmpdm_coef(sample_coef_path)
+print(f"Specimen name: {data.specimen_name}")
+print(f"Maximum degree (l_max): {data.l_max}")
+print(f"Coefficient array shape: {data.to_numpy().shape}")
 ```
 
 ## Coefficient structure
@@ -33,8 +34,8 @@ print(f"First array shape: {coefficients[0].shape}")
 SPHARM-PDM coefficients are organized by spherical harmonic degree:
 
 ```{code-cell} ipython3
-# Each array contains coefficients for one harmonic degree
-for i, coef in enumerate(coefficients[:3]):
+# Each element contains coefficients for one harmonic degree
+for i, coef in enumerate(data.coeffs[:3]):
     print(f"Degree {i}: shape {coef.shape}")
 ```
 

@@ -409,44 +409,42 @@ def load_outline_leaf_bending(*, as_frame: bool = False) -> Bunch:
 ###########################################################
 
 
-def convert_coords_df_to_list(df_coords: pd.DataFrame) -> list[np.ndarray]:
-    """Convert a dataframe of coordinates to a list of numpy arrays.
+def convert_coords_df_to_list(df_coords):
+    """Convert a coordinate DataFrame to a list of per-specimen arrays.
 
-    Parameters
-    ----------
-    df_coords: pandas.DataFrame of index (specimen_id, coord_id), columns (axis (x, y (, z)))
-        The dataframe of coordinates.
-
-    Returns
-    -------
-    list_coords: list
-        The list of numpy arrays.
+    .. deprecated::
+        Use :func:`ktch.io.convert_coords_df_to_list` instead.
     """
-    dim = df_coords.shape[1]
-    coords_list = [
-        df_coords.loc[specimen_id].to_numpy().reshape(-1, dim)
-        for specimen_id in df_coords.index.get_level_values(0).unique()
-    ]
-    return coords_list
+    import warnings
+
+    from ktch.io._converters import convert_coords_df_to_list as _impl
+
+    warnings.warn(
+        "ktch.datasets._base.convert_coords_df_to_list is deprecated. "
+        "Use ktch.io.convert_coords_df_to_list instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return _impl(df_coords)
 
 
-def convert_coords_df_to_df_sklearn_transform(df_coords: pd.DataFrame) -> pd.DataFrame:
-    """Convert a dataframe of coordinates to a dataframe of coordinates
-    for sklearn transformers.
+def convert_coords_df_to_df_sklearn_transform(df_coords):
+    """Convert a coordinate DataFrame to sklearn-compatible wide format.
 
-    Parameters
-    ----------
-    df_coords: pandas.DataFrame of index (specimen_id, coord_id), columns (axis (x, y (, z)))
-        The dataframe of coordinates.
-
-    Returns
-    -------
-    df_coords_new: pandas.DataFrame of index (specimen_id), columns (coord_id, axis)
-        The dataframe of coordinates compatible with input of scikit-learn transformers.
+    .. deprecated::
+        Use :func:`ktch.io.convert_coords_df_to_df_sklearn_transform` instead.
     """
-    df_coords_new = df_coords.unstack().swaplevel(axis=1).sort_index(axis=1)
+    import warnings
 
-    return df_coords_new
+    from ktch.io._converters import convert_coords_df_to_df_sklearn_transform as _impl
+
+    warnings.warn(
+        "ktch.datasets._base.convert_coords_df_to_df_sklearn_transform is deprecated. "
+        "Use ktch.io.convert_coords_df_to_df_sklearn_transform instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return _impl(df_coords)
 
 
 ###########################################################
