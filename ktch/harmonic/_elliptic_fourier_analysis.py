@@ -52,8 +52,8 @@ class EllipticFourierAnalysis(
         Dimension of the coordinate space.
         Must be 2 (for planar curves) or 3 (for space curves).
     norm : bool, default=True
-        Normalize the elliptic Fourier coefficients
-        by the major axis of the 1st ellipse.
+        Normalize the elliptic Fourier coefficients by the 1st harmonic
+        ellipse (scaling method controlled by ``norm_method``).
     return_orientation_scale : bool, default=False
         Return orientation and scale of the outline (requires ``norm=True``).
 
@@ -64,16 +64,16 @@ class EllipticFourierAnalysis(
         joblib.parallel_backend context. -1 means using all processors.
     verbose: int, default=0
         The verbosity level.
-    norm_method : str, default="area"
-        Normalization method for 3D EFA coefficients when ``norm=True``.
-        Only affects ``n_dim=3``.
+    norm_method : {None, "area", "semi_major_axis"}, default=None
+        Normalization (scaling) method when ``norm=True``.
+        When ``None`` (default), the dimension-appropriate convention is used:
+        ``"semi_major_axis"`` for 2D and ``"area"`` for 3D.
 
         - ``"area"``: Scale by ``sqrt(pi * a1 * b1)`` where ``a1`` and ``b1``
           are the semi-major and semi-minor axis lengths of the 1st harmonic
           ellipse (Godefroy et al. 2012).
         - ``"semi_major_axis"``: Scale by the semi-major axis length ``a1``
-          of the 1st harmonic ellipse, consistent with the 2D normalization
-          convention (Kuhl & Giardina 1982).
+          of the 1st harmonic ellipse (Kuhl & Giardina 1982).
 
     Notes
     -----
@@ -100,12 +100,18 @@ class EllipticFourierAnalysis(
     Godefroy et al. (2012) §3.1: rescaling by the 1st harmonic ellipse area,
     reorientation using ZXZ Euler angles, phase shift, and direction correction.
 
-    When ``return_orientation_scale=True`` with 3D normalized data, 5 values
-    are appended to the output: ``[alpha, beta, gamma, phi, scale]``, where
-    ``(alpha, beta, gamma)`` are ZXZ Euler angles (in radians) of the 1st
-    harmonic ellipse orientation, ``phi`` is the phase angle, and ``scale``
-    is the normalization factor (``sqrt(pi * a1 * b1)`` for
-    ``norm_method="area"``, or ``a1`` for ``norm_method="semi_major_axis"``).
+    When ``return_orientation_scale=True`` with normalized data, extra values
+    are appended to the output:
+
+    - 2D: ``[psi, scale]`` where ``psi`` is the orientation angle and
+      ``scale`` is the normalization factor.
+    - 3D: ``[alpha, beta, gamma, phi, scale]`` where ``(alpha, beta, gamma)``
+      are ZXZ Euler angles (in radians) of the 1st harmonic ellipse
+      orientation, ``phi`` is the phase angle, and ``scale`` is the
+      normalization factor.
+
+    The ``scale`` value depends on ``norm_method``: ``sqrt(pi * a1 * b1)``
+    for ``"area"``, or ``a1`` for ``"semi_major_axis"``.
 
     References
     ----------
@@ -116,7 +122,7 @@ class EllipticFourierAnalysis(
 
     """
 
-    _VALID_NORM_METHODS = {"area", "semi_major_axis"}
+    _VALID_NORM_METHODS = {None, "area", "semi_major_axis"}
 
     def __init__(
         self,
@@ -126,7 +132,7 @@ class EllipticFourierAnalysis(
         return_orientation_scale: bool = False,
         n_jobs: int | None = None,
         verbose: int = 0,
-        norm_method: str = "area",
+        norm_method: str | None = None,
     ):
         self.n_harmonics = n_harmonics
         self.n_dim = n_dim
@@ -213,7 +219,8 @@ class EllipticFourierAnalysis(
             raise ValueError("n_dim must be 2 or 3")
         if self.norm_method not in self._VALID_NORM_METHODS:
             raise ValueError(
-                f"norm_method must be 'area' or 'semi_major_axis', got '{self.norm_method}'"
+                f"norm_method must be None, 'area', or 'semi_major_axis', "
+                f"got '{self.norm_method}'"
             )
 
         if return_orientation_scale and not norm:
@@ -225,9 +232,7 @@ class EllipticFourierAnalysis(
             t_ = t
 
         if len(t_) != len(X):
-            raise ValueError(
-                f"t ({len(t_)}) must have the same length as X ({len(X)})"
-            )
+            raise ValueError(f"t ({len(t_)}) must have the same length as X ({len(X)})")
 
         if isinstance(X, pd.DataFrame):
             X_ = [
@@ -359,8 +364,6 @@ class EllipticFourierAnalysis(
         """Normalize Fourier coefficients.
 
         Todo:
-            - [x] 1st ellipse, major axis
-            - [ ] 1st ellipse, area
             - [ ] Procrustes alignment -> in coordinate values?
 
         Returns
@@ -368,18 +371,16 @@ class EllipticFourierAnalysis(
         An, Bn, Cn, Dn : np.ndarray
             Normalized coefficient arrays (offset + harmonics).
         psi : float
-            Orientation (phase) of the 1st harmonic ellipse in radians.
+            Orientation (phase) of the 1st ellipse in radians.
         scale : float
-            Semi-major axis length of the 1st harmonic ellipse.
+            Scaling factor. semi-major axis length, or area of the 1st ellipse.
         """
         a1 = an[1]
         b1 = bn[1]
         c1 = cn[1]
         d1 = dn[1]
 
-        theta = 0.5 * np.arctan2(
-            2 * (a1 * b1 + c1 * d1), a1**2 + c1**2 - b1**2 - d1**2
-        )
+        theta = 0.5 * np.arctan2(2 * (a1 * b1 + c1 * d1), a1**2 + c1**2 - b1**2 - d1**2)
 
         [[a_s, b_s], [c_s, d_s]] = np.array([[a1, b1], [c1, d1]]).dot(
             rotation_matrix_2d(theta)
@@ -393,9 +394,24 @@ class EllipticFourierAnalysis(
             else:
                 theta = theta - np.pi / 2
 
-        a_s = a1 * np.cos(theta) + b1 * np.sin(theta)
-        c_s = c1 * np.cos(theta) + d1 * np.sin(theta)
-        scale = np.sqrt(a_s**2 + c_s**2)
+        cos_th = np.cos(theta)
+        sin_th = np.sin(theta)
+        a_s = a1 * cos_th + b1 * sin_th
+        c_s = c1 * cos_th + d1 * sin_th
+        semi_major = np.sqrt(a_s**2 + c_s**2)
+
+        norm_method = self.norm_method
+        if norm_method is None:
+            norm_method = "semi_major_axis"
+
+        if norm_method == "semi_major_axis":
+            scale = semi_major
+        else:  # "area"
+            b_s = -a1 * sin_th + b1 * cos_th
+            d_s = -c1 * sin_th + d1 * cos_th
+            semi_minor = np.sqrt(b_s**2 + d_s**2)
+            scale = np.sqrt(np.pi * semi_major * semi_minor)
+
         psi = np.arctan2(c_s, a_s)
 
         if keep_start_point:
@@ -522,7 +538,8 @@ class EllipticFourierAnalysis(
         """Normalize 3D EFA coefficients.
 
         Applies the 4-step normalization algorithm:
-        1. Rescaling by a scale factor determined by ``self.norm_method``:
+        1. Rescaling by a scale factor determined by ``self.norm_method``
+           (``None`` resolves to ``"area"`` for 3D):
 
            - ``"area"``: ``scale = sqrt(pi * a1 * b1)``
            - ``"semi_major_axis"``: ``scale = a1``
@@ -567,10 +584,14 @@ class EllipticFourierAnalysis(
             )
 
         # 1. Rescaling
-        if self.norm_method == "semi_major_axis":
+        norm_method = self.norm_method
+        if norm_method is None:
+            norm_method = "area"
+
+        if norm_method == "semi_major_axis":
             scale = a1
         else:
-            # Default: area-based (Godefroy et al. 2012)
+            # Area-based (Godefroy et al. 2012)
             area1 = np.pi * a1 * b1
             scale = np.sqrt(area1)
 
