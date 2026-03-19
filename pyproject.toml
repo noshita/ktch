@@ -89,6 +89,7 @@ exclude = [
   "ref/",
   "scripts/",
   "CONTRIBUTING.md",
+  "MAINTAINING.md",
   ".github/",
   ".gitignore",
   ".release-please-manifest.json",

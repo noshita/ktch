@@ -30,6 +30,7 @@
    :toctree: generated/
    :template: base.rst
    
+   harmonic.rotation_matrix_2d
    harmonic.spharm
    harmonic.xyz2spherical
 ```

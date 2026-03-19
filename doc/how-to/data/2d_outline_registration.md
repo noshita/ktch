@@ -53,7 +53,7 @@ print("displacement: ", dx[idx])
 ```
 
 If the coordinate values are stored as `np.ndarray`, 
-you can simply add the displacement vectors after `reshape(n_spesimens, 1, n_dim)`.
+you can simply add the displacement vectors after `reshape(n_specimens, 1, n_dim)`.
 
 ```{code-cell} ipython3
 coords_translated_array = coords + dx.reshape(dx.shape[0], 1, dx.shape[1])
@@ -85,7 +85,7 @@ print("scale: ", s[idx])
 ```
 
 If the coordinate values are stored as `np.ndarray`, 
-you can simply add the displacement vectors after `reshape(n_spesimens, 1, 1)`.
+you can simply add the displacement vectors after `reshape(n_specimens, 1, 1)`.
 
 ```{code-cell} ipython3
 coords_scaled_arr = s.reshape(s.shape[0], 1, 1)*coords
@@ -105,7 +105,7 @@ We provide `rotation_matrix_2d` helper function to generate the rotation matrix.
 Alternatively, you can use `scipy.spatial.transform.Rotation` or define by yourself.
 
 ```{code-cell} ipython3
-from ktch.outline import rotation_matrix_2d
+from ktch.harmonic import rotation_matrix_2d
 from scipy.spatial.transform import Rotation as R
 ```
 

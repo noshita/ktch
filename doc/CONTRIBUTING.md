@@ -1,7 +1,7 @@
 # Contributing Documentation
 
-This guide describes the structure, conventions, and writing guidelines　for the ktch documentation.
-For build instructions, see `README.md` in　this directory.
+This guide describes the structure, conventions, and writing guidelines for the ktch documentation.
+For build instructions, see `README.md` in this directory.
 
 ## Overview
 

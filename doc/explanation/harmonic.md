@@ -77,6 +77,8 @@ efa_3d = EllipticFourierAnalysis(n_harmonics=20, n_dim=3)
 coefficients_3d = efa_3d.fit_transform(outlines_3d)
 ```
 
+3D normalization follows the algorithm described in Godefroy et al. (2012), removing size, orientation (via Euler ZXZ decomposition), and starting point variation from the first-harmonic ellipse.
+
 ## Spherical Harmonic Analysis
 
 For 3D closed surfaces, spherical harmonics provide an analogous decomposition. A closed surface can be represented using spherical harmonic basis functions $Y_l^m$, where $l$ is the degree (analogous to harmonic number) and $m$ is the order.
@@ -144,4 +146,5 @@ ktch provides built-in plot functions for these visualizations; see {doc}`visual
 
 - Kuhl, F. P., & Giardina, C. R. (1982). Elliptic Fourier features of a closed contour. Computer Graphics and Image Processing, 18(3), 236-258.
 - Crampton, J. S. (1995). Elliptic Fourier shape analysis of fossil bivalves. Lethaia, 28(2), 147-158.
+- Godefroy, J. E., Bornert, F., Gros, C. I., & Constantinesco, A. (2012). Elliptical Fourier descriptors for contours in three dimensions: A new tool for morphometrical analysis in biology. Comptes Rendus Biologies, 335(3), 205-213. https://doi.org/10.1016/j.crvi.2011.12.004
 - Shen, L., & Makedon, F. (2006). Spherical mapping for processing of 3D closed surfaces. Image and Vision Computing, 24(7), 743-761.
