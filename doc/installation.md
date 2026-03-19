@@ -43,11 +43,11 @@ uv run make html
 
 ktch requires:
 
-- Python >= 3.9
-- NumPy
+- Python >= 3.11
+- NumPy >= 2.0
 - SciPy
 - scikit-learn
-- pandas
+- pandas >= 3.0
 
 ### Optional Dependencies
 

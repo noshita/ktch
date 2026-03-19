@@ -697,11 +697,15 @@ def combine_landmarks_and_curves(
     Converts separate landmarks and curves into the combined format
     required by `GeneralizedProcrustesAnalysis`.
     When using `read_tps()`, extract landmarks and curves from the
-    returned `TPSData` objects::
+    returned :class:`~ktch.io.TPSData` objects.  ``read_tps`` returns
+    a single :class:`~ktch.io.TPSData` for one specimen or a list for
+    multiple specimens::
 
-        tps_list = read_tps(path)
-        landmarks = np.array([t.to_numpy() for t in tps_list])
-        curves = [t.curves for t in tps_list]
+        tps_data = read_tps(path)
+        if not isinstance(tps_data, list):
+            tps_data = [tps_data]
+        landmarks = np.array([t.to_numpy() for t in tps_data])
+        curves = [t.curves for t in tps_data]
 
     Parameters
     ----------

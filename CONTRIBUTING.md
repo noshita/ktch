@@ -462,6 +462,20 @@ from your personal fork. The bot PR is then closed.
 - [ ] Version switcher works correctly
 - [ ] <https://pypi.org/project/ktch/> shows the new version
 - [ ] conda-forge feedstock PR is created (may take a few hours)
+- [ ] (Minor releases only) Re-run the Docs workflow with cache disabled
+  (see below)
+
+#### Re-building documentation without cache
+
+Before v1.0, minor version releases (e.g., 0.8.0 → 0.9.0) may introduce
+API changes that affect notebook outputs. To ensure all notebooks are
+re-executed from scratch, manually trigger the Docs workflow with the
+"Disable notebook execution cache" option checked:
+
+Actions → Docs → Run workflow → check "Disable notebook execution cache"
+
+This is not automated because patch releases rarely need it and the
+no-cache build takes significantly longer.
 
 ### Troubleshooting
 

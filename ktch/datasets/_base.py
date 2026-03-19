@@ -254,6 +254,8 @@ def load_landmark_trilobite_cephala(*, as_frame: bool = False) -> Bunch:
         landmarks = pd.concat(landmarks)
     else:
         tps_list = read_tps(tps_path)
+        if not isinstance(tps_list, list):
+            tps_list = [tps_list]
         landmarks = np.array([t.to_numpy() for t in tps_list])
         curves = [t.curves for t in tps_list]
         meta = meta.to_dict()
