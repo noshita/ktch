@@ -870,11 +870,9 @@ def _compute_ellipse_geometry_3d(
     # phase angle phi
     # 2*dot_cs / denom = -tan(2*phi)
     # -> phi_0 = -(1/2) * arctan2(2*dot_cs, denom)
+    # For a perfect circle both arguments are zero; arctan2(0, 0) = 0.0
     denom = sum_c2 - sum_s2
-    if abs(denom) < _DEGENERACY_TOL and abs(dot_cs) < _DEGENERACY_TOL:
-        phi_0 = 0.0
-    else:
-        phi_0 = -0.5 * np.arctan2(2 * dot_cs, denom)
+    phi_0 = -0.5 * np.arctan2(2 * dot_cs, denom)
 
     cos_phi = np.cos(phi_0)
     sin_phi = np.sin(phi_0)

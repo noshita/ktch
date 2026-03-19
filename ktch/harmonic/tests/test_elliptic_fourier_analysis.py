@@ -2314,9 +2314,8 @@ class TestCircleNormalization2d:
     def test_scaled_circle(self):
         """Circle with radius 5: canonical form preserved, scale correct.
 
-        This triggers RuntimeWarning (divide by zero in arctan) because
-        the denominator is exactly zero. The code handles this via
-        arctan(±inf) = ±pi/2.
+        For a perfect circle both arguments to arctan2 are zero.
+        arctan2(0, 0) = 0.0 per IEEE 754, giving a valid arbitrary phase.
         """
         t = np.linspace(0, 2 * np.pi, 101)[:-1]
         coords = np.stack([5 * np.cos(t), 5 * np.sin(t)], axis=1)
