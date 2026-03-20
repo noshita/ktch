@@ -46,6 +46,7 @@ extensions = [
     "sphinxcontrib.bibtex",
     "sphinxcontrib.mermaid",
     "sphinx.ext.viewcode",
+    "noindex_utilities",
     "sphinx.ext.mathjax",
     "numpydoc",
     "myst_nb",
@@ -333,6 +334,16 @@ htmlhelp_basename = "ktchdoc"
 # but sitemap_url_scheme only for sitemap.xml).
 sitemap_locales = [None]
 sitemap_url_scheme = "{link}"
+
+# Exclude auto-generated and utility pages from the sitemap so that only
+# meaningful content pages are advertised to search engines.
+sitemap_excludes = [
+    "_modules/*",
+    "genindex.html",
+    "py-modindex.html",
+    "search.html",
+    "opensearch.html",
+]
 
 if _smv_name == "main":
     html_baseurl = "https://doc.ktch.dev/dev/"
