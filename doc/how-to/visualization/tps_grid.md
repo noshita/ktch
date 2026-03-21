@@ -38,6 +38,25 @@ ax.set_aspect('equal')
 plt.show()
 ```
 
+## Customize grid extent and smoothness
+
+`outer` controls how far the grid extends beyond the landmark bounding
+box as a fraction of the span (default: 0.1 = 10 %).
+`n_grid_inner` controls the number of interpolation points between
+grid lines, affecting visual smoothness (default: 10).
+
+```{code-cell} ipython3
+fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+
+tps_grid_2d_plot(reference, target, grid_size=0.1, outer=0.3, ax=axes[0])
+axes[0].set_aspect("equal")
+axes[0].set_title("outer=0.3 (wider margin)")
+
+tps_grid_2d_plot(reference, target, grid_size=0.1, n_grid_inner=3, ax=axes[1])
+axes[1].set_aspect("equal")
+axes[1].set_title("n_grid_inner=3 (coarser curves)")
+```
+
 ```{seealso}
 - {doc}`../../tutorials/landmark/thin_plate_spline` for detailed examples
 ```

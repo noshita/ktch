@@ -62,6 +62,8 @@ df_coords.columns = [
 gpa = GeneralizedProcrustesAnalysis().set_output(transform="pandas")
 df_shapes = gpa.fit_transform(df_coords)
 
+# set_output is not needed here: shape_variation_plot only calls
+# inverse_transform(), whose return type is unaffected by set_output.
 pca_lm = PCA(n_components=5).fit(df_shapes)
 
 links = [

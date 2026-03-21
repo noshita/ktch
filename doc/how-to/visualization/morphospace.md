@@ -133,7 +133,9 @@ explained_variance_ratio_plot(pca, ax=axes[1, 1])
 
 ## Compose with existing axes
 
-Add shape overlays to a pre-existing scatter plot:
+When called without `data`/`x`/`y`, `morphospace_plot` skips the
+scatter step and adds only shape overlays, using the current axis
+limits to position them. Pass the pre-populated axes via `ax`.
 
 ```{code-cell} ipython3
 fig, ax = plt.subplots(figsize=(10, 10))
@@ -156,6 +158,7 @@ explained_variance_ratio_plot(pca, ax=ax)
 ```
 
 ```{seealso}
+- {doc}`distribution_on_morphospace` for confidence ellipses and convex hulls
 - {doc}`shape_variation` for visualizing shape changes along component axes
 - {doc}`non_pca_reducer` for using KernelPCA and other non-PCA reducers
 - {doc}`../../explanation/visualization` for the reconstruction pipeline design

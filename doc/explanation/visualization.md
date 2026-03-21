@@ -31,15 +31,17 @@ and the user does not need to write the reconstruction loop manually.
 Each pipeline stage follows the same two-level pattern:
 
 - A convenience parameter (`reducer`, `descriptor`) accepts a fitted estimator object and auto-extracts the necessary callable and metadata via duck-typing.
-- Override parameters (`reducer_inverse_transform`, `descriptor_inverse_transform`, `explained_variance`, `n_components`) allow direct control when the estimator does not follow the standard interface.
+- Override parameters (`reducer_inverse_transform`, `descriptor_inverse_transform`, `explained_variance`, `component_std`, `n_components`) allow direct control when the estimator does not follow the standard interface.
 
 For example, `reducer=pca` extracts `pca.inverse_transform`, `pca.explained_variance_`, and `pca.n_components_` automatically.
-For `KernelPCA`, which stores eigenvalues differently and may lack some attributes, the override parameters provide a clean escape hatch:
+For `KernelPCA`, which stores eigenvalues differently and may lack some attributes, the override parameters provide a clean escape hatch.
+`component_std` accepts the per-component standard deviation directly, avoiding the need to know how a reducer's eigenvalues relate to variance:
 
 ```python
+scores = kpca.transform(coef)
 shape_variation_plot(
     reducer_inverse_transform=kpca.inverse_transform,
-    explained_variance=kpca.eigenvalues_,
+    component_std=np.std(scores, axis=0),
     n_components=kpca.n_components,
     descriptor=efa,
 )
@@ -65,11 +67,11 @@ The naming follows a `{geometry}_{display_dimension}` convention.
 
 ### Auto-detection
 
-When `shape_type="auto"` (the default), the type is inferred from the output of the descriptor inverse transform:
+When `shape_type="auto"` (the default), the type is inferred from a single specimen (batch dimension removed) of the descriptor inverse transform output:
 
-- 4D array -> `surface_3d`
-- 3D array with last dimension 2 -> `curve_2d`
-- 3D array with last dimension 3 -> `curve_3d`
+- `(m, n, 3)` (ndim=3) -> `surface_3d`
+- `(t, 2)` (ndim=2, last dim 2) -> `curve_2d`
+- `(t, k)` (ndim=2, last dim >= 3) -> `curve_3d`
 - No descriptor (identity/GPA case) with `n_dim=2` -> `landmarks_2d`
 - No descriptor (identity/GPA case) with `n_dim=3` -> `landmarks_3d`
 

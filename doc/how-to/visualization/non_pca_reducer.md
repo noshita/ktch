@@ -11,9 +11,18 @@ kernelspec:
 
 # Use Non-PCA Reducers
 
-Use KernelPCA or other reducers with ktch plot functions via explicit override parameters.
+Use KernelPCA or other reducers with ktch plot functions via explicit
+override parameters.
 
-The `reducer` convenience parameter targets PCA-compatible estimators. For reducers with different attribute names (e.g., `KernelPCA` stores eigenvalues in `eigenvalues_` instead of `explained_variance_`), pass the override parameters directly.
+The `reducer` convenience parameter targets PCA-compatible estimators.
+For reducers with different attribute names (e.g., `KernelPCA` stores
+eigenvalues in `eigenvalues_` instead of `explained_variance_`), pass
+the override parameters directly:
+
+- `reducer_inverse_transform`: callable that maps scores back to coefficient space
+- `n_components`: total number of components
+- `component_std`: per-component standard deviation for SD scaling (`shape_variation_plot` only)
+- `descriptor_inverse_transform`: callable that maps coefficients to shape coordinates (optional; can also use `descriptor`)
 
 ## Setup
 
@@ -39,10 +48,15 @@ kpca.fit(coef)
 
 ## Shape variation with KernelPCA
 
+Compute the per-component standard deviation from the actual scores
+and pass it via `component_std`. This works for any reducer:
+
 ```{code-cell} ipython3
+scores = kpca.transform(coef)
+
 fig = shape_variation_plot(
     reducer_inverse_transform=kpca.inverse_transform,
-    explained_variance=kpca.eigenvalues_,
+    component_std=np.std(scores, axis=0),
     n_components=kpca.n_components,
     descriptor=efa,
     components=(0, 1, 2),
