@@ -155,4 +155,10 @@ class TestRenderLandmarks3d:
         coords = np.random.default_rng(0).standard_normal((10, 3))
         links = [[0, 1], [1, 2]]
         _render_landmarks_3d(coords, ax, links=links)
-        assert len(ax.lines) == 2
+        from mpl_toolkits.mplot3d.art3d import Line3DCollection
+
+        line_cols = [c for c in ax.collections if isinstance(c, Line3DCollection)]
+        assert len(line_cols) == 1
+        # _segments3d is populated immediately; get_paths() requires draw().
+        fig.canvas.draw()
+        assert len(line_cols[0].get_paths()) == 2

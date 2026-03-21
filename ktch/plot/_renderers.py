@@ -177,16 +177,14 @@ def _render_landmarks_3d(coords, ax, *, color="gray", alpha=1.0, links=None, **k
         Forwarded to ``ax.scatter`` (except ``s`` which defaults to 10).
     """
     if links:
-        for link in links:
-            if all(i < len(coords) for i in link):
-                pts = coords[list(link)]
-                ax.plot(
-                    pts[:, 0],
-                    pts[:, 1],
-                    pts[:, 2],
-                    color=color,
-                    alpha=alpha,
-                )
+        from mpl_toolkits.mplot3d.art3d import Line3DCollection
+
+        segments = [
+            coords[list(link)] for link in links if all(i < len(coords) for i in link)
+        ]
+        if segments:
+            lc = Line3DCollection(segments, colors=color, alpha=alpha)
+            ax.add_collection3d(lc)
     s = kw.pop("s", 10)
     ax.scatter(
         coords[:, 0],

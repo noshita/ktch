@@ -1,4 +1,4 @@
-"""Plot functions for PCA results."""
+"""Plot functions for dimensionality reduction analysis."""
 
 # Copyright 2025 Koji Noshita
 #
@@ -34,6 +34,7 @@ from ._renderers import _resolve_render_kw
 
 def explained_variance_ratio_plot(
     pca: Any,
+    *,
     n_components: int | None = None,
     ax: object | None = None,
     verbose: bool = False,
@@ -117,6 +118,7 @@ def shape_variation_plot(
     descriptor_inverse_transform: Callable[[np.ndarray], np.ndarray] | None = None,
     reducer_inverse_transform: Callable[[np.ndarray], np.ndarray] | None = None,
     explained_variance: np.ndarray | None = None,
+    component_std: np.ndarray | None = None,
     n_components: int | None = None,
     components: Sequence[int] = (0, 1, 2),
     sd_values: Sequence[float] = (-2.0, -1.0, 0.0, 1.0, 2.0),
@@ -163,8 +165,13 @@ def shape_variation_plot(
         Converts low-dimensional scores to coefficient space. Overrides
         ``reducer.inverse_transform``.
     explained_variance : ndarray, optional
-        Variance per component for SD calculation. Overrides
-        ``reducer.explained_variance_``.
+        Variance per component. Used to compute per-component SD as
+        ``sqrt(explained_variance)``. Overrides ``reducer.explained_variance_``.
+        Ignored when ``component_std`` is given.
+    component_std : ndarray, optional
+        Per-component standard deviation. Takes precedence over
+        ``explained_variance``. For non-PCA reducers, compute from
+        scores: ``np.std(reducer.transform(data), axis=0)``.
     n_components : int, optional
         Total number of components. Overrides ``reducer.n_components_``.
     components : sequence of int
@@ -211,18 +218,19 @@ def shape_variation_plot(
 
     Notes
     -----
-    When ``shape_type="auto"`` (the default), the type is inferred from the
-    output of the descriptor inverse transform:
+    When ``shape_type="auto"`` (the default), the type is inferred from a
+    single specimen (batch dimension removed) of the descriptor inverse
+    transform output:
 
-    - 4-D array -> ``"surface_3d"``
-    - 3-D array with last dimension 2 -> ``"curve_2d"``
-    - 3-D array with last dimension 3 -> ``"curve_3d"``
+    - ``(m, n, 3)`` (ndim=3) -> ``"surface_3d"``
+    - ``(t, 2)`` (ndim=2, last dim 2) -> ``"curve_2d"``
+    - ``(t, k)`` (ndim=2, last dim >= 3) -> ``"curve_3d"``
     - No descriptor (identity / GPA case) with ``n_dim=2`` -> ``"landmarks_2d"``
     - No descriptor (identity / GPA case) with ``n_dim=3`` -> ``"landmarks_3d"``
 
-    For 3-D arrays with ``shape[-1] == 3``, auto-detection chooses
-    ``"curve_3d"``. If the data represents landmarks, specify
-    ``shape_type="landmarks_3d"`` explicitly.
+    For per-specimen shapes with ``shape[-1] == 3`` and ndim=2,
+    auto-detection chooses ``"curve_3d"``. If the data represents
+    landmarks, specify ``shape_type="landmarks_3d"`` explicitly.
 
     See Also
     --------
@@ -249,9 +257,20 @@ def shape_variation_plot(
             reducer_inverse_transform,
             explained_variance,
             n_components,
-            require_variance=True,
+            require_variance=False,
         )
     )
+
+    # Resolve per-component standard deviation
+    if component_std is not None:
+        _component_std = np.asarray(component_std, dtype=float)
+    elif explained_variance is not None:
+        _component_std = np.sqrt(np.asarray(explained_variance, dtype=float))
+    else:
+        raise ValueError(
+            "Either component_std, explained_variance, or a reducer with "
+            "explained_variance_ attribute must be provided"
+        )
     descriptor_inverse_transform, n_dim = _resolve_descriptor_params(
         descriptor,
         descriptor_inverse_transform,
@@ -296,7 +315,7 @@ def shape_variation_plot(
     )
 
     for i, comp_idx in enumerate(components):
-        sd = np.sqrt(explained_variance[comp_idx])
+        sd = _component_std[comp_idx]
         row_axes = []
         for j, sd_val in enumerate(sd_values):
             score = np.zeros(n_components)

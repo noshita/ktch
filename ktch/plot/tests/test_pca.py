@@ -44,55 +44,6 @@ def _close_figures():
     plt.close("all")
 
 
-# ---------------------------------------------------------------------------
-# Mock descriptors for shape_variation_plot tests
-# ---------------------------------------------------------------------------
-
-
-class _MockDescriptor2D:
-    """Mock 2D curve descriptor (EFA-like)."""
-
-    def inverse_transform(self, X):
-        n = X.shape[0]
-        t = np.linspace(0, 2 * np.pi, 50, endpoint=False)
-        coords = np.zeros((n, 50, 2))
-        for i in range(n):
-            coords[i, :, 0] = np.cos(t)
-            coords[i, :, 1] = np.sin(t)
-        return coords
-
-
-class _MockDescriptor3DCurve:
-    """Mock 3D curve descriptor."""
-
-    def inverse_transform(self, X):
-        n = X.shape[0]
-        t = np.linspace(0, 2 * np.pi, 50, endpoint=False)
-        coords = np.zeros((n, 50, 3))
-        for i in range(n):
-            coords[i, :, 0] = np.cos(t)
-            coords[i, :, 1] = np.sin(t)
-            coords[i, :, 2] = t / (2 * np.pi)
-        return coords
-
-
-class _MockDescriptor3DSurface:
-    """Mock 3D surface descriptor (SHA-like)."""
-
-    def inverse_transform(self, X):
-        n = X.shape[0]
-        m, k = 10, 20
-        theta = np.linspace(0, np.pi, m)
-        phi = np.linspace(0, 2 * np.pi, k)
-        T, P = np.meshgrid(theta, phi, indexing="ij")
-        coords = np.zeros((n, m, k, 3))
-        for i in range(n):
-            coords[i, :, :, 0] = np.sin(T) * np.cos(P)
-            coords[i, :, :, 1] = np.sin(T) * np.sin(P)
-            coords[i, :, :, 2] = np.cos(T)
-        return coords
-
-
 # ===========================================================================
 # explained_variance_ratio_plot
 # ===========================================================================
@@ -156,40 +107,36 @@ class TestExplainedVarianceRatioPlot:
 class TestShapeVariationPlotSmoke:
     """Smoke tests: each shape_type completes without error."""
 
-    def test_curve_2d_auto(self, fitted_pca):
-        desc = _MockDescriptor2D()
+    def test_curve_2d_auto(self, fitted_pca, mock_descriptor_2d):
         fig = shape_variation_plot(
             fitted_pca,
-            descriptor=desc,
+            descriptor=mock_descriptor_2d,
             components=(0, 1),
         )
         assert isinstance(fig, mpl.figure.Figure)
 
-    def test_curve_2d_explicit(self, fitted_pca):
-        desc = _MockDescriptor2D()
+    def test_curve_2d_explicit(self, fitted_pca, mock_descriptor_2d):
         fig = shape_variation_plot(
             fitted_pca,
-            descriptor=desc,
+            descriptor=mock_descriptor_2d,
             shape_type="curve_2d",
             components=(0,),
         )
         assert isinstance(fig, mpl.figure.Figure)
 
-    def test_curve_3d(self, fitted_pca):
-        desc = _MockDescriptor3DCurve()
+    def test_curve_3d(self, fitted_pca, mock_descriptor_3d_curve):
         fig = shape_variation_plot(
             fitted_pca,
-            descriptor=desc,
+            descriptor=mock_descriptor_3d_curve,
             shape_type="curve_3d",
             components=(0,),
         )
         assert isinstance(fig, mpl.figure.Figure)
 
-    def test_surface_3d(self, fitted_pca):
-        desc = _MockDescriptor3DSurface()
+    def test_surface_3d(self, fitted_pca, mock_descriptor_3d_surface):
         fig = shape_variation_plot(
             fitted_pca,
-            descriptor=desc,
+            descriptor=mock_descriptor_3d_surface,
             shape_type="surface_3d",
             components=(0,),
         )
@@ -234,35 +181,32 @@ class TestShapeVariationPlotSmoke:
 
 
 class TestShapeVariationPlotStructure:
-    def test_subplot_count(self, fitted_pca):
-        desc = _MockDescriptor2D()
+    def test_subplot_count(self, fitted_pca, mock_descriptor_2d):
         components = (0, 1)
         sd_values = (-1.0, 0.0, 1.0)
         fig = shape_variation_plot(
             fitted_pca,
-            descriptor=desc,
+            descriptor=mock_descriptor_2d,
             components=components,
             sd_values=sd_values,
         )
         expected = len(components) * len(sd_values)
         assert len(fig.axes) == expected
 
-    def test_returns_provided_figure(self, fitted_pca):
-        desc = _MockDescriptor2D()
+    def test_returns_provided_figure(self, fitted_pca, mock_descriptor_2d):
         fig_in = plt.figure()
         fig_out = shape_variation_plot(
             fitted_pca,
-            descriptor=desc,
+            descriptor=mock_descriptor_2d,
             components=(0,),
             fig=fig_in,
         )
         assert fig_out is fig_in
 
-    def test_3d_projection_for_surface(self, fitted_pca):
-        desc = _MockDescriptor3DSurface()
+    def test_3d_projection_for_surface(self, fitted_pca, mock_descriptor_3d_surface):
         fig = shape_variation_plot(
             fitted_pca,
-            descriptor=desc,
+            descriptor=mock_descriptor_3d_surface,
             shape_type="surface_3d",
             components=(0,),
             sd_values=(0.0,),
@@ -271,37 +215,58 @@ class TestShapeVariationPlotStructure:
 
 
 class TestShapeVariationPlotOverrides:
-    def test_explicit_reducer_overrides(self, fitted_pca):
-        desc = _MockDescriptor2D()
+    def test_explicit_reducer_overrides(self, fitted_pca, mock_descriptor_2d):
         fig = shape_variation_plot(
             reducer_inverse_transform=fitted_pca.inverse_transform,
             explained_variance=fitted_pca.explained_variance_,
             n_components=fitted_pca.n_components_,
-            descriptor=desc,
+            descriptor=mock_descriptor_2d,
             components=(0,),
         )
         assert isinstance(fig, mpl.figure.Figure)
 
-    def test_custom_render_fn(self, fitted_pca):
-        desc = _MockDescriptor2D()
-
+    def test_custom_render_fn(self, fitted_pca, mock_descriptor_2d):
         def my_renderer(coords, ax, **kw):
             kw.pop("links", None)
             ax.fill(coords[:, 0], coords[:, 1], color=kw.get("color", "gray"))
 
         fig = shape_variation_plot(
             fitted_pca,
-            descriptor=desc,
+            descriptor=mock_descriptor_2d,
             render_fn=my_renderer,
             components=(0,),
         )
         assert isinstance(fig, mpl.figure.Figure)
 
-    def test_descriptor_inverse_transform_override(self, fitted_pca):
-        desc = _MockDescriptor2D()
+    def test_descriptor_inverse_transform_override(self, fitted_pca, mock_descriptor_2d):
         fig = shape_variation_plot(
             fitted_pca,
-            descriptor_inverse_transform=desc.inverse_transform,
+            descriptor_inverse_transform=mock_descriptor_2d.inverse_transform,
+            components=(0,),
+        )
+        assert isinstance(fig, mpl.figure.Figure)
+
+    def test_component_std_override(self, fitted_pca, mock_descriptor_2d):
+        std = np.sqrt(fitted_pca.explained_variance_)
+        fig = shape_variation_plot(
+            reducer_inverse_transform=fitted_pca.inverse_transform,
+            component_std=std,
+            n_components=fitted_pca.n_components_,
+            descriptor=mock_descriptor_2d,
+            components=(0,),
+        )
+        assert isinstance(fig, mpl.figure.Figure)
+
+    def test_component_std_skips_explained_variance(self, mock_descriptor_2d):
+        """component_std should work without explained_variance."""
+        rng = np.random.default_rng(42)
+        X = rng.standard_normal((50, 5))
+        pca = PCA(n_components=5).fit(X)
+        fig = shape_variation_plot(
+            reducer_inverse_transform=pca.inverse_transform,
+            component_std=np.ones(5) * 0.1,
+            n_components=5,
+            descriptor=mock_descriptor_2d,
             components=(0,),
         )
         assert isinstance(fig, mpl.figure.Figure)
@@ -312,8 +277,8 @@ class TestShapeVariationPlotErrors:
         with pytest.raises(ValueError, match="reducer"):
             shape_variation_plot(components=(0,))
 
-    def test_missing_explained_variance(self):
-        with pytest.raises(ValueError, match="explained_variance"):
+    def test_missing_variance_and_std(self):
+        with pytest.raises(ValueError, match="component_std.*explained_variance"):
             shape_variation_plot(
                 reducer_inverse_transform=lambda x: x,
                 n_components=5,
@@ -324,21 +289,19 @@ class TestShapeVariationPlotErrors:
         with pytest.raises(ValueError, match="n_dim is required"):
             shape_variation_plot(fitted_pca, components=(0,))
 
-    def test_component_out_of_range(self, fitted_pca):
-        desc = _MockDescriptor2D()
+    def test_component_out_of_range(self, fitted_pca, mock_descriptor_2d):
         with pytest.raises(ValueError, match="Component index"):
             shape_variation_plot(
                 fitted_pca,
-                descriptor=desc,
+                descriptor=mock_descriptor_2d,
                 components=(0, 10),
             )
 
-    def test_invalid_shape_type(self, fitted_pca):
-        desc = _MockDescriptor2D()
+    def test_invalid_shape_type(self, fitted_pca, mock_descriptor_2d):
         with pytest.raises(ValueError, match="Invalid shape_type"):
             shape_variation_plot(
                 fitted_pca,
-                descriptor=desc,
+                descriptor=mock_descriptor_2d,
                 shape_type="invalid",
                 components=(0,),
             )
