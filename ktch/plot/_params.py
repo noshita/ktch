@@ -220,3 +220,61 @@ def _validate_components(
             raise ValueError(
                 f"Component index {idx} is out of range [0, {n_components})"
             )
+
+
+def _resolve_xy_hue(
+    data: Any | None,
+    x: Any | None,
+    y: Any | None,
+    hue: Any | None,
+    hue_order: Any | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray | None, list | None]:
+    """Resolve data/x/y/hue arguments into numpy arrays.
+
+    Parameters
+    ----------
+    data : DataFrame or None
+        Input DataFrame. When provided, *x*, *y*, and *hue* should be
+        column names.
+    x : str or array-like
+        Horizontal axis values.
+    y : str or array-like
+        Vertical axis values.
+    hue : str or array-like or None
+        Grouping variable.
+    hue_order : sequence or None
+        Order for hue levels. If None, sorted unique values are used.
+
+    Returns
+    -------
+    x_arr : ndarray
+    y_arr : ndarray
+    hue_arr : ndarray or None
+    categories : list or None
+        Ordered unique hue values.
+    """
+    if x is None or y is None:
+        raise ValueError("x and y are required")
+
+    if data is not None:
+        x_arr = np.asarray(data[x])
+        y_arr = np.asarray(data[y])
+        hue_arr = np.asarray(data[hue]) if hue is not None else None
+    else:
+        x_arr = np.asarray(x)
+        y_arr = np.asarray(y)
+        hue_arr = np.asarray(hue) if hue is not None else None
+
+    if hue_arr is not None:
+        if hue_order is not None:
+            categories = list(hue_order)
+        elif data is not None and hasattr(data[hue], "cat"):
+            categories = list(data[hue].cat.categories)
+        elif data is not None:
+            categories = list(data[hue].unique())
+        else:
+            categories = list(dict.fromkeys(hue_arr))
+    else:
+        categories = None
+
+    return x_arr, y_arr, hue_arr, categories

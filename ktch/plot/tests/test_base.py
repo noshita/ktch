@@ -34,14 +34,28 @@ class TestBaseModuleStructure:
         assert hasattr(_base, "require_dependencies")
         assert callable(_base.require_dependencies)
 
-    def test_lazy_attributes_accessible(self):
-        """Test that plt, sns, go, px are accessible as lazy attributes."""
+    def test_module_has_check_import(self):
+        """Test that _base.py exposes _check_import helper."""
         from ktch.plot import _base
 
-        # These should be accessible via __getattr__ without raising
-        for attr in ("plt", "sns", "go", "px"):
-            # Should not raise AttributeError
-            getattr(_base, attr)
+        assert hasattr(_base, "_check_import")
+        assert callable(_base._check_import)
+
+
+class TestCheckImport:
+    """Test the _check_import helper."""
+
+    def test_available_package(self):
+        """Test _check_import returns True for available packages."""
+        from ktch.plot._base import _check_import
+
+        assert _check_import("numpy") is True
+
+    def test_missing_package(self):
+        """Test _check_import returns False for missing packages."""
+        from ktch.plot._base import _check_import
+
+        assert _check_import("nonexistent_package_xyz") is False
 
 
 class TestRequireDependencies:
@@ -63,13 +77,13 @@ class TestRequireDependencies:
         """Test require_dependencies raises error for missing dependencies."""
         from ktch.plot import _base
 
-        with patch.dict(_base._DEPS, {"matplotlib": None}):
+        with patch.object(
+            _base, "_check_import", side_effect=lambda n: n != "matplotlib"
+        ):
             with pytest.raises(ImportError, match="matplotlib"):
                 _base.require_dependencies("matplotlib")
 
-        with patch.dict(
-            _base._DEPS, {"matplotlib": None, "seaborn": None}
-        ):
+        with patch.object(_base, "_check_import", return_value=False):
             with pytest.raises(
                 ImportError, match="matplotlib.*seaborn|seaborn.*matplotlib"
             ):
@@ -79,7 +93,9 @@ class TestRequireDependencies:
         """Test that error messages provide installation instructions."""
         from ktch.plot import _base
 
-        with patch.dict(_base._DEPS, {"matplotlib": None}):
+        with patch.object(
+            _base, "_check_import", side_effect=lambda n: n != "matplotlib"
+        ):
             with pytest.raises(ImportError) as exc_info:
                 _base.require_dependencies("matplotlib")
 
@@ -112,21 +128,18 @@ class TestRequireDependencies:
 
 
 class TestPlotlySupport:
-    """Test plotly support including both go and px."""
+    """Test plotly support."""
 
-    def test_plotly_imports(self):
-        """Test that plotly imports work correctly when installed."""
-        from ktch.plot import _base
+    def test_plotly_is_valid_dep(self):
+        """Test that 'plotly' is a recognized dependency name."""
+        from ktch.plot._base import require_dependencies
 
+        # Should not raise ValueError (plotly is a valid name).
+        # ImportError is expected if plotly is not installed.
         try:
-            import plotly.express as px_direct
-            import plotly.graph_objects as go_direct
-
-            assert _base.go is go_direct
-            assert _base.px is px_direct
+            require_dependencies("plotly")
         except ImportError:
-            assert _base.go is None
-            assert _base.px is None
+            pass
 
 
 class TestSubmoduleIntegration:
@@ -152,12 +165,8 @@ class TestSubmoduleIntegration:
         mock_pca.n_components_ = 3
         mock_pca.explained_variance_ratio_ = np.array([0.5, 0.3, 0.2])
 
-        with patch.dict(
-            _base._DEPS, {"matplotlib": None, "seaborn": None}
-        ):
-            with pytest.raises(
-                ImportError, match="matplotlib.*seaborn|seaborn.*matplotlib"
-            ):
+        with patch.object(_base, "_check_import", return_value=False):
+            with pytest.raises(ImportError):
                 _pca.explained_variance_ratio_plot(mock_pca)
 
     def test_kriging_function_requires_deps(self):
@@ -167,7 +176,9 @@ class TestSubmoduleIntegration:
         x_reference = np.array([[0, 0], [1, 0], [0, 1]])
         x_target = np.array([[0.1, 0], [1, 0.1], [0, 1]])
 
-        with patch.dict(_base._DEPS, {"matplotlib": None}):
+        with patch.object(
+            _base, "_check_import", side_effect=lambda n: n != "matplotlib"
+        ):
             with pytest.raises(ImportError, match="matplotlib"):
                 _kriging.tps_grid_2d_plot(x_reference, x_target)
 

@@ -9,6 +9,7 @@ Guides for visualizing morphometric data and results.
     :maxdepth: 1
 
     morphospace
+    distribution_on_morphospace
     shape_variation
     non_pca_reducer
     tps_grid

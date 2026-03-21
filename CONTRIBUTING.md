@@ -131,8 +131,10 @@ without matplotlib).
 
 #### Pattern: `plot` module
 
-The `plot` module centralizes optional imports in `ktch/plot/_base.py`.
-Other modules in the package use it as follows:
+The `plot` module centralizes optional dependency checks in
+`ktch/plot/_base.py`. Other modules in the package use
+`require_dependencies` as a guard, then import directly inside the
+function body:
 
 ```python
 # ktch/plot/_new_module.py
@@ -140,8 +142,7 @@ from ._base import require_dependencies
 
 def my_plot_function(data, ax=None):
     require_dependencies("matplotlib")
-
-    from ._base import plt  # lazy — resolved on access via __getattr__
+    import matplotlib.pyplot as plt
 
     if ax is None:
         fig, ax = plt.subplots()
@@ -155,11 +156,13 @@ Key rules:
 2. Call `require_dependencies()` at the start of every public function
    that needs optional packages — this gives users a clear error message
    with install instructions
-3. Import library aliases (`plt`, `sns`, `go`, `px`) from `_base` when
-   needed — these are lazily resolved via `__getattr__`
+3. Import the library directly inside the function body after the guard
+   (e.g., `import matplotlib.pyplot as plt`). Python caches modules in
+   `sys.modules`, so repeated imports are effectively free (~100 ns).
+   This pattern gives full IDE autocomplete and type-checker support.
 
-To add a new optional dependency to `_base.py`, update `_VALID_DEPS`,
-`_IMPORT_TARGETS`, and `_ATTR_TO_DEP`.
+To add a new optional dependency to `_base.py`, add its name to
+`_VALID_DEPS`.
 
 #### Pattern: `datasets` module
 
