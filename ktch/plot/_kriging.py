@@ -71,8 +71,11 @@ def tps_grid_2d_plot(
     if ax is None:
         _, ax = plt.subplots()
 
-    x_min, y_min = (1 + outer) * np.min(x_reference, axis=0)
-    x_max, y_max = (1 + outer) * np.max(x_reference, axis=0)
+    ref_min = np.min(x_reference, axis=0)
+    ref_max = np.max(x_reference, axis=0)
+    span = ref_max - ref_min
+    x_min, y_min = ref_min - outer * span
+    x_max, y_max = ref_max + outer * span
 
     w = x_max - x_min
     h = y_max - y_min

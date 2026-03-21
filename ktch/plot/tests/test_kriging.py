@@ -109,3 +109,27 @@ class TestTpsGrid2dPlot:
         x_ref, x_tgt = triangle_configs
         ax = tps_grid_2d_plot(x_ref, x_tgt)
         assert ax.get_aspect() in ("equal", 1.0)
+
+    def test_translated_landmarks(self):
+        """Test that the grid covers all landmarks in non-origin-centered data."""
+        x_ref = np.array([[1.0, 1.0], [2.0, 1.0], [1.5, 2.0]])
+        x_tgt = np.array([[1.05, 1.0], [2.0, 1.05], [1.5, 1.95]])
+        ax = tps_grid_2d_plot(x_ref, x_tgt)
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        assert xlim[0] < 1.0, "Grid should extend below min x landmark"
+        assert xlim[1] > 2.0, "Grid should extend above max x landmark"
+        assert ylim[0] < 1.0, "Grid should extend below min y landmark"
+        assert ylim[1] > 2.0, "Grid should extend above max y landmark"
+
+    def test_negative_landmarks(self):
+        """Test with all-negative coordinate landmarks."""
+        x_ref = np.array([[-3.0, -2.0], [-1.0, -2.0], [-2.0, -1.0]])
+        x_tgt = np.array([[-2.95, -2.0], [-1.0, -1.95], [-2.0, -1.05]])
+        ax = tps_grid_2d_plot(x_ref, x_tgt)
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        assert xlim[0] < -3.0, "Grid should extend below min x landmark"
+        assert xlim[1] > -1.0, "Grid should extend above max x landmark"
+        assert ylim[0] < -2.0, "Grid should extend below min y landmark"
+        assert ylim[1] > -1.0, "Grid should extend above max y landmark"
