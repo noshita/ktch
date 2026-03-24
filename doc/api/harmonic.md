@@ -17,6 +17,7 @@
    :toctree: generated/
    :template: base.rst
 
+   harmonic.DiskHarmonicAnalysis
    harmonic.EllipticFourierAnalysis
    harmonic.SphericalHarmonicAnalysis
 ```
@@ -30,7 +31,9 @@
    :toctree: generated/
    :template: base.rst
    
+   harmonic.disk_harm
    harmonic.rotation_matrix_2d
    harmonic.spharm
+   harmonic.xy2polar
    harmonic.xyz2spherical
 ```

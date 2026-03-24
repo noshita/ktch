@@ -17,6 +17,7 @@ The :mod:`ktch.harmonic` module implements harmonic-based morphometrics.
 # limitations under the License.
 
 # from ._polar_Fourier_analysis import PFA
+from ._disk_harmonic_analysis import DiskHarmonicAnalysis, disk_harm, xy2polar
 from ._elliptic_fourier_analysis import EllipticFourierAnalysis, rotation_matrix_2d
 from ._spherical_harmonic_analysis import (
     SphericalHarmonicAnalysis,
@@ -25,6 +26,9 @@ from ._spherical_harmonic_analysis import (
 )
 
 __all__ = [
+    "DiskHarmonicAnalysis",
+    "disk_harm",
+    "xy2polar",
     "EllipticFourierAnalysis",
     "rotation_matrix_2d",
     "SphericalHarmonicAnalysis",
