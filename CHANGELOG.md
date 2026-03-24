@@ -1,5 +1,74 @@
 # Changelog
 
+## [0.9.0](https://github.com/noshita/ktch/compare/v0.8.1...v0.9.0) (2026-03-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **io:** ✨ return dataclass from read_chc and read_tps
+* 
+
+### Features
+
+* ✨  add component_std parameter and improve API consistency ([a7c6ad5](https://github.com/noshita/ktch/commit/a7c6ad5fbc3a58199170883e612450bbd08b2101))
+* ✨ add DiskHarmonicAnalysis class ([5847f60](https://github.com/noshita/ktch/commit/5847f60bed6b17badce7ef6c890b352f8b5797ad))
+* ✨ add private OFF file parser for mesh datasets ([eb1aa5a](https://github.com/noshita/ktch/commit/eb1aa5aa7d66851e2c3aa6a32e671d42aa880699))
+* ✨ add surface_leaf_bending dataset ([88b830e](https://github.com/noshita/ktch/commit/88b830e41e3143cef68c49d54125762241de36bc))
+* ✨ area-based normalization of 2D EFA ([13e8f7f](https://github.com/noshita/ktch/commit/13e8f7f7f06ba4d11370e9b1115b56ebf7a90cec)), closes [#138](https://github.com/noshita/ktch/issues/138)
+* ✨ confidence_ellipse_plot and convex_hull_plot ([722153f](https://github.com/noshita/ktch/commit/722153f191233cc4e071809153599ec470dbc392))
+* **io:** ✨ add I/O for .nef file ([294bf3d](https://github.com/noshita/ktch/commit/294bf3d0cabba645e94854f5686e2da6802b5e7f))
+* **io:** ✨ add MorphoData protocol and standardize data containers ([85f82d2](https://github.com/noshita/ktch/commit/85f82d21e440258e1d986e72391cd9822155c54d))
+* **io:** ✨ return dataclass from read_chc and read_tps ([3d18190](https://github.com/noshita/ktch/commit/3d18190f874031bef59289466d0e0440c6a0e6ed))
+* remove deprecated APIs and require NumPy&gt;=2.0, pandas&gt;=3.0 for v0.9 ([d6dc2c2](https://github.com/noshita/ktch/commit/d6dc2c2b36d59e19c36d54090cfb40be33c4aea6))
+
+
+### Bug Fixes
+
+* 🐛  TPS grid bounding box ([b9780c3](https://github.com/noshita/ktch/commit/b9780c3e65925ad139d66c694b11644dde1ff654))
+* 🐛 add input validation and improve error messages ([df39891](https://github.com/noshita/ktch/commit/df39891aa9126ba5cf18d3e0b2f0f5863b23011e))
+* 🐛 degeneration when area_per_pixel = 0 ([561179d](https://github.com/noshita/ktch/commit/561179d9fb96c33c975adc36d97bd47bc0ea1c98))
+* 🐛 fix ChainCodeData monkey-patch and __all__ recursion bug ([d9f1e25](https://github.com/noshita/ktch/commit/d9f1e25bb2caddf7dbc9c64c2ea80624de837997))
+* 🐛 fix float equality in pole detection and dataclass semantics ([4ed8441](https://github.com/noshita/ktch/commit/4ed844109d860f927755c965b8c8abcf6eaa3ba3))
+* 🐛 I/O validation ([eb42f2f](https://github.com/noshita/ktch/commit/eb42f2f38f762c036560d52dd947dcd23dd6782a))
+* 🐛 improve numerical robustness, input validation, and convergence safety ([5f7a0be](https://github.com/noshita/ktch/commit/5f7a0bed2361e56472b228000c7195cf5f7aa0de))
+* **docs:** 🐛 add stable version fallback and update release procedure ([f6d1210](https://github.com/noshita/ktch/commit/f6d12103e76c71e797512dfb5c1af274e9724577))
+* **docs:** 🐛 fix SEO issues preventing Google Search Console indexing ([275d625](https://github.com/noshita/ktch/commit/275d625dbd260b6c7c218b15cd9b8be648e89a9e))
+
+
+### Documentation
+
+* 📚  reorganize development documentation ([c9db6c3](https://github.com/noshita/ktch/commit/c9db6c352437a4382e6ce11c239284df45df68a8))
+* 📚 add Disk Harmonic Analysis tutorial ([ac51a30](https://github.com/noshita/ktch/commit/ac51a305d85fd5c88fe983dc16d691ba773b87c0))
+* 📚 exclude low-value pages from sitemap and add noindex ([8e1558c](https://github.com/noshita/ktch/commit/8e1558cc86d034303f22e605652b1d8b6a2fcd4d))
+* 📚 improve how-to for visualization ([4445f9d](https://github.com/noshita/ktch/commit/4445f9d12b02f2325a03c2110e4a2c8dc3d76cf5))
+* 📚 update CONTRIBUTING.md ([cb49c26](https://github.com/noshita/ktch/commit/cb49c26c3fe5021b657fa3d58489c9d3a81364a0))
+* 📚 update versions.json for v0.8.1 ([579a7b4](https://github.com/noshita/ktch/commit/579a7b492f2ba40cf038261ccf225069fdb9f061))
+
+
+### Miscellaneous Chores
+
+* 🔧  improve CI ([6a84182](https://github.com/noshita/ktch/commit/6a841823337b3bd98304be934431bd6a6a69c9e1))
+* 🔧 improve verbose output and migrate tests to default_rng ([bbb84b9](https://github.com/noshita/ktch/commit/bbb84b91158c733003073f45676288209ef8196d))
+* 🔧 raise numpy lower bound from 1.23 to 1.26 ([3f0588f](https://github.com/noshita/ktch/commit/3f0588f6461330bc74421fcff890fdf886c06304))
+* 🔧 releasing ([7368293](https://github.com/noshita/ktch/commit/7368293a8f5e3adb08fef7f83052c1e0a68b4cbc))
+* 🔧 update requirements.txt ([c4103ff](https://github.com/noshita/ktch/commit/c4103ff764a0d4d44cd1765ff3e37f54c0a42ab2))
+* **ci:** 🔧 add Disable notebook execution cache in documentation.yaml ([ffb64a9](https://github.com/noshita/ktch/commit/ffb64a9dcef2def8075a19ac7ba4379003cafa9e))
+* **deps-dev:** bump sphinx-autobuild from 2024.10.3 to 2025.8.25 ([475d42a](https://github.com/noshita/ktch/commit/475d42a376eacbf5dd4021ab71e5c2f47cc89d6a))
+* **deps-dev:** bump sphinx-autobuild from 2024.10.3 to 2025.8.25 ([5699637](https://github.com/noshita/ktch/commit/569963736e0ed7d06c1e0c938e5632ef0bf57219))
+* **deps:** bump joblib from 1.5.2 to 1.5.3 ([4ccf1dc](https://github.com/noshita/ktch/commit/4ccf1dc45108d5ddc76888fc1347bfd285ebef49))
+* **deps:** bump joblib from 1.5.2 to 1.5.3 ([91f2b82](https://github.com/noshita/ktch/commit/91f2b8272ae5b602acc292ed53f82b1a212e48fc))
+* **deps:** bump tornado from 6.5.4 to 6.5.5 ([10544c2](https://github.com/noshita/ktch/commit/10544c264bd2655d3a7d7f568126b5e3fc90d37d))
+* **deps:** bump tornado from 6.5.4 to 6.5.5 ([dbbe90c](https://github.com/noshita/ktch/commit/dbbe90c4ae68ced4b1413698d3edf5636205d856))
+* **deps:** bump tzdata from 2025.2 to 2025.3 ([97865f4](https://github.com/noshita/ktch/commit/97865f44ba6a24447d83c2abf51138d7145ee929))
+* **deps:** bump tzdata from 2025.2 to 2025.3 ([7040aa3](https://github.com/noshita/ktch/commit/7040aa38c1a8dc43327c1fab095267c839bc090a))
+
+
+### Code Refactoring
+
+* ♻️  remove redundant degenerate guard from 3D EFA ([e206357](https://github.com/noshita/ktch/commit/e2063571d0f090012ef22aeda01fd46cad1984dc))
+* ♻️ remove dead code and extract named constants ([64f2acc](https://github.com/noshita/ktch/commit/64f2acc2861e146d6e1b3351481248f90102be40))
+* **io:** ♻️ improve chain code I/O ([75336a9](https://github.com/noshita/ktch/commit/75336a9769fa5deb7ae0fb9bf93ed26fe46fde41))
+
 ## [0.8.1](https://github.com/noshita/ktch/compare/v0.8.0...v0.8.1) (2026-03-10)
 
 
