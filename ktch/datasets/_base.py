@@ -406,6 +406,152 @@ def load_outline_leaf_bending(*, as_frame: bool = False) -> Bunch:
     )
 
 
+def load_surface_leaf_bending(
+    *,
+    return_paths: bool = False,
+    as_frame: bool = False,
+    version: str | None = None,
+) -> Bunch:
+    """Load and return the synthetic 3D leaf bending surface dataset.
+
+    This dataset contains 3D surface meshes of synthetic wheat-like leaves
+    with bending deformation, corresponding to the outline dataset
+    :func:`load_outline_leaf_bending`.  Each specimen consists of a surface
+    mesh and a disk parameterization mesh (unit disk, z=0), stored as OFF
+    files.
+
+    The data is downloaded from a remote server on first use and cached
+    locally.
+
+    ============================   ==================================
+    Specimens                      60
+    Mesh format                    OFF (Object File Format)
+    Mesh types                     surface mesh + parameter mesh
+    Coordinate dimensionality      3
+    Total size                     ~77 MB (zip)
+    ============================   ==================================
+
+    Parameters
+    ----------
+    return_paths : bool, default=False
+        If True, return file paths to the OFF files instead of loading
+        them as numpy arrays.  Useful for large datasets or when using
+        external mesh libraries such as meshio.
+    as_frame : bool, default=False
+        If True, the metadata is returned as a pandas DataFrame.
+        Otherwise, it is returned as a dict.
+    version : str, optional
+        The dataset version to load (e.g., "1").  If None, uses the
+        default version for the current ktch release.
+
+    Returns
+    -------
+    data : :class:`~sklearn.utils.Bunch`
+        Dictionary-like object, with the following attributes.
+
+        vertices : list of ndarray of shape (n_vertices_i, 3)
+            Surface mesh vertex coordinates for each specimen.
+            Only present when ``return_paths=False``.
+        faces : list of ndarray of shape (n_faces_i, 3)
+            Surface mesh triangle indices for each specimen.
+            Only present when ``return_paths=False``.
+        param_vertices : list of ndarray of shape (n_vertices_i, 3)
+            Parameter mesh vertex coordinates (on the unit disk, z=0)
+            for each specimen.  Only present when ``return_paths=False``.
+        param_faces : list of ndarray of shape (n_faces_i, 3)
+            Parameter mesh triangle indices for each specimen.
+            Only present when ``return_paths=False``.
+        surface_paths : list of str
+            Paths to the surface mesh OFF files.  Only present when
+            ``return_paths=True``.
+        param_paths : list of str
+            Paths to the parameter mesh OFF files.  Only present when
+            ``return_paths=True``.
+        meta : dict or DataFrame
+            Metadata containing bending parameters for each specimen.
+            If ``as_frame=True``, returns a pandas DataFrame.
+        DESCR : str
+            The full description of the dataset.
+        data_dir : str
+            Path to the directory containing the extracted data.
+        version : str
+            The version of the dataset that was loaded.
+
+    Notes
+    -----
+    This function requires the optional dependency ``pooch`` for
+    downloading the dataset.  Install it using: ``pip install ktch[data]``
+
+    Mesh topologies (vertex and face counts) may vary across specimens.
+
+    Examples
+    --------
+    >>> from ktch.datasets import load_surface_leaf_bending  # doctest: +SKIP
+    >>> data = load_surface_leaf_bending()  # doctest: +SKIP
+    >>> len(data.vertices)  # doctest: +SKIP
+    60
+    >>> data.vertices[0].shape  # doctest: +SKIP
+    (8099, 3)
+    >>> data.param_vertices[0][:3, :2]  # unit-disk parameterization  # doctest: +SKIP
+    ...
+    """
+    dataset_name = "surface_leaf_bending"
+    version = _resolve_dataset_version(dataset_name, version)
+
+    descr_file_name = "data_surface_leaf_bending.rst"
+
+    archive_path = _fetch_remote_dataset(
+        dataset_name, version, "surface_leaf_bending.zip"
+    )
+    data_dir = Path(archive_path).parent / "surface_leaf_bending"
+
+    if not data_dir.exists():
+        with zipfile.ZipFile(archive_path, "r") as zip_ref:
+            _safe_extractall(zip_ref, data_dir.parent)
+
+    # Load metadata and description
+    meta = pd.read_csv(data_dir / "meta_surface_leaf_bending.csv", index_col=0)
+    fdescr = _load_descr(
+        descr_module=DESCR_MODULE,
+        descr_file_name=descr_file_name,
+    )
+
+    surface_dir = data_dir / "surf_bending_three"
+    param_dir = data_dir / "surf_para_bending_three"
+    filenames = [f"leaf_{i:03d}.off" for i in range(1, len(meta) + 1)]
+
+    surface_file_paths = [surface_dir / f for f in filenames]
+    param_file_paths = [param_dir / f for f in filenames]
+
+    if return_paths:
+        result = Bunch(
+            surface_paths=[str(p) for p in surface_file_paths],
+            param_paths=[str(p) for p in param_file_paths],
+        )
+    else:
+        from ktch.io._off import _read_off
+
+        surf_data = [_read_off(p) for p in surface_file_paths]
+        para_data = [_read_off(p) for p in param_file_paths]
+
+        result = Bunch(
+            vertices=[v for v, _ in surf_data],
+            faces=[f for _, f in surf_data],
+            param_vertices=[v for v, _ in para_data],
+            param_faces=[f for _, f in para_data],
+        )
+
+    if not as_frame:
+        meta = meta.to_dict()
+
+    result.meta = meta
+    result.DESCR = fdescr
+    result.data_dir = str(data_dir)
+    result.version = version
+
+    return result
+
+
 ###########################################################
 #
 #   utility functions

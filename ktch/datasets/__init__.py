@@ -11,6 +11,7 @@ from ._base import (
     load_landmark_trilobite_cephala,
     load_outline_leaf_bending,
     load_outline_mosquito_wings,
+    load_surface_leaf_bending,
 )
 from ._sample_generator import (
     make_landmarks_from_reference,
@@ -22,6 +23,7 @@ __all__ = [
     "load_outline_mosquito_wings",
     "load_outline_leaf_bending",
     "load_image_passiflora_leaves",
+    "load_surface_leaf_bending",
     "convert_coords_df_to_list",
     "convert_coords_df_to_df_sklearn_transform",
     "make_landmarks_from_reference",

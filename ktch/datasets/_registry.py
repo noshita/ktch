@@ -14,7 +14,12 @@ dataset_registry = {
             "image_passiflora_leaves.zip": "d23b22252d0baf3b60ef1986e6518f0550e2e1aa81f677b5991938ab65e2e45b",
         },
         "2": {
-            "image_passiflora_leaves.zip": "a1f87f6c4f786c50e3861bf94f3db1a0a60af760a86b99d950023b8915ffc7d1",
+            "image_passiflora_leaves.zip": "1280c46cda7b273a006fb20e90b5ef4c5098846ccacc6fba805244423c0392ca",
+        },
+    },
+    "surface_leaf_bending": {
+        "1": {
+            "surface_leaf_bending.zip": "4d6792375e08839eaa7eb8107401ea60ed4d4b47f4677ac5d6b5d590670fc1e0",
         },
     },
 }
@@ -23,4 +28,5 @@ dataset_registry = {
 # Updated at ktch release time to pin the recommended dataset version.
 default_versions = {
     "image_passiflora_leaves": "2",
+    "surface_leaf_bending": "1",
 }
