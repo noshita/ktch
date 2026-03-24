@@ -10,5 +10,6 @@ Tutorials for the :mod:`ktch.harmonic` module.
 
     ./elliptic_Fourier_analysis
     ./elliptic_Fourier_analysis_3d
+    ./disk_harmonic_analysis
     ./spharm
 ```
