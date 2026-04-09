@@ -1,6 +1,6 @@
 # Documentation
 
-## Building Locally
+## Building locally
 
 ```bash
 cd doc
@@ -16,7 +16,7 @@ cd doc
 uv run sphinx-autobuild . _build/html
 ```
 
-## Multi-version Build
+## Multi-version build
 
 The CI workflow (`.github/workflows/documentation.yml`) uses
 [sphinx-multiversion](https://github.com/sphinx-contrib/multiversion)
@@ -34,11 +34,11 @@ Version-specific dependencies:
 When removing a version from `versions.json`, also remove its dependencies
 from `.github/workflows/documentation.yml`.
 
-## Release Workflow
+## Release workflow
 
 See the [Releasing](../MAINTAINING.md#releasing) section in MAINTAINING.md.
 
-## License Check
+## License check
 
 [LicenseCheck](https://github.com/FHPythonUtils/LicenseCheck) verifies that
 all dependency licenses are compatible with the project license (Apache-2.0).

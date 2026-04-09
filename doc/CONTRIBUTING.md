@@ -1,4 +1,4 @@
-# Contributing Documentation
+# Contributing documentation
 
 This guide describes the structure, conventions, and writing guidelines for the ktch documentation.
 For build instructions, see `README.md` in this directory.
@@ -9,7 +9,7 @@ For build instructions, see `README.md` in this directory.
 - Framework: Sphinx with pydata-sphinx-theme
 - Format: MyST Markdown (with myst-nb for executable notebooks, sphinxcontrib-mermaid for diagrams)
 
-## Diataxis Structure
+## Diataxis structure
 
 The documentation follows the [Diataxis](https://diataxis.fr/) framework.
 Each directory corresponds to one quadrant:
@@ -34,7 +34,16 @@ Each directory corresponds to one quadrant:
 - The notebook content is learning-oriented, not just code examples
 - "Tutorial" clearly indicates a step-by-step learning experience
 
-## Content Guidelines
+## Writing style
+
+- Use sentence case for headings: capitalize only the first word and proper
+  nouns (e.g., `## Development setup`, not `## Development Setup`).
+  Domain-specific terms (Elliptic Fourier Analysis, Generalized Procrustes
+  Analysis, etc.) keep their established capitalization.
+- Avoid bold (`**...**`) unless emphasis is truly essential. Prefer plain
+  text, code formatting, or headings to convey structure.
+
+## Content guidelines
 
 ### Tutorials (`tutorials/`)
 
@@ -62,7 +71,7 @@ In this tutorial, you will learn to:
 ...
 ```
 
-### How-to Guides (`how-to/`)
+### How-to guides (`how-to/`)
 
 Help accomplish specific tasks.
 
@@ -132,7 +141,7 @@ Provide accurate, complete technical information.
 - Keep synchronized with code
 - Brief descriptions, complete signatures
 
-## Naming Conventions
+## Naming conventions
 
 ### Explanation files
 
@@ -167,7 +176,7 @@ The topic name should be self-descriptive and indicate its domain.
 
 This approach scales to future modules without requiring subdirectories.
 
-## Source File Format
+## Source file format
 
 Tutorials are maintained as MyST Markdown directly in `doc/tutorials/`.
 myst-nb processes `.md` files with jupytext headers directly, so no copy
@@ -191,7 +200,7 @@ For step-by-step learning, see {doc}`../tutorials/landmark/generalized_Procruste
 Link between related docs across quadrants wherever possible. Do not mix
 documentation types in one document.
 
-## External Tool Coverage
+## External tool coverage
 
 When documenting preprocessing or external tool integration:
 

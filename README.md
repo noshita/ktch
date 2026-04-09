@@ -6,7 +6,7 @@ ktch is a Python package for model-based morphometrics with scikit-learn compati
 
 ## Overview
 
-ktch provides implementations of various morphometric analysis methods:
+ktch implements the following morphometric analysis methods:
 
 - Landmark-based methods: Generalized Procrustes Analysis (GPA) with curve/surface semilandmark sliding, thin-plate spline interpolation
 - Harmonic-based methods: Elliptic Fourier Analysis (EFA) for 2D/3D closed curves, spherical harmonic analysis (SPHARM) for 3D closed surfaces
@@ -14,7 +14,7 @@ ktch provides implementations of various morphometric analysis methods:
 - Datasets: Built-in example datasets for learning and testing
 - Visualization: TPS deformation grids, PCA variance plots (with optional `plot` extra)
 
-All analysis classes follow the scikit-learn API (`fit`, `transform`, `fit_transform`), making them easy to integrate into existing data analysis pipelines.
+All analysis classes follow the scikit-learn API (`fit`, `transform`, `fit_transform`), so you can plug them into your existing pipelines.
 
 ## Installation
 
@@ -32,7 +32,7 @@ pip install ktch
 conda install -c conda-forge ktch
 ```
 
-### Optional Dependencies
+### Optional dependencies
 
 Via PyPI:
 
@@ -49,7 +49,7 @@ conda install -c conda-forge ktch-data  # pooch for remote dataset downloads
 conda install -c conda-forge ktch-all   # all optional dependencies
 ```
 
-### Development Installation
+### Development installation
 
 ```sh
 git clone https://github.com/noshita/ktch.git
@@ -57,9 +57,9 @@ cd ktch
 uv sync
 ```
 
-## Quick Start
+## Quick start
 
-### Elliptic Fourier Analysis on 2D Outlines
+### Elliptic Fourier Analysis on 2D outlines
 
 ```python
 from sklearn.decomposition import PCA

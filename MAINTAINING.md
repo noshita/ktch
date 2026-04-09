@@ -25,7 +25,7 @@ Conventional Commits on main
       -> Maintainer reviews and merges feedstock PR(s)
 ```
 
-### Version Numbering
+### Version numbering
 
 Release Please determines the next version from Conventional Commits
 automatically. The current config (`bump-patch-for-minor-pre-major: true`,
@@ -63,7 +63,7 @@ without conflict.
 
 Do not manually edit `pyproject.toml` version — let Release Please manage it.
 
-### Pre-release Checklist
+### Pre-release checklist
 
 1. Verify CI is green on `main`
 2. Update `doc/_static/versions.json` on the release-please branch.
@@ -276,7 +276,7 @@ from your personal fork. The bot PR is then closed.
 3. After the admin-requests PR is merged, the feedstock PR's CI will
    pass. Review and merge it
 
-### Post-release Verification
+### Post-release verification
 
 - [ ] <https://doc.ktch.dev/stable/> shows the new version
 - [ ] Version switcher works correctly
@@ -318,14 +318,14 @@ If the automatic version bump does not match the intended release version,
 add `Release-As: X.Y.Z` to a commit footer on `main`. This overrides
 the automatic calculation for the next release PR.
 
-## Remote Datasets (Cloudflare R2)
+## Remote datasets (Cloudflare R2)
 
 Large datasets are hosted on Cloudflare R2 and downloaded on demand via
 [pooch](https://www.fatiando.org/pooch/). R2 was chosen for its free egress
 and easy public access. This section describes the infrastructure and
 procedures for adding or updating remote datasets.
 
-### R2 Configuration
+### R2 configuration
 
 | Item | Value |
 |------|-------|
@@ -334,7 +334,7 @@ procedures for adding or updating remote datasets.
 | Public access | Public Development URL (`r2.dev`) |
 | Base URL | `https://pub-c1d6dba6c94843f88f0fd096d19c0831.r2.dev` |
 
-### Bucket Directory Structure
+### Bucket directory structure
 
 ```txt
 ktch-datasets/
@@ -352,7 +352,7 @@ Each dataset has its own numeric version sequence (v1, v2, ...) independent
 of the ktch package version. When adding or updating a dataset, place files
 under `datasets/{dataset_name}/v{N}/`.
 
-### Zip Archive Layout
+### Zip archive layout
 
 Each dataset zip should contain a top-level directory matching the dataset name:
 
@@ -393,7 +393,7 @@ versions = ["1", "2"]
 
 When adding a new dataset or version, update this file first.
 
-### Updating the Dataset Registry
+### Updating the dataset registry
 
 Once the zip archive(s) and `manifest.json` are uploaded to R2 under
 `datasets/{dataset_name}/v{N}/`, update the local registry with the
@@ -441,7 +441,7 @@ following steps:
  git commit -m "feat: update dataset registry"
  ```
 
-### pooch Dependency Policy
+### pooch dependency policy
 
 Following scikit-image's approach, pooch is not a core dependency:
 
@@ -454,7 +454,7 @@ data = ["pooch>=1.3"]
 - Dataset download (`pip install ktch[data]`): pooch included
 - When pooch is missing, `ImportError` with an informative message is raised
 
-### Testing Strategy for Remote Datasets
+### Testing strategy for remote datasets
 
 | Test | Scope | Runs |
 |------|-------|------|

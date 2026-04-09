@@ -16,7 +16,7 @@ and conventions used in this project.
 - [uv](https://docs.astral.sh/uv/) (package manager)
 - Git
 
-## Development Setup
+## Development setup
 
 ```bash
 git clone https://github.com/noshita/ktch.git
@@ -24,7 +24,7 @@ cd ktch
 uv sync
 ```
 
-### Running Tests
+### Running tests
 
 ```bash
 uv run pytest --benchmark-skip
@@ -33,7 +33,7 @@ uv run pytest --benchmark-skip
 Tests are co-located with source code at `ktch/<module>/tests/test_<name>.py`.
 The CI matrix runs on Ubuntu, macOS, and Windows with Python 3.11, 3.12, and 3.13.
 
-### Code Style
+### Code style
 
 ktch uses [ruff](https://docs.astral.sh/ruff/) for linting and formatting.
 
@@ -42,7 +42,7 @@ uv run ruff check ktch/
 uv run ruff format ktch/
 ```
 
-### Building Documentation
+### Building documentation
 
 ```bash
 cd doc
@@ -52,7 +52,7 @@ uv run make html
 The documentation follows the [Diataxis](https://diataxis.fr/) framework
 (`tutorials/`, `how-to/`, `explanation/`, `api/`).
 
-## How to Contribute
+## How to contribute
 
 The preferred way to contribute is through
 [GitHub Issues](https://github.com/noshita/ktch/issues):
@@ -61,7 +61,7 @@ The preferred way to contribute is through
 - Feature requests: describe the use case and expected behavior
 - Questions: ask about usage, design decisions, or implementation details
 
-## Development Workflow
+## Development workflow
 
 This section documents the internal development workflow for reference.
 
@@ -72,7 +72,7 @@ This section documents the internal development workflow for reference.
 5. Commit with a [Conventional Commits](#commit-messages) message
 6. Submit a pull request against `main`
 
-### Commit Messages
+### Commit messages
 
 This project uses [Conventional Commits](https://www.conventionalcommits.org/)
 and [release-please](https://github.com/googleapis/release-please) for
@@ -106,15 +106,15 @@ fix: correct phase shift in harmonic reconstruction
 docs: update CONTRIBUTING.md
 ```
 
-## Code Conventions
+## Code conventions
 
 - License: Apache License 2.0
-- Code style: ruff (see [Code Style](#code-style))
+- Code style: ruff (see [Code style](#code-style))
 - Docstrings: NumPy-style with reStructuredText math directives
 - Tests: co-located at `ktch/<module>/tests/test_<name>.py`
 - API design: scikit-learn compatible (`fit`, `transform`, `fit_transform`)
 
-### Optional Dependencies
+### Optional dependencies
 
 ktch splits optional dependencies into extras so that the core package
 stays lightweight:
@@ -187,9 +187,9 @@ instructions.
   install commands
 - Test that `import ktch` succeeds without any optional dependency installed
 
-## Code Organization
+## Code organization
 
-### Subpackage Structure
+### Subpackage structure
 
 The codebase uses domain-driven subpackage organization. Each morphometric
 method domain has its own subpackage:
@@ -201,14 +201,16 @@ method domain has its own subpackage:
 - `ktch/plot/` - Visualization functions
 - `ktch/motion/` - Motion analysis utilities
 
-### Module Naming
+### Naming, imports, and patterns
+
+Module naming:
 
 - Private implementation files use `_` prefix: `_procrustes_analysis.py`
 - Public API is re-exported through `__init__.py`
 - I/O module: one file per format (`_tps.py`, `_chc.py`, `_spharm_pdm.py`)
 - Dataset loaders: `load_<type>_<name>()` functions in `_base.py`
 
-### Import Conventions
+Import conventions:
 
 ```python
 # Within a subpackage: relative imports
@@ -217,8 +219,6 @@ from ._kernels import tps_bending_energy
 # Cross-subpackage: absolute imports
 from ktch.datasets import load_outline_mosquito_wings
 ```
-
-### Parallelization
 
 Analysis classes that support `n_jobs` use `sklearn.utils.parallel`:
 
@@ -229,8 +229,6 @@ results = Parallel(n_jobs=self.n_jobs)(
     delayed(self._process_single)(x) for x in X
 )
 ```
-
-### Deprecation
 
 Renamed or moved APIs use `__getattr__` hooks with `DeprecationWarning`:
 
