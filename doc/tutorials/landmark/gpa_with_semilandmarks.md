@@ -24,7 +24,7 @@ from sklearn.decomposition import PCA
 
 from ktch.datasets import load_landmark_trilobite_cephala
 from ktch.landmark import GeneralizedProcrustesAnalysis, combine_landmarks_and_curves
-from ktch.plot import explained_variance_ratio_plot, morphospace_plot
+from ktch.plot import configuration_plot, explained_variance_ratio_plot, morphospace_plot
 ```
 
 ## Load trilobite cephalon dataset
@@ -57,34 +57,66 @@ Plot a single specimen, distinguishing fixed landmarks from curve semilandmarks.
 ```{code-cell} ipython3
 specimen_idx = 0
 
-fig, ax = plt.subplots(figsize=(6, 6))
 
-# Fixed landmarks
-lm = landmarks[specimen_idx]
-ax.scatter(lm[:, 0], lm[:, 1], c="black", s=40, zorder=3, label="landmarks")
+def _specimen_to_df(landmarks, curves, specimen_idx):
+    """Convert a single specimen's landmarks and curves to a DataFrame."""
+    rows = []
+    for i in range(landmarks.shape[1]):
+        rows.append((*landmarks[specimen_idx, i], "landmarks"))
+    for ci, curve in enumerate(curves[specimen_idx]):
+        for pt in curve:
+            rows.append((*pt, f"curve {ci}"))
+    df = pd.DataFrame(rows, columns=["x", "y", "type"])
+    df.index.name = "coord_id"
+    return df
 
-# Curve semilandmarks
-curve_colors = ["tab:blue", "tab:orange", "tab:green", "tab:red"]
-for i, curve in enumerate(curves[specimen_idx]):
-    ax.plot(curve[:, 0], curve[:, 1], "o-", color=curve_colors[i], markersize=3, alpha=0.7, label=f"curve {i} ({curve.shape[0]} pts)")
 
-ax.set_aspect("equal")
-ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
-ax.set_title("Specimen 0: landmarks and curve semilandmarks")
+def _curve_links(n_landmarks, curves_for_specimen):
+    """Generate links connecting consecutive curve points."""
+    links = []
+    offset = n_landmarks
+    for curve in curves_for_specimen:
+        for j in range(len(curve) - 1):
+            links.append([offset + j, offset + j + 1])
+        offset += len(curve)
+    return links
+
+
+df_specimen = _specimen_to_df(landmarks, curves, specimen_idx)
+links_curves = _curve_links(landmarks.shape[1], curves[specimen_idx])
+curve_types = [f"curve {i}" for i in range(len(curves[specimen_idx]))]
+curve_colors = sns.color_palette(n_colors=len(curve_types))
+palette_specimen = {"landmarks": "black"}
+palette_specimen.update(dict(zip(curve_types, curve_colors)))
+ax = configuration_plot(
+    df_specimen, links=links_curves, hue="type",
+    palette=palette_specimen, s=10, alpha=0.7,
+)
+lm = df_specimen[df_specimen["type"] == "landmarks"]
+ax.scatter(lm["x"], lm["y"], c="black", s=40, zorder=3)
 ```
 
 Plot all specimens overlaid before alignment.
 
 ```{code-cell} ipython3
-fig, ax = plt.subplots(figsize=(6, 6))
-
+rows = []
 for i in range(landmarks.shape[0]):
-    lm = landmarks[i]
-    ax.scatter(lm[:, 0], lm[:, 1], c="gray", s=5, alpha=0.2)
+    for j in range(landmarks.shape[1]):
+        rows.append((i, *landmarks[i, j]))
     for curve in curves[i]:
-        ax.plot(curve[:, 0], curve[:, 1], c="gray", alpha=0.1, linewidth=0.5)
+        for pt in curve:
+            rows.append((i, *pt))
+df_all = pd.DataFrame(rows, columns=["specimen_id", "x", "y"])
+df_all = df_all.set_index("specimen_id")
+df_all["coord_id"] = df_all.groupby(level=0).cumcount()
+df_all = df_all.set_index("coord_id", append=True)
 
-ax.set_aspect("equal")
+fig, ax = plt.subplots(figsize=(6, 6))
+configuration_plot(
+    df_all, links=links_curves, hue="specimen_id",
+    color="gray", color_links="gray", alpha=0.2, s=5, ax=ax,
+)
+ax.get_legend().remove()
 ax.set_title("All specimens (before alignment)")
 ```
 
@@ -151,28 +183,52 @@ Visualize the aligned shapes.
 n_points = combined.shape[1]
 n_dim = 2
 
-fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+def _shapes_to_df(shapes, n_points, n_dim, n_landmarks, curve_info):
+    """Convert GPA output array to a MultiIndex DataFrame with type labels."""
+    rows = []
+    for i in range(shapes.shape[0]):
+        specimen = shapes[i].reshape(n_points, n_dim)
+        for j in range(n_points):
+            rows.append((i, j, *specimen[j]))
+    df = pd.DataFrame(rows, columns=["specimen_id", "coord_id", "x", "y"])
+    # Add type column
+    types = ["landmarks"] * n_landmarks
+    for ci, length in enumerate(curve_info["curve_lengths"]):
+        types.extend([f"curve {ci}"] * length)
+    df["type"] = df["coord_id"].map(lambda j: types[j])
+    return df.set_index(["specimen_id", "coord_id"])
+
+
+df_aligned = _shapes_to_df(
+    shapes, n_points, n_dim, curve_info["n_landmarks"], curve_info,
+)
 
 # Mean shape
 mean_shape = shapes.mean(axis=0).reshape(n_points, n_dim)
-axes[0].scatter(mean_shape[:16, 0], mean_shape[:16, 1], c="black", s=40, zorder=3)
-offset = 16
-for i, length in enumerate(curve_info["curve_lengths"]):
-    start = offset
-    end = offset + length
-    axes[0].plot(
-        mean_shape[start:end, 0], mean_shape[start:end, 1],
-        "o-", color=curve_colors[i], markersize=3, alpha=0.7,
-    )
-    offset = end
-axes[0].set_aspect("equal")
+df_mean = pd.DataFrame(mean_shape, columns=["x", "y"])
+df_mean["type"] = df_aligned.loc[0, "type"].values
+df_mean.index.name = "coord_id"
+
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+# Mean shape with color by type, then overlay landmarks in black
+palette_mean = {"landmarks": "black"}
+palette_mean.update(dict(zip(curve_types, curve_colors)))
+configuration_plot(
+    df_mean, links=links_curves, hue="type",
+    palette=palette_mean, s=10, alpha=0.7, ax=axes[0],
+)
+lm_mean = df_mean.iloc[:curve_info["n_landmarks"]]
+axes[0].scatter(lm_mean["x"], lm_mean["y"], c="black", s=40, zorder=3)
 axes[0].set_title("Mean shape")
 
 # All aligned specimens
-for i in range(shapes.shape[0]):
-    specimen = shapes[i].reshape(n_points, n_dim)
-    axes[1].scatter(specimen[:, 0], specimen[:, 1], c="gray", s=1, alpha=0.1)
-axes[1].set_aspect("equal")
+configuration_plot(
+    df_aligned, links=links_curves, hue="specimen_id",
+    color="gray", color_links="gray", alpha=0.2, s=1, ax=axes[1],
+)
+axes[1].get_legend().remove()
 axes[1].set_title("All aligned specimens")
 
 plt.tight_layout()
