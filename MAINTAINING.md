@@ -284,6 +284,8 @@ from your personal fork. The bot PR is then closed.
 - [ ] conda-forge feedstock PR is created (may take a few hours)
 - [ ] (Minor releases only) Re-run the Docs workflow with cache disabled
   (see below)
+- [ ] Google Search Console: sitemap (`/stable/sitemap.xml`) is detected
+  and page count is correct
 
 #### Re-building documentation without cache
 
@@ -317,6 +319,28 @@ a version bump.
 If the automatic version bump does not match the intended release version,
 add `Release-As: X.Y.Z` to a commit footer on `main`. This overrides
 the automatic calculation for the next release PR.
+
+#### Pages not indexed by Google
+
+The documentation site uses the following SEO configuration:
+
+- `robots.txt`: allows `/stable/`, blocks `/dev/` and versioned paths
+- `sphinx-sitemap`: generates `/stable/sitemap.xml` with canonical URLs
+- `noindex_utilities` (custom Sphinx extension): adds
+  `<meta name="robots" content="noindex">` to low-value pages
+  (`_modules/*`, `genindex`, `py-modindex`, `search`, `opensearch`)
+- `sphinxext-opengraph`: generates Open Graph meta tags
+
+If pages are not being indexed by Google Search Console (GSC):
+
+1. Verify the sitemap is accessible at
+   <https://doc.ktch.dev/stable/sitemap.xml> and contains the expected URLs
+2. Verify `robots.txt` at <https://doc.ktch.dev/robots.txt> does not
+   block `/stable/`
+3. Inspect individual pages using GSC's URL Inspection tool and request
+   indexing for key pages (tutorials, API top page)
+4. Check that content pages do not have unintended
+   `<meta name="robots" content="noindex">` tags
 
 ## Remote datasets (Cloudflare R2)
 

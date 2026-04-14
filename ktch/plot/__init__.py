@@ -15,6 +15,7 @@ The :mod:`ktch.plot` module implements plotting functions for morphometrics.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ._configuration import configuration_plot
 from ._kriging import tps_grid_2d_plot
 from ._morphospace import (
     confidence_ellipse_plot,
@@ -24,6 +25,7 @@ from ._morphospace import (
 from ._pca import explained_variance_ratio_plot, shape_variation_plot
 
 __all__ = [
+    "configuration_plot",
     "confidence_ellipse_plot",
     "convex_hull_plot",
     "explained_variance_ratio_plot",

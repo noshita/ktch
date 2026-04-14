@@ -18,14 +18,18 @@ import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
-from matplotlib.collections import LineCollection
 import seaborn as sns
 
 from sklearn.decomposition import PCA
 
 from ktch.datasets import load_landmark_mosquito_wings
 from ktch.landmark import GeneralizedProcrustesAnalysis
-from ktch.plot import explained_variance_ratio_plot, morphospace_plot, shape_variation_plot
+from ktch.plot import (
+    configuration_plot,
+    explained_variance_ratio_plot,
+    morphospace_plot,
+    shape_variation_plot,
+)
 ```
 
 ## Load mosquito wing landmark dataset
@@ -53,103 +57,6 @@ ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
 
 For applying generalized Procrustes analysis (GPA),
 we convert the configuration data into DataFrame of shape n_specimens x (n_landmarks*n_dim).
-
-```{code-cell} ipython3
-def configuration_plot(
-    configuration_2d,
-    x="x",
-    y="y",
-    links=None,
-    ax=None,
-    hue=None,
-    hue_order=None,
-    c="gray",
-    palette=None,
-    c_line="gray",
-    style=None,
-    s=10,
-    alpha=1,
-):
-    if ax is None:
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-
-    if links is None:
-        links = []
-
-    configuration = configuration_2d.reset_index()
-
-    if hue is not None and hue_order is None:
-        hue_order = configuration[hue].unique()
-
-    color_map = None
-    if hue is not None:
-        if palette is not None:
-            colors = sns.color_palette(palette, n_colors=len(hue_order))
-            color_map = dict(zip(hue_order, colors))
-        else:
-            hue_dtype = configuration[hue].dtype
-            if np.issubdtype(hue_dtype, np.number):
-                cmap = sns.cubehelix_palette(as_cmap=True)
-                hue_min, hue_max = min(hue_order), max(hue_order)
-                color_map = {}
-                for hue_val in hue_order:
-                    if hue_max > hue_min:
-                        norm_val = (hue_val - hue_min) / (hue_max - hue_min)
-                    else:
-                        norm_val = 0.5
-                    color_map[hue_val] = cmap(norm_val)
-            else:
-                colors = sns.color_palette(n_colors=len(hue_order))
-                color_map = dict(zip(hue_order, colors))
-
-    if links:
-        if hue is None:
-            segments = []
-            for link in links:
-                link_data = configuration[configuration["coord_id"].isin(link)]
-                if len(link_data) == 2:
-                    coords = link_data[[x, y]].values
-                    segments.append(coords)
-            if segments:
-                lc = LineCollection(segments, colors=c_line, alpha=alpha)
-                ax.add_collection(lc)
-        else:
-            for specimen in hue_order:
-                specimen_data = configuration[configuration[hue] == specimen]
-                segments = []
-                for link in links:
-                    link_data = specimen_data[specimen_data["coord_id"].isin(link)]
-                    if len(link_data) == 2:
-                        coords = link_data[[x, y]].values
-                        segments.append(coords)
-                if segments:
-                    lc = LineCollection(
-                        segments, colors=[color_map[specimen]], alpha=alpha
-                    )
-                    ax.add_collection(lc)
-
-        ax.autoscale_view()
-
-    axis = sns.scatterplot(
-        data=configuration,
-        x=x,
-        y=y,
-        ax=ax,
-        hue=hue,
-        hue_order=hue_order,
-        palette=palette,
-        style=style,
-        c=c,
-        alpha=alpha,
-        s=s,
-    )
-
-    if axis.legend_:
-        sns.move_legend(ax, "upper left", bbox_to_anchor=(1, 1))
-
-    ax.set_aspect("equal")
-```
 
 ```{code-cell} ipython3
 links = [
