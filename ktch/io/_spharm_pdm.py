@@ -23,6 +23,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from ._converters import _cvt_spharm_coef_spharmpdm_to_list
 from ._protocols import MorphoDataMixin
 
 
@@ -171,147 +172,7 @@ def read_spharmpdm_coef(path: str | Path) -> SpharmPdmData:
     if not lmax_plus_one.is_integer():
         raise ValueError(f"Invalid coefficient count: {n_coef_per_coord} != (lmax+1)^2")
 
-    coef = cvt_spharm_coef_spharmpdm_to_list(coef_array)
+    coef = _cvt_spharm_coef_spharmpdm_to_list(coef_array)
 
     specimen_name = Path(path).stem
     return SpharmPdmData(specimen_name=specimen_name, coeffs=coef)
-
-
-def cvt_spharm_coef_spharmpdm_to_list(
-    coef_spharmpdm: npt.NDArray[np.float64],
-) -> list[npt.NDArray[np.complex128]]:
-    """Convert SPHARM-PDM format coefficients to list format.
-
-    SPHARM-PDM stores coefficients in a specific order:
-    - For m=0: only real part is stored
-    - For m>0: real and imaginary parts are stored separately
-    - Complex conjugate symmetry is used for m<0
-
-    Parameters
-    ----------
-    coef_spharmpdm : np.ndarray of shape ((lmax+1)^2,3)
-        Flattened array of SPHARM coefficients in SPHARM-PDM format.
-        Contains coefficients for x, y, z coordinates.
-
-    Returns
-    -------
-    coef_list : list of np.ndarray
-        List where coef_list[l] contains coefficients for degree l.
-        Each element is an array of shape (2*l+1, 3) with complex values.
-        The order is m = -l, -l+1, ..., l-1, l.
-
-    Raises
-    ------
-    ValueError
-        If the input array has invalid shape or dimensions.
-    """
-    lmax = int(np.sqrt(coef_spharmpdm.shape[0]) - 1)
-    if coef_spharmpdm.shape != ((lmax + 1) ** 2, 3):
-        raise ValueError(
-            f"Invalid coefficient array shape: expected {((lmax + 1) ** 2, 3)}, got {coef_spharmpdm.shape}"
-        )
-
-    # Convert to list format
-    coef_list = []
-    for l in range(lmax + 1):
-        coef_l = np.zeros((2 * l + 1, 3), dtype=np.complex128)
-
-        for idx, m in enumerate(range(-l, l + 1)):
-            if m == 0:
-                # m=0: only real part
-                coef_l[idx] = coef_spharmpdm[l**2]
-            elif m > 0:
-                # m>0: combine real and imaginary parts
-                real_idx = l**2 + 2 * m - 1
-                imag_idx = l**2 + 2 * m
-                coef_l[idx] = (
-                    coef_spharmpdm[real_idx] - coef_spharmpdm[imag_idx] * 1j
-                ) / 2
-            else:
-                # m<0: use complex conjugate symmetry
-                abs_m = abs(m)
-                real_idx = l**2 + 2 * abs_m - 1
-                imag_idx = l**2 + 2 * abs_m
-                coef_l[idx] = (
-                    ((-1) ** m)
-                    * (coef_spharmpdm[real_idx] + coef_spharmpdm[imag_idx] * 1j)
-                    / 2
-                )
-
-        coef_list.append(coef_l)
-    return coef_list
-
-
-def cvt_spharm_coef_list_to_spharmpdm(
-    coef_list: list[npt.NDArray[np.complex128]],
-) -> npt.NDArray[np.float64]:
-    """Convert list format coefficients to SPHARM-PDM format.
-
-    Converts complex spherical harmonic coefficients from standard
-    list format to SPHARM-PDM's specific storage format.
-
-    Parameters
-    ----------
-    coef_list : list of np.ndarray
-        List where coef_list[l] contains coefficients for degree l.
-        Each element should have shape (2*l+1,) with complex values.
-        The order is m = -l, -l+1, ..., l-1, l.
-
-    Returns
-    -------
-    coef_spharmpdm : np.ndarray of shape ((lmax+1)^2, 3)
-        Flattened array of coefficients in SPHARM-PDM format.
-        Real and imaginary parts are stored separately.
-
-    Raises
-    ------
-    ValueError
-        If the input list has invalid structure or dimensions.
-
-    Notes
-    -----
-    The conversion uses the complex conjugate symmetry property:
-    Y_l^{-m} = (-1)^m * conj(Y_l^m)
-    """
-    if not isinstance(coef_list, list):
-        raise ValueError("coef_list must be a list")
-
-    if len(coef_list) == 0:
-        raise ValueError("coef_list cannot be empty")
-
-    lmax = len(coef_list) - 1
-
-    # Validate structure of coefficient list
-    for l, coef_l in enumerate(coef_list):
-        expected_len = 2 * l + 1
-        if len(coef_l) != expected_len:
-            raise ValueError(
-                f"coef_list[{l}] has length {len(coef_l)}, expected {expected_len}"
-            )
-
-    # Convert to SPHARM-PDM format
-    coef_spharmpdm = np.zeros(((lmax + 1) ** 2, 3))
-    for l in range(lmax + 1):
-        l_squared = l**2
-
-        # m = 0
-        coef_spharmpdm[l_squared] = coef_list[l][l].real
-
-        # m > 0
-        for m in range(1, l + 1):
-            # Get positive and negative m coefficients
-            coef_pos_m = coef_list[l][m + l]
-            coef_neg_m = coef_list[l][-m + l]
-            sign = (-1) ** m
-
-            # Real part: sum of positive and negative m
-            coef_spharmpdm[l_squared + 2 * m - 1] = (
-                coef_pos_m + sign * coef_neg_m
-            ).real
-
-            # Imaginary part: difference of positive and negative m
-            coef_spharmpdm[l_squared + 2 * m] = (
-                (coef_pos_m - sign * coef_neg_m) * 1j
-            ).real
-
-    return coef_spharmpdm

@@ -65,6 +65,8 @@
 
    io.nef_to_efa_coeffs
    io.efa_coeffs_to_nef
+   io.spharmpdm_to_sha_coeffs
+   io.sha_coeffs_to_spharmpdm
    io.convert_coords_df_to_list
    io.convert_coords_df_to_df_sklearn_transform
 ```

@@ -1,16 +1,24 @@
 """Tests for format conversion functions."""
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 
+from ktch.io import read_spharmpdm_coef
 from ktch.io._converters import (
-    convert_coords_df_to_list,
+    _cvt_spharm_coef_list_to_spharmpdm,
+    _cvt_spharm_coef_spharmpdm_to_list,
     convert_coords_df_to_df_sklearn_transform,
+    convert_coords_df_to_list,
     efa_coeffs_to_nef,
     nef_to_efa_coeffs,
+    sha_coeffs_to_spharmpdm,
+    spharmpdm_to_sha_coeffs,
 )
 from ktch.io._nef import NefData
+from ktch.io._spharm_pdm import SpharmPdmData
 
 
 def _make_nef(n_harmonics=3, seed=42):
@@ -20,7 +28,9 @@ def _make_nef(n_harmonics=3, seed=42):
     return NefData(specimen_name="S1", coeffs=coeffs)
 
 
-# --- nef_to_efa_coeffs ---
+#
+# nef_to_efa_coeffs
+#
 
 
 class TestNefToEfaCoeffs:
@@ -105,7 +115,10 @@ class TestCoordConversion:
             [("A", 0), ("A", 1), ("A", 2), ("B", 0), ("B", 1), ("B", 2)],
             names=["specimen_id", "coord_id"],
         )
-        data = {"x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "y": [7.0, 8.0, 9.0, 10.0, 11.0, 12.0]}
+        data = {
+            "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            "y": [7.0, 8.0, 9.0, 10.0, 11.0, 12.0],
+        }
         return pd.DataFrame(data, index=index)
 
     def test_convert_coords_df_to_list(self):
@@ -124,3 +137,126 @@ class TestCoordConversion:
         assert result.shape == (2, 6)  # 2 specimens, 3 coords * 2 dims
         assert "A" in result.index
         assert "B" in result.index
+
+
+#
+# SPHARM-PDM format packing
+#
+
+
+class TestSpharmCoefFormatPacking:
+    @pytest.fixture()
+    def spharmpdm_data(self):
+        path = Path(__file__).parent / "data" / "andesred_07_allSegments_SPHARM.coef"
+        return read_spharmpdm_coef(path)
+
+    def test_roundtrip_list(self, spharmpdm_data):
+        """list -> spharmpdm -> list produces identical coefficients."""
+        coef_spharmpdm = _cvt_spharm_coef_list_to_spharmpdm(spharmpdm_data.coeffs)
+        coef_list_rt = _cvt_spharm_coef_spharmpdm_to_list(coef_spharmpdm)
+
+        for l in range(len(spharmpdm_data.coeffs)):
+            np.testing.assert_array_almost_equal(
+                spharmpdm_data.coeffs[l], coef_list_rt[l]
+            )
+
+    def test_roundtrip_spharmpdm(self, spharmpdm_data):
+        """spharmpdm -> list -> spharmpdm produces identical array."""
+        coef_pdm = _cvt_spharm_coef_list_to_spharmpdm(spharmpdm_data.coeffs)
+        coef_list_rt = _cvt_spharm_coef_spharmpdm_to_list(coef_pdm)
+        coef_pdm_rt = _cvt_spharm_coef_list_to_spharmpdm(coef_list_rt)
+
+        np.testing.assert_array_almost_equal(coef_pdm, coef_pdm_rt)
+
+
+# --- SPHARM-PDM <-> SHA bridge converters ---
+
+
+class TestSpharmpdmToShaCoeffs:
+    @pytest.fixture()
+    def spharmpdm_data(self):
+        path = Path(__file__).parent / "data" / "andesred_07_allSegments_SPHARM.coef"
+        return read_spharmpdm_coef(path)
+
+    def test_output_shape(self, spharmpdm_data):
+        result = spharmpdm_to_sha_coeffs(spharmpdm_data)
+        l_max = spharmpdm_data.l_max
+        assert result.shape == (1, 3 * (l_max + 1) ** 2)
+
+    def test_output_dtype(self, spharmpdm_data):
+        result = spharmpdm_to_sha_coeffs(spharmpdm_data)
+        assert result.dtype == np.float64
+
+    def test_layout_lmax0_real(self):
+        """l=0 coefficients: m=0 is real, same in complex and real basis."""
+        # For l=0, m=0: a_0^0 = Re(c_0^0). Use real c_0^0.
+        coeffs = [
+            np.array([[1.0 + 0j, 3.0 + 0j, 5.0 + 0j]]),  # l=0
+        ]
+        data = SpharmPdmData(specimen_name="T", coeffs=coeffs)
+        result = spharmpdm_to_sha_coeffs(data)
+
+        assert result.shape == (1, 3)
+        assert result.dtype == np.float64
+        np.testing.assert_allclose(result[0], [1.0, 3.0, 5.0])
+
+    def test_roundtrip_preserves_shape(self, spharmpdm_data):
+        """SHA flat → SpharmPdmData → SHA flat round-trip."""
+        sha_flat = spharmpdm_to_sha_coeffs(spharmpdm_data)
+        rt_list = sha_coeffs_to_spharmpdm(
+            sha_flat, specimen_names=[spharmpdm_data.specimen_name]
+        )
+        sha_flat_rt = spharmpdm_to_sha_coeffs(rt_list)
+        np.testing.assert_allclose(sha_flat_rt, sha_flat, atol=1e-12)
+
+    def test_batch(self, spharmpdm_data):
+        result = spharmpdm_to_sha_coeffs([spharmpdm_data, spharmpdm_data])
+        l_max = spharmpdm_data.l_max
+        assert result.shape == (2, 3 * (l_max + 1) ** 2)
+        np.testing.assert_array_equal(result[0], result[1])
+
+
+class TestShaCoeffsToSpharmpdm:
+    @pytest.fixture()
+    def spharmpdm_data(self):
+        path = Path(__file__).parent / "data" / "andesred_07_allSegments_SPHARM.coef"
+        return read_spharmpdm_coef(path)
+
+    def test_roundtrip(self, spharmpdm_data):
+        """SpharmPdmData -> SHA flat -> SpharmPdmData round-trip."""
+        sha_flat = spharmpdm_to_sha_coeffs(spharmpdm_data)
+        result_list = sha_coeffs_to_spharmpdm(
+            sha_flat, specimen_names=[spharmpdm_data.specimen_name]
+        )
+
+        assert len(result_list) == 1
+        result = result_list[0]
+        assert result.specimen_name == spharmpdm_data.specimen_name
+        assert result.l_max == spharmpdm_data.l_max
+        # SpharmPdmData.coeffs remains complex (format-faithful)
+        for l in range(result.l_max + 1):
+            assert result.coeffs[l].dtype == np.complex128
+            np.testing.assert_array_almost_equal(
+                result.coeffs[l], spharmpdm_data.coeffs[l]
+            )
+
+    def test_default_specimen_names(self):
+        coeffs = np.zeros((2, 3))  # l_max=0, 2 samples
+        result = sha_coeffs_to_spharmpdm(coeffs)
+        assert result[0].specimen_name == "Specimen_0"
+        assert result[1].specimen_name == "Specimen_1"
+
+    def test_invalid_length_not_divisible_by_3(self):
+        with pytest.raises(ValueError, match="not divisible by 3"):
+            sha_coeffs_to_spharmpdm(np.zeros((1, 5)))
+
+    def test_invalid_length_not_perfect_square(self):
+        with pytest.raises(ValueError, match="not a perfect square"):
+            sha_coeffs_to_spharmpdm(np.zeros((1, 6)))  # 6/3=2, not a square
+
+    def test_single_sample_1d_input(self, spharmpdm_data):
+        """1D input is promoted to 2D."""
+        sha_flat = spharmpdm_to_sha_coeffs(spharmpdm_data)
+        result = sha_coeffs_to_spharmpdm(sha_flat[0])
+        assert len(result) == 1
+        assert result[0].l_max == spharmpdm_data.l_max

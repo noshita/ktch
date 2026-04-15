@@ -4,11 +4,7 @@ from pathlib import Path
 import numpy as np
 from numpy.testing import assert_array_almost_equal
 
-from ktch.io import (
-    cvt_spharm_coef_list_to_spharmpdm,
-    cvt_spharm_coef_spharmpdm_to_list,
-    read_spharmpdm_coef,
-)
+from ktch.io import read_spharmpdm_coef
 from ktch.io._protocols import MorphoData
 from ktch.io._spharm_pdm import SpharmPdmData
 
@@ -49,30 +45,6 @@ def test_read_spharmpdm_coef_m_0():
     assert data.coeffs[0][0, 2] == coef_list_raw[0][2]
     for l in range(1, l_max + 1):
         assert_array_almost_equal(data.coeffs[l][l], coef_list_raw[l**2])
-
-
-def test_spharm_coef_roundtrip_list():
-    """list -> spharmpdm -> list produces identical coefficients."""
-    path = Path(__file__).parent / "data" / "andesred_07_allSegments_SPHARM.coef"
-    data = read_spharmpdm_coef(path)
-
-    coef_spharmpdm = cvt_spharm_coef_list_to_spharmpdm(data.coeffs)
-    coef_list_rt = cvt_spharm_coef_spharmpdm_to_list(coef_spharmpdm)
-
-    for l in range(len(data.coeffs)):
-        assert_array_almost_equal(data.coeffs[l], coef_list_rt[l])
-
-
-def test_spharm_coef_roundtrip_spharmpdm():
-    """spharmpdm -> list -> spharmpdm produces identical array."""
-    path = Path(__file__).parent / "data" / "andesred_07_allSegments_SPHARM.coef"
-    data = read_spharmpdm_coef(path)
-
-    coef_pdm = cvt_spharm_coef_list_to_spharmpdm(data.coeffs)
-    coef_list_rt = cvt_spharm_coef_spharmpdm_to_list(coef_pdm)
-    coef_pdm_rt = cvt_spharm_coef_list_to_spharmpdm(coef_list_rt)
-
-    assert_array_almost_equal(coef_pdm, coef_pdm_rt)
 
 
 # --- SpharmPdmData protocol and methods ---

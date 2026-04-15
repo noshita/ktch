@@ -183,7 +183,7 @@ X_coords = spharm_analysis.inverse_transform(X_transform.reshape(1, 3, -1))
 ```
 
 ```{code-cell} ipython3
-x_sph, y_sph, z_sph = np.real(X_coords[0].T)
+x_sph, y_sph, z_sph = X_coords[0].T
 
 fig = go.Figure(
     data=[
@@ -226,7 +226,7 @@ This demonstrates that the original shape is well reproduced.
 I, J, K = arr_surf_faces.T
 x_surf, y_surf, z_surf = arr_surf.T
 
-x_sph, y_sph, z_sph = np.real(X_coords[0].T)
+x_sph, y_sph, z_sph = X_coords[0].T
 
 
 fig = go.Figure(
