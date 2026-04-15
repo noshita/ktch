@@ -53,34 +53,23 @@ class SphericalHarmonicAnalysis(
     -----
     [Ritche_Kemp_1999]_, [Shen_etal_2009]_
 
-    .. math::
-        \begin{align}
-            \mathbf{p}(\theta, \phi) = \sum_{l=0}^{L} \sum_{m=-l}^l
-            \left(
-                c_l^m Y_l^m(\theta, \phi)
-            \right)
-        \end{align}
-
-    , where :math:`Y_l^m(\theta, \phi)` are spherical harmonics:
+    A surface point :math:`\mathbf{p}(\theta, \phi)` is expanded as
 
     .. math::
-        \begin{align}
-            Y_l^m(\theta, \phi) = \sqrt{\frac{2l+1}{4\pi}\frac{(l-m)!}{(l+m)!}} P_l^m(\cos(\theta)) e^{im\phi}
-        \end{align}
+        \mathbf{p}(\theta, \phi) = \sum_{l=0}^{L} \sum_{m=-l}^l
+            a_l^m \, S_l^m(\theta, \phi)
 
-    , where :math:`P_n^m(x)` are associated Legendre polynomials:
+    where :math:`S_l^m` are real orthonormal spherical harmonics defined
+    in terms of the complex harmonics :math:`Y_l^m`:
 
-    .. math::
+    * :math:`S_l^0 = Y_l^0`
+    * :math:`S_l^m = \sqrt{2}\,(-1)^m\,\mathrm{Re}(Y_l^m)` for :math:`m > 0`
+    * :math:`S_l^m = \sqrt{2}\,(-1)^{|m|}\,\mathrm{Im}(Y_l^{|m|})` for :math:`m < 0`
 
-        \begin{align}
-            P_n^m(x) = (-1)^m (1-x^2)^{\frac{m}{2}} \frac{d^m}{dx^m} P_n(x)
-        \end{align}
-
-    , where :math:`P_n(x)` are Legendre polynomials, which are solutions of Legendre’s differential equation;
-
-    .. math::
-        (1-x^2)\frac{d^2 y}{dx^2} -2x \frac{dy}{dx} + n(n+1)y = 0.
-
+    The coefficients :math:`a_l^m` are real-valued, so ``transform``
+    returns a ``float64`` array.  Conversion utilities
+    ``_complex_to_real_sph_coef`` and ``_real_to_complex_sph_coef`` are
+    available for interoperability with complex-basis representations.
 
     References
     ----------
@@ -140,20 +129,20 @@ class SphericalHarmonicAnalysis(
         return self.fit(X, y).transform(X, theta_phi=theta_phi)
 
     def _transform_single(self, X, theta_phi):
-        """Compute SPHARM coefficients for a single sample.
+        """Compute real SPHARM coefficients for a single sample.
 
         Parameters
         ----------
-        X: array-like of shape (n_coords, n_dim)
-                Coordinate values of a surface.
-
-        theta_phi: array-like of shape (n_coords,2)
-                Parameters indicating the position on the surface.
+        X : array-like of shape (n_coords, 3)
+            Coordinate values of a surface.
+        theta_phi : array-like of shape (n_coords, 2)
+            Parameters indicating the position on the surface.
 
         Returns
         -------
-        X_transformed: array-like
-            Returns the SPHARM coefficients.
+        X_transformed : ndarray of shape (3 * (l_max + 1)**2,), float64
+            Flat real-valued SPHARM coefficient vector.
+            Layout: ``[cx_0_0, ..., cy_0_0, ..., cz_0_0, ...]``.
         """
         l_max = self.n_harmonics
         theta = theta_phi[:, 0]
@@ -171,14 +160,10 @@ class SphericalHarmonicAnalysis(
                 stacklevel=2,
             )
 
-        lm2j = np.array([[l, m] for l in range(l_max + 1) for m in range(-l, l + 1)])
+        B = _real_sph_harm_basis_matrix(l_max, theta, phi)
 
-        A_Mat = np.array([sp.special.sph_harm_y(l, m, theta, phi) for l, m in lm2j])
-
-        sol = sp.linalg.lstsq(A_Mat.T, X)
-        c_x, c_y, c_z = sol[0].T
-
-        X_transformed = np.concatenate([c_x, c_y, c_z], axis=-1)
+        sol = sp.linalg.lstsq(B, X)
+        X_transformed = sol[0].T.ravel()
 
         return X_transformed
 
@@ -349,6 +334,162 @@ class SphericalHarmonicAnalysis(
 ###########################################################
 
 
+def _real_sph_harm_y(
+    l: int,
+    m: int,
+    theta: npt.NDArray[np.float64],
+    phi: npt.NDArray[np.float64],
+) -> npt.NDArray[np.float64]:
+    r"""Evaluate a real spherical harmonic :math:`S_l^m`.
+
+    Defined via :func:`scipy.special.sph_harm_y`:
+
+    * :math:`m = 0`:  :math:`S_l^0 = Y_l^0`
+    * :math:`m > 0`:  :math:`S_l^m = \sqrt{2}\,(-1)^m\,\mathrm{Re}(Y_l^m)`
+    * :math:`m < 0`:  :math:`S_l^m = \sqrt{2}\,(-1)^{|m|}\,\mathrm{Im}(Y_l^{|m|})`
+
+    This evaluates to:
+
+    * :math:`S_l^m = \sqrt{2}\,N_l^m\,P_l^m(\cos\theta)\,\cos(m\varphi)`
+      for :math:`m > 0`
+    * :math:`S_l^{-|m|} = \sqrt{2}\,N_l^{|m|}\,P_l^{|m|}(\cos\theta)\,
+      \sin(|m|\varphi)` for :math:`m < 0`
+
+    The :math:`(-1)^m` factor cancels the Condon-Shortley phase
+    included in ``sph_harm_y``, yielding positive cosine/sine.
+    """
+    if m == 0:
+        return sp.special.sph_harm_y(l, 0, theta, phi).real
+    elif m > 0:
+        return np.sqrt(2) * (-1) ** m * np.real(sp.special.sph_harm_y(l, m, theta, phi))
+    else:
+        return np.sqrt(2) * (-1) ** abs(m) * np.imag(
+            sp.special.sph_harm_y(l, abs(m), theta, phi)
+        )
+
+
+def _real_sph_harm_basis_matrix(
+    l_max: int,
+    theta: npt.NDArray[np.float64],
+    phi: npt.NDArray[np.float64],
+) -> npt.NDArray[np.float64]:
+    r"""Build real-valued spherical harmonic design matrix.
+
+    Columns correspond to ``(l, m)`` pairs in the ordering
+    ``(0,0), (1,-1), (1,0), (1,1), (2,-2), ...``.
+
+    Parameters
+    ----------
+    l_max : int
+        Maximum degree.
+    theta : ndarray of shape (N,)
+        Polar angle (colatitude) values.
+    phi : ndarray of shape (N,)
+        Azimuthal angle values.
+
+    Returns
+    -------
+    ndarray of shape (N, (l_max+1)**2), float64
+        Real-valued design matrix.
+    """
+    n_pts = len(theta)
+    n_coeffs = (l_max + 1) ** 2
+    B = np.empty((n_pts, n_coeffs))
+
+    for l in range(l_max + 1):
+        for m in range(-l, l + 1):
+            idx = l**2 + l + m
+            B[:, idx] = _real_sph_harm_y(l, m, theta, phi)
+
+    return B
+
+
+def _complex_to_real_sph_coef(
+    coef_complex: npt.NDArray[np.complexfloating],
+) -> npt.NDArray[np.float64]:
+    r"""Convert complex SH coefficients to real SH coefficients.
+
+    Includes the :math:`(-1)^m` Condon-Shortley phase factor,
+    which makes this different from DHA's ``_complex_to_real_coef``.
+
+    The mapping for degree ``l``, order ``m`` is:
+
+    * ``m = 0``:  ``a_{l,0} = Re(c_{l,0})``
+    * ``m > 0``:  ``a_{l,m} = \sqrt{2}\,(-1)^m\,Re(c_{l,m})``
+    * ``m < 0``:  ``a_{l,m} = -\sqrt{2}\,(-1)^{|m|}\,Im(c_{l,|m|})``
+
+    Parameters
+    ----------
+    coef_complex : ndarray of shape ((l_max+1)**2,) or ((l_max+1)**2, D)
+        Complex coefficients in flat ordering.
+
+    Returns
+    -------
+    ndarray of same shape, float64
+        Real-valued coefficients.
+    """
+    coef_real = np.empty_like(coef_complex, dtype=np.float64)
+    n_coef = coef_complex.shape[0]
+    l_max = int(np.sqrt(n_coef)) - 1
+
+    for l in range(l_max + 1):
+        for m in range(-l, l + 1):
+            idx = l**2 + l + m
+            if m == 0:
+                coef_real[idx] = np.real(coef_complex[idx])
+            elif m > 0:
+                coef_real[idx] = np.sqrt(2) * (-1) ** m * np.real(coef_complex[idx])
+            else:
+                idx_pos = l**2 + l + (-m)
+                coef_real[idx] = -np.sqrt(2) * (-1) ** abs(m) * np.imag(
+                    coef_complex[idx_pos]
+                )
+
+    return coef_real
+
+
+def _real_to_complex_sph_coef(
+    coef_real: npt.NDArray[np.float64],
+) -> npt.NDArray[np.complexfloating]:
+    r"""Convert real SH coefficients to complex SH coefficients.
+
+    Inverse of :func:`_complex_to_real_sph_coef`.  The output satisfies
+    conjugate symmetry: ``c_{l,-m} = (-1)^m \overline{c_{l,m}}``.
+
+    Parameters
+    ----------
+    coef_real : ndarray of shape ((l_max+1)**2,) or ((l_max+1)**2, D)
+        Real-valued coefficients in flat ordering.
+
+    Returns
+    -------
+    ndarray of same shape, complex128
+        Complex coefficients.
+    """
+    coef_complex = np.empty_like(coef_real, dtype=np.complex128)
+    n_coef = coef_real.shape[0]
+    l_max = int(np.sqrt(n_coef)) - 1
+
+    for l in range(l_max + 1):
+        # m = 0
+        idx_0 = l**2 + l
+        coef_complex[idx_0] = coef_real[idx_0] + 0j
+
+        # m > 0 and corresponding m < 0
+        for m in range(1, l + 1):
+            idx_pos = l**2 + l + m
+            idx_neg = l**2 + l - m
+            c_pos = (
+                (-1) ** m
+                * (coef_real[idx_pos] - 1j * coef_real[idx_neg])
+                / np.sqrt(2)
+            )
+            coef_complex[idx_pos] = c_pos
+            coef_complex[idx_neg] = (-1) ** m * np.conj(c_pos)
+
+    return coef_complex
+
+
 def xyz2spherical(xyz: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """Convert Cartesian coordinates to spherical coordinates.
 
@@ -382,7 +523,6 @@ def spharm(
     coef: list[npt.ArrayLike],
     theta_range=None,
     phi_range=None,
-    threshold_imag_parts: float = 1e-10,
 ):
     """Reconstruct surface coordinates from SPHARM coefficients.
 
@@ -391,8 +531,8 @@ def spharm(
     l_max : int
         Maximum degree of spherical harmonics.
     coef : list of array-like
-        SPHARM coefficients. ``coef[l]`` has shape ``(2*l+1, 3)`` and
-        ``coef[l][l+m]`` holds ``(c_x, c_y, c_z)`` for degree ``l``
+        Real SPHARM coefficients. ``coef[l]`` has shape ``(2*l+1, 3)``
+        and ``coef[l][l+m]`` holds ``(c_x, c_y, c_z)`` for degree ``l``
         and order ``m``.
     theta_range : array-like of shape (n_theta,), optional
         Polar angle values (colatitude, 0 to pi). Defaults to
@@ -400,10 +540,6 @@ def spharm(
     phi_range : array-like of shape (n_phi,), optional
         Azimuthal angle values (0 to 2*pi). Defaults to
         ``np.linspace(0, 2*pi, 180)``.
-    threshold_imag_parts : float, default=1e-10
-        Tolerance for imaginary parts in the reconstructed coordinates.
-        A warning is issued if the total imaginary magnitude exceeds
-        this value.
 
     Returns
     -------
@@ -415,31 +551,20 @@ def spharm(
     if phi_range is None:
         phi_range = np.linspace(0, 2 * np.pi, 180)
 
-    l, m, theta, phi = np.meshgrid(
-        np.arange(0, l_max + 1, 1),
-        np.arange(-l_max, l_max + 1, 1),
-        theta_range,
-        phi_range,
-        indexing="ij",
-    )
+    theta_grid, phi_grid = np.meshgrid(theta_range, phi_range, indexing="ij")
+    B = _real_sph_harm_basis_matrix(l_max, theta_grid.ravel(), phi_grid.ravel())
 
-    c = np.array(
-        [np.pad(c_l, ((l_max - l, l_max - l), (0, 0))) for l, c_l in enumerate(coef)]
-    )
+    coef_matrix = np.vstack(
+        [coef[l] for l in range(l_max + 1)]
+    )  # ((l_max+1)^2, 3)
 
-    sph_mat = sp.special.sph_harm_y(l, m, theta, phi)
+    coords = B @ coef_matrix  # (N, 3)
+    n_theta = len(theta_range)
+    n_phi = len(phi_range)
 
-    coords = np.tensordot(c, sph_mat, axes=([0, 1], [0, 1]))
-
-    total_imag_parts = np.abs(np.imag(coords)).sum()
-    if total_imag_parts > threshold_imag_parts:
-        warnings.warn(
-            f"The coordinates have significant imaginary parts {total_imag_parts}.",
-            UserWarning,
-            stacklevel=2,
-        )
-
-    x, y, z = np.real(coords)
+    x = coords[:, 0].reshape(n_theta, n_phi)
+    y = coords[:, 1].reshape(n_theta, n_phi)
+    z = coords[:, 2].reshape(n_theta, n_phi)
     return x, y, z
 
 

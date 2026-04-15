@@ -22,13 +22,13 @@ from ._converters import (
     convert_coords_df_to_list,
     efa_coeffs_to_nef,
     nef_to_efa_coeffs,
+    sha_coeffs_to_spharmpdm,
+    spharmpdm_to_sha_coeffs,
 )
 from ._nef import NefData, read_nef, write_nef
 from ._protocols import MorphoData, MorphoDataMixin
 from ._spharm_pdm import (
     SpharmPdmData,
-    cvt_spharm_coef_list_to_spharmpdm,
-    cvt_spharm_coef_spharmpdm_to_list,
     read_spharmpdm_coef,
 )
 from ._tps import TPSData, read_tps, write_tps
@@ -46,8 +46,6 @@ __all__ = [
     "read_tps",
     "write_tps",
     "read_spharmpdm_coef",
-    "cvt_spharm_coef_spharmpdm_to_list",
-    "cvt_spharm_coef_list_to_spharmpdm",
     "read_chc",
     "write_chc",
     "read_nef",
@@ -55,6 +53,8 @@ __all__ = [
     # Converter functions
     "nef_to_efa_coeffs",
     "efa_coeffs_to_nef",
+    "spharmpdm_to_sha_coeffs",
+    "sha_coeffs_to_spharmpdm",
     "convert_coords_df_to_list",
     "convert_coords_df_to_df_sklearn_transform",
 ]
