@@ -13,7 +13,8 @@ kernelspec:
 
 ktch includes example datasets for learning and testing. Datasets are
 divided into two categories: bundled datasets shipped with the package,
-and remote datasets downloaded on first use.
+and remote datasets downloaded on first use. In addition, individual
+example files for tutorials can be accessed via the `fetch` function.
 
 ## Available datasets
 
@@ -40,6 +41,7 @@ pip install ktch[data]
 | Function | Type | Description |
 |----------|------|-------------|
 | `load_image_passiflora_leaves` | Images | 25 leaf scan images of 10 *Passiflora* species |
+| `load_surface_leaf_bending` | Surfaces (3D) | 60 surface meshes of simulated bending leaves |
 
 ## Load landmark data
 
@@ -87,6 +89,28 @@ data = load_image_passiflora_leaves(version="2")
 
 The dataset is downloaded once and cached locally. Subsequent calls
 load from the cache.
+
+To control the cache directory, use the `data_home` parameter:
+
+```python
+data = load_image_passiflora_leaves(data_home="./my_cache")
+```
+
+## Fetch example files
+
+The `fetch` function returns a local file path to individual sample files.
+
+```python
+from ktch.datasets import fetch
+
+# Bundled example (shipped with the package)
+path = fetch("landmarks_triangle.tps")
+
+# Remote example (downloaded on first use, requires ktch[data])
+path = fetch("danshaku_08_allSegments_surf.vtp")
+```
+
+See `fetch` docstring for the full list of available files.
 
 ## Dataset description
 
