@@ -14,11 +14,6 @@ kernelspec:
 # Spherical Harmonic (SPHARM) Analysis
 
 ```{code-cell} ipython3
-from pathlib import Path
-import shutil
-import urllib.request
-import tempfile
-
 import numpy as np
 
 import plotly.graph_objects as go
@@ -27,6 +22,7 @@ import vtk
 from vtk.numpy_interface import dataset_adapter as dsa
 
 from ktch.harmonic import SphericalHarmonicAnalysis, xyz2spherical
+from ktch.datasets import fetch
 ```
 
 ```{code-cell} ipython3
@@ -42,35 +38,23 @@ pio.renderers.default = "sphinx_gallery"
 ## Load 3D potato surface data
 
 ```{code-cell} ipython3
-# parameter
-req = urllib.request.Request(
-    "https://strata.morphometrics.jp/examples/danshaku_08_allSegments_para.vtp",
-    headers={"User-Agent": "Mozilla/5.0"},
-)
-with urllib.request.urlopen(req) as response:
-    with tempfile.NamedTemporaryFile() as tmp_file:
-        shutil.copyfileobj(response, tmp_file)
-        reader = vtk.vtkXMLPolyDataReader()
-        reader.SetFileName(tmp_file.name)
-        reader.Update()
+# parameter mesh
+para_path = fetch("danshaku_08_allSegments_para.vtp")
+print(para_path)
 
-        dataset = reader.GetOutput()
-        obj_para = dsa.WrapDataObject(dataset)
+reader = vtk.vtkXMLPolyDataReader()
+reader.SetFileName(para_path)
+reader.Update()
+obj_para = dsa.WrapDataObject(reader.GetOutput())
 
-# surface
-req = urllib.request.Request(
-    "https://strata.morphometrics.jp/examples/danshaku_08_allSegments_surf.vtp",
-    headers={"User-Agent": "Mozilla/5.0"},
-)
-with urllib.request.urlopen(req) as response:
-    with tempfile.NamedTemporaryFile() as tmp_file:
-        shutil.copyfileobj(response, tmp_file)
-        reader = vtk.vtkXMLPolyDataReader()
-        reader.SetFileName(tmp_file.name)
-        reader.Update()
+# surface mesh
+surf_path = fetch("danshaku_08_allSegments_surf.vtp")
+print(surf_path)
 
-        dataset = reader.GetOutput()
-        obj_surf = dsa.WrapDataObject(dataset)
+reader = vtk.vtkXMLPolyDataReader()
+reader.SetFileName(surf_path)
+reader.Update()
+obj_surf = dsa.WrapDataObject(reader.GetOutput())
 ```
 
 ```{code-cell} ipython3

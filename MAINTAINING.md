@@ -362,19 +362,32 @@ procedures for adding or updating remote datasets.
 
 ```txt
 ktch-datasets/
-└── datasets/
-    └── image_passiflora_leaves/
-        ├── v1/
-        │   ├── manifest.json
-        │   └── image_passiflora_leaves.zip
-        └── v2/
+├── datasets/
+│   └── image_passiflora_leaves/
+│       ├── v1/
+│       │   ├── manifest.json
+│       │   └── image_passiflora_leaves.zip
+│       └── v2/
+│           ├── manifest.json
+│           └── image_passiflora_leaves.zip
+└── examples/
+    └── danshaku_08_allSegments_para/
+        └── v1/
             ├── manifest.json
-            └── image_passiflora_leaves.zip
+            └── danshaku_08_allSegments_para.vtp
 ```
 
-Each dataset has its own numeric version sequence (v1, v2, ...) independent
+The bucket has two top-level prefixes:
+
+- `datasets/` -- curated datasets loaded by `load_*` functions (typically
+  zip archives containing multiple files).
+- `examples/` -- individual sample files fetched by `ktch.datasets.fetch()`
+  for tutorials and demonstrations (typically single files, not zipped).
+
+Each entry has its own numeric version sequence (v1, v2, ...) independent
 of the ktch package version. When adding or updating a dataset, place files
-under `datasets/{dataset_name}/v{N}/`.
+under `datasets/{dataset_name}/v{N}/`. For example data, use
+`examples/{stem}/v{N}/` where `{stem}` is the filename without extension.
 
 ### Zip archive layout
 

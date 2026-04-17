@@ -24,12 +24,18 @@ from sklearn.decomposition import PCA
 
 from ktch.landmark import GeneralizedProcrustesAnalysis
 from ktch.io import read_tps
+from ktch.datasets import fetch
 ```
 
 ## Reading TPS file
 
 ```{code-cell} ipython3
-df_triangles = read_tps("./landmarks_triangle.tps", as_frame=True)
+path = fetch("landmarks_triangle.tps")
+print(path)
+```
+
+```{code-cell} ipython3
+df_triangles = read_tps(path, as_frame=True)
 df_triangles
 ```
 
