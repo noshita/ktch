@@ -15,7 +15,9 @@ Use scikit-learn's cross-validation with ktch transformers.
 
 ## Cross-validation with EFA
 
-Since EFA's `fit_transform` signature differs from sklearn's convention, apply EFA before cross-validation:
+EFA can be included in a Pipeline with cross-validation.
+When using the default arc-length parameterization (`t=None`), no
+metadata routing is required:
 
 ```{code-cell} ipython3
 import numpy as np
@@ -35,20 +37,16 @@ for i in range(20):
     scale = 1.0 + 0.2 * np.random.randn()
     outlines.append(np.column_stack([scale * np.cos(theta), np.sin(theta)]))
     labels.append(0 if scale < 1.0 else 1)
-outlines = np.array(outlines)
 labels = np.array(labels)
 
-# Apply EFA first (unsupervised transformation)
-efa = EllipticFourierAnalysis(n_harmonics=10)
-coefficients = efa.fit_transform(outlines)
-
-# PCA + SVC pipeline for cross-validation
+# EFA + PCA + SVC pipeline
 pipeline = Pipeline([
+    ('efa', EllipticFourierAnalysis(n_harmonics=10, norm=True)),
     ('pca', PCA(n_components=3)),
     ('svc', SVC())
 ])
 
-scores = cross_val_score(pipeline, coefficients, labels, cv=3)
+scores = cross_val_score(pipeline, outlines, labels, cv=3)
 print(f"Accuracy: {scores.mean():.2f} (+/- {scores.std():.2f})")
 ```
 
