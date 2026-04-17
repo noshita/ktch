@@ -61,6 +61,17 @@ class TestLoadLandmarkTrilobiteCephala:
         assert isinstance(data.landmarks, pd.DataFrame)
         assert isinstance(data.meta, pd.DataFrame)
 
+    def test_as_frame_true_curves(self):
+        """Test that curves are DataFrames when as_frame=True."""
+        data = load_landmark_trilobite_cephala(as_frame=True)
+
+        assert isinstance(data.curves, list)
+        assert len(data.curves) == 300
+        for curves in data.curves:
+            assert len(curves) == 4
+            for curve in curves:
+                assert isinstance(curve, pd.DataFrame)
+
     def test_descr_not_empty(self):
         """Test that the description is not empty."""
         data = load_landmark_trilobite_cephala()

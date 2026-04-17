@@ -212,9 +212,10 @@ def load_landmark_trilobite_cephala(*, as_frame: bool = False) -> Bunch:
         landmarks : {ndarray, dataframe} of shape (300, 16, 2)
             The landmark data. If ``as_frame=True``, returns a pandas
             DataFrame.
-        curves : list of list of ndarray
+        curves : list of list of {ndarray, DataFrame}
             Curve semilandmark data. Each element is a list of 4 curves
-            for one specimen.
+            for one specimen.  When ``as_frame=True``, each curve is a
+            DataFrame instead of an ndarray.
         curve_landmarks : list of tuple of (int, int)
             The start and end fixed-landmark indices for each curve,
             used by :func:`~ktch.landmark.combine_landmarks_and_curves`.
@@ -357,8 +358,7 @@ def load_outline_leaf_bending(*, as_frame: bool = False) -> Bunch:
     ----------
     as_frame : bool, default=False
         If True, the data is a pandas DataFrame including columns with
-        appropriate dtypes (numeric). The target is
-        a pandas DataFrame or Series depending on the number of target columns.
+        appropriate dtypes (numeric).
         If `as_frame` is False, `coords` will be a numpy array of shape
         (n_specimens, n_points, 3).
 
@@ -411,6 +411,7 @@ def load_surface_leaf_bending(
     return_paths: bool = False,
     as_frame: bool = False,
     version: str | None = None,
+    data_home: str | Path | None = None,
 ) -> Bunch:
     """Load and return the synthetic 3D leaf bending surface dataset.
 
@@ -443,6 +444,10 @@ def load_surface_leaf_bending(
     version : str, optional
         The dataset version to load (e.g., "1").  If None, uses the
         default version for the current ktch release.
+    data_home : str, Path, or None
+        Directory to cache downloaded files.  If None, uses the OS
+        cache directory (e.g., ``~/Library/Caches/ktch-datasets`` on
+        macOS).
 
     Returns
     -------
@@ -501,7 +506,7 @@ def load_surface_leaf_bending(
     descr_file_name = "data_surface_leaf_bending.rst"
 
     archive_path = _fetch_remote_dataset(
-        dataset_name, version, "surface_leaf_bending.zip"
+        dataset_name, version, "surface_leaf_bending.zip", data_home=data_home
     )
     data_dir = Path(archive_path).parent / "surface_leaf_bending"
 
@@ -550,51 +555,6 @@ def load_surface_leaf_bending(
     result.version = version
 
     return result
-
-
-###########################################################
-#
-#   utility functions
-#
-###########################################################
-
-
-def convert_coords_df_to_list(df_coords):
-    """Convert a coordinate DataFrame to a list of per-specimen arrays.
-
-    .. deprecated::
-        Use :func:`ktch.io.convert_coords_df_to_list` instead.
-    """
-    import warnings
-
-    from ktch.io._converters import convert_coords_df_to_list as _impl
-
-    warnings.warn(
-        "ktch.datasets._base.convert_coords_df_to_list is deprecated. "
-        "Use ktch.io.convert_coords_df_to_list instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return _impl(df_coords)
-
-
-def convert_coords_df_to_df_sklearn_transform(df_coords):
-    """Convert a coordinate DataFrame to sklearn-compatible wide format.
-
-    .. deprecated::
-        Use :func:`ktch.io.convert_coords_df_to_df_sklearn_transform` instead.
-    """
-    import warnings
-
-    from ktch.io._converters import convert_coords_df_to_df_sklearn_transform as _impl
-
-    warnings.warn(
-        "ktch.datasets._base.convert_coords_df_to_df_sklearn_transform is deprecated. "
-        "Use ktch.io.convert_coords_df_to_df_sklearn_transform instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return _impl(df_coords)
 
 
 ###########################################################
@@ -738,7 +698,12 @@ def _resolve_dataset_version(dataset_name, version=None):
         If the dataset is not registered or the version does not exist.
     """
     if version is None:
-        return get_default_version(dataset_name)
+        try:
+            return get_default_version(dataset_name)
+        except KeyError:
+            raise ValueError(
+                f"Unknown dataset: '{dataset_name}'"
+            ) from None
 
     if dataset_name not in dataset_registry:
         raise ValueError(f"Unknown dataset: '{dataset_name}'")
@@ -753,7 +718,7 @@ def _resolve_dataset_version(dataset_name, version=None):
     return version
 
 
-def _fetch_remote_dataset(dataset_name, version, filename):
+def _fetch_remote_dataset(dataset_name, version, filename, *, data_home=None):
     """Fetch a remote dataset file using pooch.
 
     Parameters
@@ -764,6 +729,10 @@ def _fetch_remote_dataset(dataset_name, version, filename):
         Dataset version string (e.g., "1").
     filename : str
         Filename within the dataset (e.g., "image_passiflora_leaves.zip").
+    data_home : str, Path, or None
+        Directory to cache downloaded files.  If None, uses the OS cache
+        directory (e.g., ``~/.cache/ktch-datasets`` on Linux,
+        ``~/Library/Caches/ktch-datasets`` on macOS).
 
     Returns
     -------
@@ -785,7 +754,10 @@ def _fetch_remote_dataset(dataset_name, version, filename):
 
     known_hash = get_dataset_hash(dataset_name, version, filename)
     url = get_dataset_url(dataset_name, version, filename)
-    cache_path = pooch.os_cache("ktch-data") / dataset_name / f"v{version}"
+    if data_home is None:
+        cache_path = pooch.os_cache("ktch-datasets") / dataset_name / f"v{version}"
+    else:
+        cache_path = Path(data_home) / dataset_name / f"v{version}"
 
     return pooch.retrieve(
         url=url,
@@ -796,7 +768,11 @@ def _fetch_remote_dataset(dataset_name, version, filename):
 
 
 def load_image_passiflora_leaves(
-    *, return_paths: bool = False, as_frame: bool = False, version: str | None = None
+    *,
+    return_paths: bool = False,
+    as_frame: bool = False,
+    version: str | None = None,
+    data_home: str | Path | None = None,
 ) -> Bunch:
     """Load and return the Passiflora leaf image dataset.
 
@@ -824,6 +800,10 @@ def load_image_passiflora_leaves(
     version : str, optional
         The dataset version to load (e.g., "1"). If None, uses the
         default version for the current ktch release.
+    data_home : str, Path, or None
+        Directory to cache downloaded files.  If None, uses the OS
+        cache directory (e.g., ``~/Library/Caches/ktch-datasets`` on
+        macOS).
 
     Returns
     -------
@@ -878,7 +858,7 @@ def load_image_passiflora_leaves(
     descr_file_name = "data_image_passiflora_leaves.rst"
 
     archive_path = _fetch_remote_dataset(
-        dataset_name, version, "image_passiflora_leaves.zip"
+        dataset_name, version, "image_passiflora_leaves.zip", data_home=data_home
     )
     data_dir = Path(archive_path).parent / "image_passiflora_leaves"
 

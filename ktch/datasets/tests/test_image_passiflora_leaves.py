@@ -190,6 +190,13 @@ class TestResolveDatasetVersion:
         with pytest.raises(ValueError, match="Unknown dataset"):
             _resolve_dataset_version("nonexistent", "1")
 
+    def test_unknown_dataset_default_version(self):
+        """Test that ValueError is raised for unknown dataset with version=None."""
+        from ktch.datasets._base import _resolve_dataset_version
+
+        with pytest.raises(ValueError, match="Unknown dataset"):
+            _resolve_dataset_version("nonexistent")
+
     def test_invalid_version(self):
         """Test that ValueError is raised for non-existent version."""
         from ktch.datasets._base import _resolve_dataset_version

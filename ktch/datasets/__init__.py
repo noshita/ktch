@@ -1,6 +1,6 @@
 """
 The :mod:`ktch.datasets` module implements utility functions
-to load morphometric datasets.
+to load morphometric datasets and fetch example data files.
 """
 
 import warnings
@@ -13,19 +13,19 @@ from ._base import (
     load_outline_mosquito_wings,
     load_surface_leaf_bending,
 )
+from ._examples import fetch
 from ._sample_generator import (
     make_landmarks_from_reference,
 )
 
 __all__ = [
+    "fetch",
     "load_landmark_mosquito_wings",
     "load_landmark_trilobite_cephala",
     "load_outline_mosquito_wings",
     "load_outline_leaf_bending",
     "load_image_passiflora_leaves",
     "load_surface_leaf_bending",
-    "convert_coords_df_to_list",
-    "convert_coords_df_to_df_sklearn_transform",
     "make_landmarks_from_reference",
 ]
 
