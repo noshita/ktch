@@ -1,3 +1,5 @@
+"""Tests for Elliptic Fourier Analysis."""
+
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -724,37 +726,6 @@ class TestNormalize3d:
         for i in range(6, 11):
             assert isinstance(result[i], (float, np.floating))
 
-    def test_canonical_first_harmonic(self):
-        """After normalization,
-        1st harmonic defines XY-plane ellipse with semi-major along X.
-
-        Canonical form: a1_norm > 0, b1_norm = 0, c1_norm = 0, d1_norm > 0,
-        e1_norm = 0, f1_norm = 0 (or nearly so).
-        """
-        n_harmonics = 6
-        X_coords, _ = _make_3d_outline(
-            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
-        )
-
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=False)
-        coef = efa.fit_transform([X_coords], t=None)[0]
-        arrays = coef.reshape(6, n_harmonics + 1)
-        an, bn, cn, dn, en, fn = arrays
-
-        An, Bn, Cn, Dn, En, Fn, alpha, beta, gamma, phi, scale = efa._normalize_3d(
-            an, bn, cn, dn, en, fn
-        )
-
-        # 1st harmonic: semi-major along X (a1 > 0), zero b1
-        # semi-minor along Y (d1 > 0), zero c1
-        # z-components zero (e1=0, f1=0)
-        assert An[1] > 0, f"An[1]={An[1]} should be positive (semi-major along X)"
-        assert abs(Bn[1]) < 1e-10, f"Bn[1]={Bn[1]} should be ~0"
-        assert abs(Cn[1]) < 1e-10, f"Cn[1]={Cn[1]} should be ~0"
-        assert Dn[1] >= 0, f"Dn[1]={Dn[1]} should be non-negative"
-        assert abs(En[1]) < 1e-10, f"En[1]={En[1]} should be ~0"
-        assert abs(Fn[1]) < 1e-10, f"Fn[1]={Fn[1]} should be ~0"
-
 
 class TestNormMethodParameter:
     """Tests for the norm_method parameter in EllipticFourierAnalysis."""
@@ -912,31 +883,6 @@ class TestNormMethodParameter:
 
         assert scale == pytest.approx(expected_scale, rel=1e-10)
 
-    def test_orientation_parameters_match_geometry(self):
-        """The returned alpha, beta, gamma, phi match the 1st harmonic's geometry."""
-        n_harmonics = 6
-        X_coords, _ = _make_3d_outline(
-            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
-        )
-
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=False)
-        coef = efa.fit_transform([X_coords], t=None)[0]
-        arrays = coef.reshape(6, n_harmonics + 1)
-        an, bn, cn, dn, en, fn = arrays
-
-        phi_expected, _, _, alpha_expected, beta_expected, gamma_expected = (
-            _compute_ellipse_geometry_3d(an[1], bn[1], cn[1], dn[1], en[1], fn[1])
-        )
-
-        _, _, _, _, _, _, alpha, beta, gamma, phi, _ = efa._normalize_3d(
-            an, bn, cn, dn, en, fn
-        )
-
-        assert alpha == pytest.approx(alpha_expected, abs=1e-10)
-        assert beta == pytest.approx(beta_expected, abs=1e-10)
-        assert gamma == pytest.approx(gamma_expected, abs=1e-10)
-        assert phi == pytest.approx(phi_expected, abs=1e-10)
-
     def test_degenerate_first_harmonic_raises(self):
         """Degenerate 1st harmonic (all coefficients near zero) raises ValueError."""
         n_harmonics = 6
@@ -1022,8 +968,8 @@ class TestNormMethodParameter:
         assert scale == pytest.approx(expected_scale, abs=1e-10)
 
 
-class TestTransformSingle3dPipeline:
-    """Tests for 3D normalization integration into the transform pipeline."""
+class TestTransform3dNormIntegration:
+    """Tests for 3D normalization integration into the transform method."""
 
     def test_norm_true_returns_correct_shape(self):
         """transform with norm=True for 3D returns shape (1, 6*(n_harmonics+1))."""
@@ -1138,72 +1084,84 @@ class TestTransformSingle3dPipeline:
 
 
 class TestNormalize3dInvariance:
-    """Invariance and validation tests for 3D EFA normalization."""
+    """Invariance and validation tests for 3D EFA normalization.
 
-    def test_translation_invariance(self):
+    Translation, scale, rotation, and start-point shift invariance are
+    parametrized over norm_method to cover both area and semi_major_axis
+    normalization in a single set of tests.
+    """
+
+    @pytest.mark.parametrize("norm_method", [None, "semi_major_axis"])
+    def test_translation_invariance(self, norm_method):
         """Normalized coefficients are invariant under 3D translation."""
         n_harmonics = 6
-        rng = np.random.default_rng(50)
+        seed = 50 if norm_method is None else 60
+        rng = np.random.default_rng(seed)
         X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=rng)
 
-        # Apply a random 3D translation
         translation = rng.uniform(-10, 10, size=3)
         X_translated = X_coords + translation
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True)
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=True, norm_method=norm_method
+        )
         coef_orig = efa.fit_transform([X_coords])[0]
         coef_trans = efa.fit_transform([X_translated])[0]
 
-        # Harmonic coefficients (indices 1+) should match; DC may differ
         coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
         coef_trans_harmonics = coef_trans.reshape(6, n_harmonics + 1)[:, 1:]
 
         assert_array_almost_equal(coef_orig_harmonics, coef_trans_harmonics, decimal=5)
 
-    def test_scale_invariance(self):
+    @pytest.mark.parametrize("norm_method", [None, "semi_major_axis"])
+    def test_scale_invariance(self, norm_method):
         """Normalized coefficients are invariant under uniform scaling."""
         n_harmonics = 6
-        rng = np.random.default_rng(51)
+        seed = 51 if norm_method is None else 61
+        rng = np.random.default_rng(seed)
         X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=rng)
 
-        # Apply a random uniform scaling
         scale_factor = rng.uniform(0.5, 5.0)
         X_scaled = X_coords * scale_factor
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True)
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=True, norm_method=norm_method
+        )
         coef_orig = efa.fit_transform([X_coords])[0]
         coef_scaled = efa.fit_transform([X_scaled])[0]
 
-        # Harmonic coefficients should match
         coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
         coef_scaled_harmonics = coef_scaled.reshape(6, n_harmonics + 1)[:, 1:]
 
         assert_array_almost_equal(coef_orig_harmonics, coef_scaled_harmonics, decimal=5)
 
-    def test_rotation_invariance(self):
+    @pytest.mark.parametrize("norm_method", [None, "semi_major_axis"])
+    def test_rotation_invariance(self, norm_method):
         """Normalized coefficients are invariant under 3D rotation."""
         n_harmonics = 6
-        rng = np.random.default_rng(52)
+        seed = 52 if norm_method is None else 62
+        rng = np.random.default_rng(seed)
         X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=rng)
 
-        # Apply a random 3D rotation via ZXZ Euler angles
         alpha_r = rng.uniform(-np.pi, np.pi)
         beta_r = rng.uniform(0, np.pi)
         gamma_r = rng.uniform(-np.pi, np.pi)
         R = rotation_matrix_3d_euler_zxz(alpha_r, beta_r, gamma_r)
         X_rotated = (R @ X_coords.T).T
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True)
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=True, norm_method=norm_method
+        )
         coef_orig = efa.fit_transform([X_coords])[0]
         coef_rot = efa.fit_transform([X_rotated])[0]
 
-        # Harmonic coefficients should match
         coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
         coef_rot_harmonics = coef_rot.reshape(6, n_harmonics + 1)[:, 1:]
 
         assert_array_almost_equal(coef_orig_harmonics, coef_rot_harmonics, decimal=4)
 
-    def test_startpoint_shift_invariance(self):
+    @pytest.mark.parametrize("norm_method", [None, "semi_major_axis"])
+    def test_startpoint_shift_invariance(self, norm_method):
         """Normalized shapes are approximately invariant under cyclic permutation.
 
         Starting-point shift changes arc-length parameterization, which can cause
@@ -1218,19 +1176,20 @@ class TestNormalize3dInvariance:
         rng = np.random.default_rng(53)
         X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, t_num=t_num, rng=rng)
 
-        # Cyclically shift the starting point
         shift = rng.integers(1, len(X_coords))
         X_shifted = np.roll(X_coords, shift, axis=0)
 
-        efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True)
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, norm=True, norm_method=norm_method
+        )
         coef_orig = efa.fit_transform([X_coords])
         coef_shifted = efa.fit_transform([X_shifted])
 
-        # Reconstruct normalized shapes and compare geometrically
         X_recon_orig = np.array(efa.inverse_transform(coef_orig, t_num=t_num))[0]
         X_recon_shifted = np.array(efa.inverse_transform(coef_shifted, t_num=t_num))[0]
 
-        assert wasserstein_distance_nd(X_recon_orig, X_recon_shifted) < 0.5
+        tol = 0.5 if norm_method is None else 1.0
+        assert wasserstein_distance_nd(X_recon_orig, X_recon_shifted) < tol
 
     def test_round_trip_reconstruction(self):
         """Forward (norm=True) then inverse (norm=True) produces consistent shape.
@@ -1478,31 +1437,6 @@ class TestSemiMajorAxisNormalization:
         scale_returned = result[-1]
         assert scale_returned == pytest.approx(a1, rel=1e-10)
 
-    def test_area_method_unchanged_after_branch(self):
-        """area method still returns sqrt(pi*a1*b1) after adding the branch."""
-        n_harmonics = 6
-        X_coords, _ = _make_3d_outline(
-            n_harmonics=n_harmonics, rng=np.random.default_rng(42)
-        )
-
-        efa = EllipticFourierAnalysis(
-            n_dim=3, n_harmonics=n_harmonics, norm_method="area"
-        )
-        efa_raw = EllipticFourierAnalysis(
-            n_dim=3, n_harmonics=n_harmonics, norm_method="area", norm=False
-        )
-        coef = efa_raw.fit_transform([X_coords], t=None)[0]
-        arrays = coef.reshape(6, n_harmonics + 1)
-        an, bn, cn, dn, en, fn = arrays
-
-        _, a1, b1, _, _, _ = _compute_ellipse_geometry_3d(
-            an[1], bn[1], cn[1], dn[1], en[1], fn[1]
-        )
-        expected_scale = np.sqrt(np.pi * a1 * b1)
-
-        *_, scale = efa._normalize_3d(an, bn, cn, dn, en, fn)
-        assert scale == pytest.approx(expected_scale, rel=1e-10)
-
 
 class TestSemiMajorAxisCanonical:
     """Tests verifying semi-major axis length = 1 after normalization."""
@@ -1560,100 +1494,6 @@ class TestSemiMajorAxisCanonical:
 
         # For area normalization, a1_norm = a1 / sqrt(pi*a1*b1), which != 1 in general
         assert a1_norm != pytest.approx(1.0, abs=1e-3)
-
-
-class TestSemiMajorAxisInvariance:
-    """Invariance tests for semi-major axis normalization."""
-
-    def test_translation_invariance(self):
-        """Semi-major-axis normalized coefficients are invariant under translation."""
-        n_harmonics = 6
-        rng = np.random.default_rng(60)
-        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=rng)
-
-        translation = rng.uniform(-10, 10, size=3)
-        X_translated = X_coords + translation
-
-        efa = EllipticFourierAnalysis(
-            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis", norm=True
-        )
-        coef_orig = efa.fit_transform([X_coords])[0]
-        coef_trans = efa.fit_transform([X_translated])[0]
-
-        coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
-        coef_trans_harmonics = coef_trans.reshape(6, n_harmonics + 1)[:, 1:]
-
-        assert_array_almost_equal(coef_orig_harmonics, coef_trans_harmonics, decimal=5)
-
-    def test_scale_invariance(self):
-        """Semi-major-axis normalized coefficients are invariant under uniform scaling."""
-        n_harmonics = 6
-        rng = np.random.default_rng(61)
-        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=rng)
-
-        scale_factor = rng.uniform(0.5, 5.0)
-        X_scaled = X_coords * scale_factor
-
-        efa = EllipticFourierAnalysis(
-            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis", norm=True
-        )
-        coef_orig = efa.fit_transform([X_coords])[0]
-        coef_scaled = efa.fit_transform([X_scaled])[0]
-
-        coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
-        coef_scaled_harmonics = coef_scaled.reshape(6, n_harmonics + 1)[:, 1:]
-
-        assert_array_almost_equal(coef_orig_harmonics, coef_scaled_harmonics, decimal=5)
-
-    def test_rotation_invariance(self):
-        """Semi-major-axis normalized coefficients are invariant under 3D rotation."""
-        n_harmonics = 6
-        rng = np.random.default_rng(62)
-        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, rng=rng)
-
-        alpha_r = rng.uniform(-np.pi, np.pi)
-        beta_r = rng.uniform(0, np.pi)
-        gamma_r = rng.uniform(-np.pi, np.pi)
-        R = rotation_matrix_3d_euler_zxz(alpha_r, beta_r, gamma_r)
-        X_rotated = (R @ X_coords.T).T
-
-        efa = EllipticFourierAnalysis(
-            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis", norm=True
-        )
-        coef_orig = efa.fit_transform([X_coords])[0]
-        coef_rot = efa.fit_transform([X_rotated])[0]
-
-        coef_orig_harmonics = coef_orig.reshape(6, n_harmonics + 1)[:, 1:]
-        coef_rot_harmonics = coef_rot.reshape(6, n_harmonics + 1)[:, 1:]
-
-        assert_array_almost_equal(coef_orig_harmonics, coef_rot_harmonics, decimal=4)
-
-    def test_startpoint_shift_invariance(self):
-        """Semi-major-axis normalized shapes are approx invariant under cyclic permutation.
-
-        Starting-point shift changes arc-length parameterization, which can cause
-        the phase normalization to select a different canonical branch. The tolerance
-        is set to 1.0 to account for the discrete phi ambiguity, matching the same
-        pattern as the area-based startpoint shift test.
-        """
-        n_harmonics = 20
-        t_num = 360
-        rng = np.random.default_rng(53)
-        X_coords, _ = _make_3d_outline(n_harmonics=n_harmonics, t_num=t_num, rng=rng)
-
-        shift = rng.integers(1, len(X_coords))
-        X_shifted = np.roll(X_coords, shift, axis=0)
-
-        efa = EllipticFourierAnalysis(
-            n_dim=3, n_harmonics=n_harmonics, norm_method="semi_major_axis", norm=True
-        )
-        coef_orig = efa.fit_transform([X_coords])
-        coef_shifted = efa.fit_transform([X_shifted])
-
-        X_recon_orig = np.array(efa.inverse_transform(coef_orig, t_num=t_num))[0]
-        X_recon_shifted = np.array(efa.inverse_transform(coef_shifted, t_num=t_num))[0]
-
-        assert wasserstein_distance_nd(X_recon_orig, X_recon_shifted) < 1.0
 
 
 class TestAreaNormalizationRegression:
@@ -2583,3 +2423,270 @@ class TestNonFiniteInput:
         efa = EllipticFourierAnalysis(n_dim=3, n_harmonics=4, norm=False)
         with pytest.raises(ValueError, match="NaN or Inf"):
             efa.fit_transform([coords])
+
+
+###########################################################
+#
+#   sklearn API compliance
+#
+###########################################################
+
+
+def test_efa_fit_returns_self():
+    """fit() returns self for method chaining."""
+    efa = EllipticFourierAnalysis(n_harmonics=4)
+    X = _load_wings_as_list(n_specimens=3)
+    result = efa.fit(X)
+    assert result is efa
+
+
+def test_efa_fit_then_transform_2d():
+    """fit + transform produces same result as fit_transform for 2D."""
+    X = _load_wings_as_list(n_specimens=5)
+
+    efa1 = EllipticFourierAnalysis(n_harmonics=6, norm=True)
+    X_ft = efa1.fit_transform(X)
+
+    efa2 = EllipticFourierAnalysis(n_harmonics=6, norm=True)
+    X_t = efa2.fit(X).transform(X)
+
+    assert_array_almost_equal(X_ft, X_t)
+
+
+def test_efa_fit_then_transform_2d_with_t():
+    """fit + transform(t=...) produces same result as fit_transform(t=...) for 2D."""
+    X = _load_wings_as_list(n_specimens=5)
+    t = [np.linspace(0, 2 * np.pi, len(x), endpoint=False) for x in X]
+
+    efa1 = EllipticFourierAnalysis(n_harmonics=6, norm=True)
+    X_ft = efa1.fit_transform(X, t=t)
+
+    efa2 = EllipticFourierAnalysis(n_harmonics=6, norm=True)
+    X_t = efa2.fit(X).transform(X, t=t)
+
+    assert_array_almost_equal(X_ft, X_t)
+
+
+def test_efa_clone():
+    """sklearn clone() preserves constructor params."""
+    from sklearn.base import clone
+
+    efa = EllipticFourierAnalysis(
+        n_harmonics=10,
+        n_dim=3,
+        norm=True,
+        return_orientation_scale=True,
+        norm_method="semi_major_axis",
+    )
+    efa_cloned = clone(efa)
+
+    assert efa_cloned.n_harmonics == 10
+    assert efa_cloned.n_dim == 3
+    assert efa_cloned.norm is True
+    assert efa_cloned.return_orientation_scale is True
+    assert efa_cloned.norm_method == "semi_major_axis"
+
+
+def test_efa_get_feature_names_out_2d():
+    """Feature names match expected pattern for 2D."""
+    efa = EllipticFourierAnalysis(n_harmonics=3)
+    names = efa.get_feature_names_out()
+    assert len(names) == 4 * 4
+    assert names[0] == "a_0"
+    assert names[-1] == "d_3"
+
+
+def test_efa_get_feature_names_out_3d():
+    """Feature names match expected pattern for 3D."""
+    efa = EllipticFourierAnalysis(n_harmonics=3, n_dim=3)
+    names = efa.get_feature_names_out()
+    assert len(names) == 6 * 4
+    assert names[0] == "a_0"
+    assert names[-1] == "f_3"
+
+
+def test_efa_inverse_transform_strips_orientation_scale_2d():
+    """inverse_transform ignores trailing psi/scale columns."""
+    coords = _make_circle(t_num=120)
+    efa = EllipticFourierAnalysis(
+        n_harmonics=4, norm=True, return_orientation_scale=True
+    )
+    coef = efa.fit_transform([coords])
+
+    recon_with = efa.inverse_transform(coef, t_num=50)
+    recon_without = efa.inverse_transform(coef[:, :-2], t_num=50)
+    assert_array_almost_equal(recon_with[0], recon_without[0])
+
+
+def test_efa_inverse_transform_strips_orientation_scale_3d():
+    """inverse_transform ignores trailing alpha/beta/gamma/phi/scale columns."""
+    coords, _ = _make_3d_outline(
+        n_harmonics=4, t_num=120, rng=np.random.default_rng(99)
+    )
+    efa = EllipticFourierAnalysis(
+        n_dim=3, n_harmonics=4, norm=True, return_orientation_scale=True
+    )
+    coef = efa.fit_transform([coords])
+
+    recon_with = efa.inverse_transform(coef, t_num=50)
+    recon_without = efa.inverse_transform(coef[:, :-5], t_num=50)
+    assert_array_almost_equal(recon_with[0], recon_without[0])
+
+
+def test_efa_set_output_pandas_has_feature_names():
+    """DataFrame columns match get_feature_names_out()."""
+    X = _load_wings_as_list(n_specimens=3)
+    efa = EllipticFourierAnalysis(n_harmonics=4, norm=True)
+    efa.set_output(transform="pandas")
+    coef = efa.fit_transform(X)
+
+    assert isinstance(coef, pd.DataFrame)
+    assert list(coef.columns) == list(efa.get_feature_names_out())
+
+
+###########################################################
+#
+#   sklearn Pipeline integration
+#
+###########################################################
+
+
+def test_efa_pipeline_with_pca_2d():
+    """EFA as first step in Pipeline, followed by PCA (2D)."""
+    from sklearn.decomposition import PCA
+    from sklearn.pipeline import Pipeline
+
+    X = _load_wings_as_list(n_specimens=10)
+    pipe = Pipeline(
+        [
+            ("efa", EllipticFourierAnalysis(n_harmonics=6, norm=True)),
+            ("pca", PCA(n_components=2)),
+        ]
+    )
+    result = pipe.fit_transform(X)
+    assert result.shape == (10, 2)
+
+
+def test_efa_pipeline_with_pca_3d():
+    """EFA(n_dim=3) in Pipeline with PCA."""
+    from sklearn.decomposition import PCA
+    from sklearn.pipeline import Pipeline
+
+    n_harmonics = 4
+    X = [
+        _make_3d_outline(n_harmonics=n_harmonics, rng=np.random.default_rng(i))[0]
+        for i in range(8)
+    ]
+    pipe = Pipeline(
+        [
+            (
+                "efa",
+                EllipticFourierAnalysis(n_dim=3, n_harmonics=n_harmonics, norm=True),
+            ),
+            ("pca", PCA(n_components=2)),
+        ]
+    )
+    result = pipe.fit_transform(X)
+    assert result.shape == (8, 2)
+
+
+def test_efa_pipeline_fit_then_transform():
+    """Pipeline fit + transform produces same result as fit_transform."""
+    from sklearn.decomposition import PCA
+    from sklearn.pipeline import Pipeline
+
+    X = _load_wings_as_list(n_specimens=10)
+
+    pipe1 = Pipeline(
+        [
+            ("efa", EllipticFourierAnalysis(n_harmonics=6, norm=True)),
+            ("pca", PCA(n_components=2)),
+        ]
+    )
+    result_ft = pipe1.fit_transform(X)
+
+    pipe2 = Pipeline(
+        [
+            ("efa", EllipticFourierAnalysis(n_harmonics=6, norm=True)),
+            ("pca", PCA(n_components=2)),
+        ]
+    )
+    pipe2.fit(X)
+    result_t = pipe2.transform(X)
+
+    assert_array_almost_equal(result_ft, result_t)
+
+
+def test_efa_pipeline_norm_pca():
+    """Normalized EFA coefficients flow correctly through PCA."""
+    from sklearn.decomposition import PCA
+    from sklearn.pipeline import Pipeline
+
+    X = _load_wings_as_list(n_specimens=10)
+    pipe = Pipeline(
+        [
+            ("efa", EllipticFourierAnalysis(n_harmonics=6, norm=True)),
+            ("pca", PCA()),
+        ]
+    )
+    pipe.fit(X)
+
+    pca_step = pipe.named_steps["pca"]
+    assert pca_step.n_components_ <= 4 * 7
+    assert sum(pca_step.explained_variance_ratio_) == pytest.approx(1.0)
+
+
+def test_efa_pipeline_set_output_pandas():
+    """Pipeline with set_output propagates DataFrames correctly."""
+    from sklearn.decomposition import PCA
+    from sklearn.pipeline import Pipeline
+
+    X = _load_wings_as_list(n_specimens=5)
+    pipe = Pipeline(
+        [
+            ("efa", EllipticFourierAnalysis(n_harmonics=4, norm=True)),
+            ("pca", PCA(n_components=2)),
+        ]
+    )
+    pipe.set_output(transform="pandas")
+    result = pipe.fit_transform(X)
+    assert isinstance(result, pd.DataFrame)
+
+
+def test_efa_pipeline_metadata_routing_t():
+    """Metadata routing of t through Pipeline.
+
+    With metadata routing enabled, parameters are passed by name (not
+    step__param prefix). The routing system uses set_transform_request
+    declarations to dispatch each parameter to the correct step.
+    """
+    import sklearn
+    from sklearn.decomposition import PCA
+    from sklearn.pipeline import Pipeline
+
+    X = _load_wings_as_list(n_specimens=5)
+    t = [np.linspace(0, 2 * np.pi, len(x), endpoint=False) for x in X]
+
+    with sklearn.config_context(enable_metadata_routing=True):
+        efa = EllipticFourierAnalysis(n_harmonics=6, norm=True)
+        efa.set_transform_request(t=True)
+        pipe = Pipeline([("efa", efa), ("pca", PCA(n_components=2))])
+
+        result = pipe.fit_transform(X, t=t)
+        assert result.shape == (5, 2)
+
+        # Also test fit + transform separately
+        pipe2 = Pipeline(
+            [
+                (
+                    "efa",
+                    EllipticFourierAnalysis(
+                        n_harmonics=6, norm=True
+                    ).set_transform_request(t=True),
+                ),
+                ("pca", PCA(n_components=2)),
+            ]
+        )
+        pipe2.fit(X, t=t)
+        result2 = pipe2.transform(X, t=t)
+        assert_array_almost_equal(result, result2)
