@@ -1,15 +1,16 @@
 #!/usr/bin/env python
-"""Update ktch dataset registry from R2 manifest.json files.
+"""Update ktch dataset and example data registry from R2 manifest.json files.
 
-Reads registry.toml for the list of datasets and versions, fetches the
-manifest.json for each version from R2, and regenerates
+Reads registry.toml for the list of datasets/examples and versions, fetches
+the manifest.json for each version from R2, and regenerates
 ktch/datasets/_registry.py accordingly.
 
 Usage:
     uv run python scripts/update_registry.py
     uv run python scripts/update_registry.py --dry-run
 
-Examples:
+Examples
+--------
     uv run python scripts/update_registry.py
     uv run python scripts/update_registry.py --dry-run
 """
@@ -30,68 +31,135 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 REGISTRY_TOML_PATH = PROJECT_ROOT / "ktch" / "datasets" / "registry.toml"
 REGISTRY_PY_PATH = PROJECT_ROOT / "ktch" / "datasets" / "_registry.py"
 
-_DATASET_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+_NAME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]*$")
 _VERSION_RE = re.compile(r"^(0|[1-9]\d*)$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_ALLOWED_TOP_LEVEL_KEYS = {"bundled_examples", "datasets", "examples"}
 
 
 class RegistryError(Exception):
     """Raised when registry operations fail (invalid data, network errors, etc.)."""
+
+
 ###########################################################
 # TOML reading
 ###########################################################
 
 
+def _validate_name(name, kind="dataset"):
+    """Validate a dataset or example name."""
+    if not _NAME_RE.match(name):
+        raise RegistryError(
+            f"invalid {kind} name {name!r}: "
+            "must match [a-zA-Z][a-zA-Z0-9_]*"
+        )
+
+
+def _parse_versioned_entry(name, entry, kind="dataset"):
+    """Parse a versioned entry (dataset or example) from TOML config.
+
+    Returns (versions_list, default_version) or raises RegistryError.
+    """
+    _validate_name(name, kind)
+
+    versions = entry.get("versions", [])
+    default = entry.get("default")
+
+    for v in versions:
+        if not _VERSION_RE.match(v):
+            raise RegistryError(
+                f"invalid version {v!r} for {kind} {name}: "
+                "must be a non-negative integer string"
+            )
+
+    if not versions:
+        print(
+            f"Warning: {kind} {name} has no versions listed, skipping.",
+            file=sys.stderr,
+        )
+        return None, None
+
+    if default is not None:
+        if default not in versions:
+            raise RegistryError(
+                f"default version '{default}' for {kind} {name} "
+                f"is not in versions list {versions}"
+            )
+
+    return versions, default
+
+
+def _validate_top_level_keys(config):
+    """Validate that registry.toml uses the expected top-level schema."""
+    unknown_keys = sorted(set(config) - _ALLOWED_TOP_LEVEL_KEYS)
+    if unknown_keys:
+        unknown = ", ".join(repr(key) for key in unknown_keys)
+        allowed = ", ".join(sorted(_ALLOWED_TOP_LEVEL_KEYS))
+        raise RegistryError(
+            f"unknown top-level key(s) in registry.toml: {unknown}. "
+            f"Allowed keys are: {allowed}. "
+            "Use [datasets.<name>] for datasets and [examples.<name>] "
+            "for remote examples."
+        )
+
+
 def read_registry_toml():
-    """Read registry.toml and return (datasets, default_versions).
+    """Read registry.toml and return parsed configuration.
 
     Returns
     -------
-    tuple of (dict, dict)
-        datasets: {dataset_name: [version, ...]}
-        default_versions: {dataset_name: version}
+    dict with keys:
+        datasets: {name: [version, ...]}
+        dataset_defaults: {name: version}
+        bundled_examples: list of str
+        examples: {name: {"filename": str, "versions": [str, ...]}}
+        example_defaults: {filename: version}
     """
     with open(REGISTRY_TOML_PATH, "rb") as f:
         config = tomllib.load(f)
 
+    _validate_top_level_keys(config)
+
+    # --- Datasets ---
     datasets = {}
-    default_versions = {}
-
-    for ds_name, ds_config in config.items():
-        if not _DATASET_NAME_RE.match(ds_name):
-            raise RegistryError(
-                f"invalid dataset name {ds_name!r}: "
-                "must match [a-z][a-z0-9_]*"
-            )
-
-        versions = ds_config.get("versions", [])
-        default = ds_config.get("default")
-
-        for v in versions:
-            if not _VERSION_RE.match(v):
-                raise RegistryError(
-                    f"invalid version {v!r} for {ds_name}: "
-                    "must be a non-negative integer string"
-                )
-
-        if not versions:
-            print(
-                f"Warning: {ds_name} has no versions listed, skipping.",
-                file=sys.stderr,
-            )
+    dataset_defaults = {}
+    ds_section = config.get("datasets", {})
+    for ds_name, ds_config in ds_section.items():
+        versions, default = _parse_versioned_entry(ds_name, ds_config, "dataset")
+        if versions is None:
             continue
-
         datasets[ds_name] = versions
-
         if default is not None:
-            if default not in versions:
-                raise RegistryError(
-                    f"default version '{default}' for {ds_name} "
-                    f"is not in versions list {versions}"
-                )
-            default_versions[ds_name] = default
+            dataset_defaults[ds_name] = default
 
-    return datasets, default_versions
+    # --- Bundled examples ---
+    bundled = config.get("bundled_examples", [])
+    bundled_examples = sorted(bundled)
+
+    # --- Remote examples ---
+    examples = {}
+    example_defaults = {}
+    ex_section = config.get("examples", {})
+    for ex_name, ex_config in ex_section.items():
+        filename = ex_config.get("filename")
+        if not filename:
+            raise RegistryError(
+                f"example {ex_name!r} is missing 'filename' field"
+            )
+        versions, default = _parse_versioned_entry(ex_name, ex_config, "example")
+        if versions is None:
+            continue
+        examples[ex_name] = {"filename": filename, "versions": versions}
+        if default is not None:
+            example_defaults[filename] = default
+
+    return {
+        "datasets": datasets,
+        "dataset_defaults": dataset_defaults,
+        "bundled_examples": bundled_examples,
+        "examples": examples,
+        "example_defaults": example_defaults,
+    }
 
 
 ###########################################################
@@ -99,13 +167,16 @@ def read_registry_toml():
 ###########################################################
 
 
-def fetch_manifest(dataset_name, version):
-    """Fetch manifest.json from R2 for the given dataset and version.
+def fetch_manifest(prefix, name, version):
+    """Fetch manifest.json from R2 for the given entry.
 
     Parameters
     ----------
-    dataset_name : str
-        Dataset name (e.g., "image_passiflora_leaves").
+    prefix : str
+        R2 prefix ("datasets" or "examples").
+    name : str
+        Entry name (e.g., "image_passiflora_leaves" or
+        "danshaku_08_allSegments_para").
     version : str
         Version string (e.g., "2").
 
@@ -114,7 +185,7 @@ def fetch_manifest(dataset_name, version):
     dict
         Mapping of filename to SHA256 hash.
     """
-    url = f"{R2_BASE_URL}/datasets/{dataset_name}/v{version}/manifest.json"
+    url = f"{R2_BASE_URL}/{prefix}/{name}/v{version}/manifest.json"
     req = Request(url, headers={"User-Agent": "ktch-registry-updater/1.0"})
     try:
         with urlopen(req, timeout=30) as resp:
@@ -164,37 +235,24 @@ def validate_manifest(manifest):
 ###########################################################
 
 
-def render_registry(dataset_registry, default_versions):
-    """Render the full content of _registry.py (pure data, no functions).
+def _render_dict(lines, data, indent=4, sort_key=None):
+    """Render a nested dict as Python source lines."""
+    prefix = " " * indent
+    keys = sorted(data.keys(), key=sort_key)
+    for key in keys:
+        value = data[key]
+        if isinstance(value, dict):
+            lines.append(f"{prefix}{json.dumps(key)}: {{")
+            _render_dict(lines, value, indent + 4)
+            lines.append(f"{prefix}}},")
+        else:
+            lines.append(f"{prefix}{json.dumps(key)}: {json.dumps(value)},")
 
-    Parameters
-    ----------
-    dataset_registry : dict
-        ``{dataset_name: {version: {filename: hash, ...}, ...}, ...}``
-    default_versions : dict
-        ``{dataset_name: version, ...}``
 
-    Returns
-    -------
-    str
-        The rendered file content.
-    """
-    lines = []
-    lines.append('"""Dataset registry for ktch.datasets module."""')
-    lines.append("")
-    lines.append("# This file is auto-generated by:")
-    lines.append("#   uv run python scripts/update_registry.py")
-    lines.append("# Do not edit manually. Edit registry.toml instead.")
-    lines.append("")
-    lines.append("# Base URL for remote datasets")
-    lines.append(f"BASE_URL = {json.dumps(R2_BASE_URL)}")
-    lines.append("")
-    lines.append(
-        "# Per-dataset registry: {dataset_name: {version: {filename: sha256_hash}}}"
-    )
-    lines.append("dataset_registry = {")
-    for ds_name in sorted(dataset_registry.keys()):
-        versions = dataset_registry[ds_name]
+def _render_dataset_registry(lines, registry):
+    """Render dataset_registry with numeric version sorting."""
+    for ds_name in sorted(registry.keys()):
+        versions = registry[ds_name]
         lines.append(f"    {json.dumps(ds_name)}: {{")
         for version in sorted(versions.keys(), key=int):
             entries = versions[version]
@@ -206,6 +264,66 @@ def render_registry(dataset_registry, default_versions):
                 )
             lines.append("        },")
         lines.append("    },")
+
+
+def _render_example_registry(lines, registry):
+    """Render example_registry with numeric version sorting."""
+    for filename in sorted(registry.keys()):
+        versions = registry[filename]
+        lines.append(f"    {json.dumps(filename)}: {{")
+        for version in sorted(versions.keys(), key=int):
+            hash_value = versions[version]
+            lines.append(
+                f"        {json.dumps(version)}: {json.dumps(hash_value)},"
+            )
+        lines.append("    },")
+
+
+def render_registry(
+    dataset_registry, dataset_defaults,
+    bundled_examples, example_registry, example_defaults,
+):
+    """Render the full content of _registry.py.
+
+    Parameters
+    ----------
+    dataset_registry : dict
+        ``{dataset_name: {version: {filename: hash}}}``
+    dataset_defaults : dict
+        ``{dataset_name: version}``
+    bundled_examples : list of str
+        Filenames of bundled example files.
+    example_registry : dict
+        ``{filename: {version: hash}}``
+    example_defaults : dict
+        ``{filename: version}``
+
+    Returns
+    -------
+    str
+        The rendered file content.
+    """
+    lines = []
+    lines.append('"""Dataset and example data registry for ktch.datasets module."""')
+    lines.append("")
+    lines.append("# This file is auto-generated by:")
+    lines.append("#   uv run python scripts/update_registry.py")
+    lines.append("# Do not edit manually. Edit registry.toml instead.")
+    lines.append("")
+    lines.append("# Base URL for remote data")
+    lines.append(f"BASE_URL = {json.dumps(R2_BASE_URL)}")
+    lines.append("")
+
+    # --- Datasets ---
+    lines.append("# " + "-" * 75)
+    lines.append("# Datasets")
+    lines.append("# " + "-" * 75)
+    lines.append("")
+    lines.append(
+        "# Per-dataset registry: {dataset_name: {version: {filename: sha256_hash}}}"
+    )
+    lines.append("dataset_registry = {")
+    _render_dataset_registry(lines, dataset_registry)
     lines.append("}")
     lines.append("")
     lines.append("# Default dataset versions for the current ktch release.")
@@ -213,9 +331,33 @@ def render_registry(dataset_registry, default_versions):
         "# Updated at ktch release time to pin the recommended dataset version."
     )
     lines.append("default_versions = {")
-    for ds_name in sorted(default_versions.keys()):
-        version = default_versions[ds_name]
-        lines.append(f"    {json.dumps(ds_name)}: {json.dumps(version)},")
+    _render_dict(lines, dataset_defaults)
+    lines.append("}")
+    lines.append("")
+
+    # --- Example data ---
+    lines.append("# " + "-" * 75)
+    lines.append("# Example data (sample files for tutorials)")
+    lines.append("# " + "-" * 75)
+    lines.append("")
+    lines.append("# Bundled examples shipped with the package (< 100 KB).")
+    lines.append("# Set of filenames within ktch/datasets/data/.")
+    lines.append("bundled_examples = {")
+    for name in sorted(bundled_examples):
+        lines.append(f"    {json.dumps(name)},")
+    lines.append("}")
+    lines.append("")
+    lines.append("# Remote examples: {filename: {version: sha256_hash}}")
+    lines.append(
+        "# URL pattern: {BASE_URL}/examples/{stem}/v{version}/{filename}"
+    )
+    lines.append("example_registry = {")
+    _render_example_registry(lines, example_registry)
+    lines.append("}")
+    lines.append("")
+    lines.append("# Default example versions for the current ktch release.")
+    lines.append("example_default_versions = {")
+    _render_dict(lines, example_defaults)
     lines.append("}")
     lines.append("")
 
@@ -247,7 +389,10 @@ def _show_diff(old_content, new_content):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Update ktch dataset registry from R2 manifest.json files."
+        description=(
+            "Update ktch dataset and example data registry from R2 "
+            "manifest.json files."
+        )
     )
     parser.add_argument(
         "--dry-run",
@@ -259,17 +404,23 @@ def main():
     try:
         # Read TOML config
         print(f"Reading {REGISTRY_TOML_PATH}...")
-        datasets, default_versions = read_registry_toml()
-        print(f"  Found {len(datasets)} dataset(s)")
+        config = read_registry_toml()
+        datasets = config["datasets"]
+        dataset_defaults = config["dataset_defaults"]
+        bundled_examples = config["bundled_examples"]
+        examples = config["examples"]
+        example_defaults = config["example_defaults"]
+        print(f"  Found {len(datasets)} dataset(s), {len(examples)} remote example(s), "
+              f"{len(bundled_examples)} bundled example(s)")
 
-        # Fetch and validate manifests for all datasets/versions
+        # Fetch and validate manifests for datasets
         dataset_registry = {}
         for ds_name in sorted(datasets.keys()):
             versions = datasets[ds_name]
             dataset_registry[ds_name] = {}
             for version in versions:
-                print(f"Fetching manifest for {ds_name} v{version}...")
-                manifest = fetch_manifest(ds_name, version)
+                print(f"Fetching manifest for dataset {ds_name} v{version}...")
+                manifest = fetch_manifest("datasets", ds_name, version)
                 validate_manifest(manifest)
                 dataset_registry[ds_name][version] = manifest
                 print(
@@ -277,8 +428,31 @@ def main():
                     f"{', '.join(sorted(manifest.keys()))}"
                 )
 
+        # Fetch and validate manifests for remote examples
+        example_registry = {}
+        for ex_name in sorted(examples.keys()):
+            ex_info = examples[ex_name]
+            filename = ex_info["filename"]
+            versions = ex_info["versions"]
+            example_registry[filename] = {}
+            for version in versions:
+                print(f"Fetching manifest for example {ex_name} v{version}...")
+                manifest = fetch_manifest("examples", ex_name, version)
+                validate_manifest(manifest)
+                if filename not in manifest:
+                    raise RegistryError(
+                        f"expected file {filename!r} not found in manifest "
+                        f"for example {ex_name} v{version}. "
+                        f"Found: {sorted(manifest.keys())}"
+                    )
+                example_registry[filename][version] = manifest[filename]
+                print(f"  Hash: {manifest[filename][:16]}...")
+
         # Render new content
-        new_content = render_registry(dataset_registry, default_versions)
+        new_content = render_registry(
+            dataset_registry, dataset_defaults,
+            bundled_examples, example_registry, example_defaults,
+        )
     except RegistryError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
