@@ -1,11 +1,34 @@
-# Dataset registry configuration for ktch.
-# Source of truth for which datasets and versions are registered.
+# Dataset and example data registry configuration for ktch.
+# Source of truth for which datasets/examples and versions are registered.
 # Run `uv run python scripts/update_registry.py` to regenerate _registry.py.
 
-[image_passiflora_leaves]
+# Bundled examples: shipped with the package, no remote manifest needed.
+bundled_examples = [
+    "landmarks_triangle.tps",
+]
+
+# ---------------------------------------------------------------------------
+# Datasets (loaded by load_* functions)
+# ---------------------------------------------------------------------------
+
+[datasets.image_passiflora_leaves]
 default = "2"
 versions = ["1", "2"]
 
-[surface_leaf_bending]
+[datasets.surface_leaf_bending]
+default = "1"
+versions = ["1"]
+
+# ---------------------------------------------------------------------------
+# Remote examples (fetched by fetch() function, downloaded from R2)
+# ---------------------------------------------------------------------------
+
+[examples.danshaku_08_allSegments_para]
+filename = "danshaku_08_allSegments_para.vtp"
+default = "1"
+versions = ["1"]
+
+[examples.danshaku_08_allSegments_surf]
+filename = "danshaku_08_allSegments_surf.vtp"
 default = "1"
 versions = ["1"]
