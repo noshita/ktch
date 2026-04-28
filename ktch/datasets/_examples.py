@@ -46,13 +46,14 @@ def fetch(
 
     Available example files:
 
-    ========================================  ========  ============
-    Name                                      Type      Size
-    ========================================  ========  ============
-    ``landmarks_triangle.tps``                bundled   6.5 KB
-    ``danshaku_08_allSegments_para.vtp``      remote    --
-    ``danshaku_08_allSegments_surf.vtp``      remote    --
-    ========================================  ========  ============
+    ==========================================  ========  ============
+    Name                                        Type      Size
+    ==========================================  ========  ============
+    ``landmarks_triangle.tps``                  bundled   6.5 KB
+    ``danshaku_08_allSegments_SPHARM.coef``     bundled   22 KB
+    ``danshaku_08_allSegments_para.vtp``        remote    --
+    ``danshaku_08_allSegments_surf.vtp``        remote    --
+    ==========================================  ========  ============
 
     Parameters
     ----------

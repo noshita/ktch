@@ -5,6 +5,7 @@
 # Bundled examples: shipped with the package, no remote manifest needed.
 bundled_examples = [
     "landmarks_triangle.tps",
+    "danshaku_08_allSegments_SPHARM.coef",
 ]
 
 # ---------------------------------------------------------------------------
