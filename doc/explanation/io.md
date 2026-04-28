@@ -39,7 +39,7 @@ sha_coeffs = spharmpdm_to_sha_coeffs(data)
 
 # Reconstruct surface
 sha = SphericalHarmonicAnalysis(n_harmonics=data.l_max)
-surface = sha.inverse_transform(sha_coeffs.reshape(1, 3, -1))
+surface = sha.inverse_transform(sha_coeffs)
 ```
 
 Two utility functions convert coordinate DataFrames (from `read_tps` or `read_chc` with `as_frame=True`) into formats suitable for analysis: `convert_coords_df_to_list` produces a list of per-specimen arrays, and `convert_coords_df_to_df_sklearn_transform` produces a wide DataFrame compatible with sklearn transformers.
