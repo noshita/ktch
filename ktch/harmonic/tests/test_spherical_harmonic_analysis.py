@@ -80,7 +80,7 @@ def test_transform_and_inverse_roundtrip():
     assert_array_almost_equal(coef_matrix[0], coef_list[0][0], decimal=6)
 
     reconstructed = sha.inverse_transform(
-        transformed.reshape(1, 3, -1),
+        transformed,
         theta_range=theta_range,
         phi_range=phi_range,
     )
@@ -205,7 +205,7 @@ class TestSHARoundTripMixedSpectrum:
         assert transformed.shape == (1, 3 * n_terms)
 
         reconstructed = sha.inverse_transform(
-            transformed.reshape(1, 3, -1),
+            transformed,
             theta_range=theta_range,
             phi_range=phi_range,
         )
@@ -236,7 +236,7 @@ class TestSHAInverseTransformDefaults:
         sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_jobs=1)
         transformed = sha.fit_transform([coords], theta_phi=[theta_phi])
 
-        result = sha.inverse_transform(transformed.reshape(1, 3, -1))
+        result = sha.inverse_transform(transformed)
         assert result.shape == (1, 90, 180, 3)
 
         for dim in range(3):
@@ -288,13 +288,59 @@ class TestSHANHarmonicsZero:
         transformed = sha.fit_transform([coords], theta_phi=[theta_phi])
 
         recon = sha.inverse_transform(
-            transformed.reshape(1, 3, -1),
+            transformed,
             theta_range=theta_range,
             phi_range=phi_range,
         )
         expected = np.stack([x, y, z], axis=-1)
         assert recon.shape == (1, len(theta_range), len(phi_range), 3)
         assert_array_almost_equal(recon[0], expected, decimal=10)
+
+
+class TestSHAFlatRoundTripAxisOrder:
+    """Regression test for axis-order layout bug in inverse_transform.
+
+    Uses an axis-asymmetric surface so that mis-ordered coefficients
+    produce gross reconstruction errors, not subtle ones.  Before the
+    fix, ``inverse_transform`` interpreted the flat output of
+    ``transform`` as index-major instead of axis-major and returned
+    a reconstruction with ~127% relative error.
+    """
+
+    def test_flat_output_round_trip(self):
+        l_max = 6
+        n_th, n_ph = 60, 120
+        th = np.linspace(0.01, np.pi - 0.01, n_th)
+        ph = np.linspace(0, 2 * np.pi, n_ph, endpoint=False)
+        theta_grid, phi_grid = np.meshgrid(th, ph, indexing="ij")
+        tf, pf = theta_grid.ravel(), phi_grid.ravel()
+
+        # Distinct per-axis scales so any axis-mixup is detectable.
+        r = 1.0 + 0.1 * np.sin(2 * tf) * np.cos(3 * pf)
+        x = 1.0 * r * np.sin(tf) * np.cos(pf)
+        y = 0.5 * r * np.sin(tf) * np.sin(pf)
+        z = 2.0 * r * np.cos(tf)
+        surface = np.stack([x, y, z], axis=-1)
+        theta_phi = np.stack([tf, pf], axis=-1)
+
+        sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_jobs=1)
+        flat = sha.transform([surface], theta_phi=[theta_phi])
+
+        # Pass the flat output directly (no manual reshape).
+        recon = sha.inverse_transform(flat, theta_range=th, phi_range=ph)[0]
+        sg = surface.reshape(n_th, n_ph, 3)
+
+        rel_err = np.linalg.norm(recon - sg) / np.linalg.norm(sg)
+        assert rel_err < 0.05, (
+            f"flat round-trip relative error too large: {rel_err:.3e}"
+        )
+
+        # Per-axis range must also be preserved within the truncation tolerance.
+        for ax, expected in zip(range(3), [1.0, 0.5, 2.0]):
+            obs = max(-recon[..., ax].min(), recon[..., ax].max())
+            assert abs(obs - expected) / expected < 0.1, (
+                f"axis {ax}: reconstructed range {obs:.3f} far from {expected}"
+            )
 
 
 class TestSHANonFiniteInput:

@@ -42,6 +42,7 @@ default_versions = {
 # Bundled examples shipped with the package (< 100 KB).
 # Set of filenames within ktch/datasets/data/.
 bundled_examples = {
+    "danshaku_08_allSegments_SPHARM.coef",
     "landmarks_triangle.tps",
 }
 
