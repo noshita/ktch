@@ -271,9 +271,11 @@ class SphericalHarmonicAnalysis(
         if l_max is None:
             l_max = self.n_harmonics
 
+        n_per_lm = (l_max + 1) ** 2
+        coef_per_lm = np.asarray(X_transformed).reshape(-1, n_per_lm).T
         x, y, z = spharm(
             l_max,
-            cvt_spharm_coef_to_list(X_transformed.T),
+            cvt_spharm_coef_to_list(coef_per_lm),
             theta_range,
             phi_range,
         )
@@ -291,8 +293,10 @@ class SphericalHarmonicAnalysis(
 
         Parameters
         ----------
-        X_transformed : array-like of shape (n_samples, n_coefficients)
-            SPHARM coefficients.
+        X_transformed : array-like of shape (n_samples, 3 * (l_max + 1)**2)
+            Flat SPHARM coefficient vectors as returned by
+            :meth:`transform`.  Layout is axis-major:
+            ``[cx_0_0, cx_1_-1, ..., cy_0_0, ..., cz_0_0, ...]``.
         theta_range : array-like of shape (n_theta,), optional
             Polar angle values (colatitude). Defaults to
             ``np.linspace(0, pi, 90)``.
@@ -571,28 +575,50 @@ def spharm(
 def cvt_spharm_coef_to_list(
     coef: npt.NDArray[np.float64],
 ) -> list[npt.NDArray[np.float64]]:
-    """Convert flat SPHARM coefficient matrix to a nested list by degree.
+    """Convert SPHARM coefficient matrix to a nested list by degree.
 
     Parameters
     ----------
-    coef : ndarray of shape (3, (l_max+1)**2) or ((l_max+1)**2, 3)
-        SPHARM coefficient matrix.
+    coef : ndarray of shape ((l_max+1)**2, D) or (D, (l_max+1)**2)
+        SPHARM coefficient matrix. ``D`` is the number of components of
+        the field expanded on the sphere (``D=3`` for 3D Cartesian
+        coordinates).  Both orientations are accepted; if the second
+        axis matches ``(l_max+1)**2``, the matrix is transposed.
 
     Returns
     -------
     coef_list : list of ndarray
-        ``coef_list[l]`` has shape ``(2*l+1, 3)`` for degree ``l``.
+        ``coef_list[l]`` has shape ``(2*l+1, D)`` for degree ``l``.
+
+    Raises
+    ------
+    ValueError
+        If ``coef`` is not 2-D, or neither axis is a perfect square
+        (``(l_max+1)**2``).
     """
-    coef_ = coef.reshape((-1, 3))
-    lmax_plus_one = np.sqrt(coef_.shape[0])
-    if not lmax_plus_one.is_integer():
+    coef_arr = np.asarray(coef)
+    if coef_arr.ndim != 2:
         raise ValueError(
-            f"Invalid coefficient count: {coef_.shape[0]} is not a perfect square "
-            f"((lmax+1)^2)."
+            f"coef must be 2-D ((n_lm, D) or (D, n_lm)); got shape {coef_arr.shape}."
         )
-    lmax = int(lmax_plus_one) - 1
+
+    n_rows, n_cols = coef_arr.shape
+    rows_sqrt = np.sqrt(n_rows)
+    cols_sqrt = np.sqrt(n_cols)
+    if rows_sqrt.is_integer():
+        coef_per_lm = coef_arr
+        lmax = int(rows_sqrt) - 1
+    elif cols_sqrt.is_integer():
+        coef_per_lm = coef_arr.T
+        lmax = int(cols_sqrt) - 1
+    else:
+        raise ValueError(
+            f"Invalid coefficient shape {coef_arr.shape}: neither axis is a "
+            f"perfect square ((l_max+1)**2)."
+        )
+
     coef_list = [
-        np.array([coef_[l**2 + l + m] for m in range(-l, l + 1, 1)])
+        np.array([coef_per_lm[l**2 + l + m] for m in range(-l, l + 1, 1)])
         for l in range(0, lmax + 1, 1)
     ]
     return coef_list
