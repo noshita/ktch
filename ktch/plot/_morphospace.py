@@ -72,11 +72,10 @@ def morphospace_plot(
     ``scores -> [reducer_inverse_transform] -> coefficients ->
     [descriptor_inverse_transform] -> shape coordinates``.
 
-    This function calls ``fig.canvas.draw()`` internally to compute accurate
-    pixel positions for inset axes.
-    Inset positions are fixed at draw time and will not automatically update
-    if the figure is later resized or saved at a different DPI.
-    For best results, set the final figure size before calling this function.
+    Shape insets are parented to ``ax`` via :meth:`matplotlib.axes.Axes.inset_axes`
+    with ``transform=ax.transData``, so they follow the parent axes
+    automatically under ``tight_layout``, ``subplots_adjust``, and
+    ``constrained_layout``.
 
     Parameters
     ----------
@@ -117,7 +116,9 @@ def morphospace_plot(
     n_shapes : int
         Number of shapes along each axis (total: ``n_shapes * n_shapes``).
     shape_scale : float
-        Scale factor for inset shape size.
+        Scale factor for inset shape size, expressed as a fraction of
+        the parent ax's per-cell extent (the data range divided by
+        ``n_shapes``). ``1.0`` fills each cell.
     shape_color : str
         Color for reconstructed shapes.
     shape_alpha : float
@@ -191,9 +192,7 @@ def morphospace_plot(
 
     # Create or reuse axes
     if ax is None:
-        fig, ax = plt.subplots()
-    else:
-        fig = ax.figure
+        _, ax = plt.subplots()
 
     # Draw scatter plot (if data provided)
     if x is not None and y is not None:
@@ -229,11 +228,11 @@ def morphospace_plot(
         _validate_components(components, n_components)
 
         # Overlay shapes
-        fig.canvas.draw()  # force layout for accurate positions
-
         comp_h, comp_v = components
-        x_range = np.linspace(*ax.get_xlim(), n_shapes)
-        y_range = np.linspace(*ax.get_ylim(), n_shapes)
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        x_range = np.linspace(*xlim, n_shapes)
+        y_range = np.linspace(*ylim, n_shapes)
 
         # Batch reconstruction
         grid = np.array([(h, v) for h in x_range for v in y_range])
@@ -257,12 +256,9 @@ def morphospace_plot(
 
         renderer, proj = _get_renderer_and_projection(shape_type, render_fn)
 
-        # Compute inset sizing
-        ax_extent = ax.get_window_extent()
-        fig_extent = fig.get_window_extent()
-        fig_width = fig_extent.width
-        fig_height = fig_extent.height
-        inset_size = shape_scale * ax_extent.width / (fig_width * n_shapes)
+        # Inset size in parent ax data units: shape_scale fraction of cell.
+        half_w = 0.5 * shape_scale * (xlim[1] - xlim[0]) / n_shapes
+        half_h = 0.5 * shape_scale * (ylim[1] - ylim[0]) / n_shapes
 
         resolved = _resolve_render_kw(
             render_kw,
@@ -274,15 +270,11 @@ def morphospace_plot(
         for idx, (score_h, score_v) in enumerate(grid):
             single = all_coords[idx]
 
-            loc = ax.transData.transform((score_h, score_v))
-            axins = fig.add_axes(
-                [
-                    loc[0] / fig_width - inset_size / 2,
-                    loc[1] / fig_height - inset_size / 2,
-                    inset_size,
-                    inset_size,
-                ],
-                anchor="C",
+            # Anchor inset to parent ax in data coordinates for any subsequent layout
+            # (tight_layout, subplots_adjust, ...).
+            axins = ax.inset_axes(
+                bounds=(score_h - half_w, score_v - half_h, 2 * half_w, 2 * half_h),
+                transform=ax.transData,
                 projection=proj,
             )
 
@@ -531,8 +523,7 @@ def confidence_ellipse_plot(
     if n_std is None:
         if not 0 < confidence < 1:
             raise ValueError(
-                "confidence must be in the open interval (0, 1), "
-                f"got {confidence}"
+                f"confidence must be in the open interval (0, 1), got {confidence}"
             )
         n_std = float(np.sqrt(-2.0 * np.log(1.0 - confidence)))
 
@@ -545,9 +536,14 @@ def confidence_ellipse_plot(
         alpha = 0.25 if fill else 1.0
 
     for xi, yi, c, cat in _iter_overlay_groups(
-        x_arr, y_arr, hue_arr, categories,
-        color=color, palette=palette,
-        min_points=2, overlay_name="confidence ellipse",
+        x_arr,
+        y_arr,
+        hue_arr,
+        categories,
+        color=color,
+        palette=palette,
+        min_points=2,
+        overlay_name="confidence ellipse",
     ):
         label = None if cat is None else (cat if legend else "_nolegend_")
         drawn = _draw_confidence_ellipse(
@@ -712,9 +708,14 @@ def convex_hull_plot(
         alpha = 0.2 if fill else 1.0
 
     for xi, yi, c, cat in _iter_overlay_groups(
-        x_arr, y_arr, hue_arr, categories,
-        color=color, palette=palette,
-        min_points=3, overlay_name="convex hull",
+        x_arr,
+        y_arr,
+        hue_arr,
+        categories,
+        color=color,
+        palette=palette,
+        min_points=3,
+        overlay_name="convex hull",
     ):
         label = None if cat is None else (cat if legend else "_nolegend_")
         try:
@@ -732,8 +733,7 @@ def convex_hull_plot(
         except QhullError:
             prefix = f"Category {cat!r} skipped" if cat is not None else "Skipped"
             warnings.warn(
-                f"{prefix}: unable to compute convex hull "
-                f"(points may be collinear)",
+                f"{prefix}: unable to compute convex hull (points may be collinear)",
                 UserWarning,
                 stacklevel=2,
             )
