@@ -230,6 +230,48 @@ class TestMorphospacePlotInsetAlignment:
         assert len(insets) == 4
 
 
+class TestMorphospacePlotZOrder:
+    """Regression tests: scatter must remain on top of inset shapes.
+
+    The Issue 1 fix moved insets from sibling axes (``fig.add_axes``) to
+    child axes (``Axes.inset_axes``). The latter defaults to ``zorder=5``,
+    which is above the seaborn scatter default (``zorder=1``). Without
+    explicitly lowering the inset z-order, scatter markers were drawn
+    behind the inset shapes.
+    """
+
+    def test_inset_zorder_below_scatter(self, pca_data, mock_descriptor_2d):
+        pca, df = pca_data
+        fig, ax = plt.subplots()
+        morphospace_plot(
+            data=df, x="PC1", y="PC2",
+            reducer=pca, descriptor=mock_descriptor_2d,
+            n_shapes=2, ax=ax,
+        )
+        scatter_zorders = [c.get_zorder() for c in ax.collections]
+        inset_zorders = [a.get_zorder() for a in ax.child_axes]
+        assert scatter_zorders, "scatter collection missing"
+        assert inset_zorders, "inset axes missing"
+        assert max(inset_zorders) < min(scatter_zorders), (
+            f"inset zorder {max(inset_zorders)} must be below "
+            f"scatter zorder {min(scatter_zorders)}"
+        )
+
+    def test_does_not_mutate_parent_ax_state(self, pca_data, mock_descriptor_2d):
+        """morphospace_plot must not silently change ax.zorder or patch alpha."""
+        pca, df = pca_data
+        fig, ax = plt.subplots()
+        zorder_before = ax.get_zorder()
+        alpha_before = ax.patch.get_alpha()
+        morphospace_plot(
+            data=df, x="PC1", y="PC2",
+            reducer=pca, descriptor=mock_descriptor_2d,
+            n_shapes=2, ax=ax,
+        )
+        assert ax.get_zorder() == zorder_before
+        assert ax.patch.get_alpha() == alpha_before
+
+
 class TestMorphospacePlotErrors:
     def test_missing_n_dim_for_identity(self, pca_data):
         pca, df = pca_data

@@ -272,17 +272,16 @@ def morphospace_plot(
 
             # Anchor inset to parent ax in data coordinates for any subsequent layout
             # (tight_layout, subplots_adjust, ...).
+            # zorder below the scatter default (1) keeps markers on top of insets.
             axins = ax.inset_axes(
                 bounds=(score_h - half_w, score_v - half_h, 2 * half_w, 2 * half_h),
                 transform=ax.transData,
                 projection=proj,
+                zorder=0,
             )
 
             renderer(single, axins, **resolved)
             axins.axis("off")
-
-        ax.set_zorder(1)  # draw scatter on top of inset shapes
-        ax.patch.set_alpha(0)  # transparent background so insets show through
 
     return ax
 
