@@ -297,6 +297,77 @@ class TestSHANHarmonicsZero:
         assert_array_almost_equal(recon[0], expected, decimal=10)
 
 
+class TestSHAInverseTransformLMaxTruncation:
+    """Tests for ``inverse_transform(l_max=L)`` with ``L < n_harmonics``.
+
+    Before the fix, passing ``l_max < n_harmonics`` raised
+    ``ValueError: cannot reshape ...`` because the flat coefficient
+    vector (length ``3 * (n_harmonics + 1) ** 2``) was reshaped using
+    ``(l_max + 1) ** 2`` as the column count.
+    """
+
+    @staticmethod
+    def _make_axis_asymmetric_sha(n_harmonics, n_th=40, n_ph=80):
+        """Build an axis-asymmetric surface fitted by SHA at full degree."""
+        th = np.linspace(0.05, np.pi - 0.05, n_th)
+        ph = np.linspace(0, 2 * np.pi, n_ph, endpoint=False)
+        tg, pg = np.meshgrid(th, ph, indexing="ij")
+        tf, pf = tg.ravel(), pg.ravel()
+        r = 1.0 + 0.05 * np.sin(2 * tf) * np.cos(3 * pf)
+        coords = np.stack(
+            [
+                1.0 * r * np.sin(tf) * np.cos(pf),
+                0.5 * r * np.sin(tf) * np.sin(pf),
+                2.0 * r * np.cos(tf),
+            ],
+            axis=-1,
+        )
+        theta_phi = np.stack([tf, pf], axis=-1)
+        sha = SphericalHarmonicAnalysis(n_harmonics=n_harmonics, n_jobs=1)
+        flat = sha.transform([coords], theta_phi=[theta_phi])
+        return sha, flat, th, ph
+
+    def test_l_max_less_than_n_harmonics_runs(self):
+        """l_max < n_harmonics no longer raises and returns a valid surface."""
+        sha, flat, th, ph = self._make_axis_asymmetric_sha(n_harmonics=6)
+        recon = sha.inverse_transform(flat, theta_range=th, phi_range=ph, l_max=3)
+        assert recon.shape == (1, len(th), len(ph), 3)
+        assert np.all(np.isfinite(recon))
+
+    def test_l_max_truncation_preserves_axis_layout(self):
+        """Per-axis std of truncated reconstruction matches full reconstruction.
+
+        Confirms the truncation respects the axis-major layout: the cx,
+        cy, cz blocks are sliced independently rather than mixed.
+        """
+        sha, flat, th, ph = self._make_axis_asymmetric_sha(n_harmonics=6)
+        full = sha.inverse_transform(flat, theta_range=th, phi_range=ph)[0]
+        trunc = sha.inverse_transform(
+            flat, theta_range=th, phi_range=ph, l_max=3
+        )[0]
+        for k in range(3):
+            assert_allclose(full[..., k].std(), trunc[..., k].std(), rtol=0.05)
+
+    def test_l_max_default_equals_n_harmonics(self):
+        """l_max=None and l_max=n_harmonics produce the same output."""
+        sha, flat, th, ph = self._make_axis_asymmetric_sha(n_harmonics=4)
+        a = sha.inverse_transform(flat, theta_range=th, phi_range=ph)
+        b = sha.inverse_transform(
+            flat, theta_range=th, phi_range=ph, l_max=sha.n_harmonics
+        )
+        assert_array_almost_equal(a, b)
+
+    def test_l_max_gt_n_harmonics_raises(self):
+        sha, flat, th, ph = self._make_axis_asymmetric_sha(n_harmonics=4)
+        with pytest.raises(ValueError, match="cannot exceed"):
+            sha.inverse_transform(flat, theta_range=th, phi_range=ph, l_max=5)
+
+    def test_l_max_negative_raises(self):
+        sha, flat, th, ph = self._make_axis_asymmetric_sha(n_harmonics=4)
+        with pytest.raises(ValueError, match=">= 0"):
+            sha.inverse_transform(flat, theta_range=th, phi_range=ph, l_max=-1)
+
+
 class TestSHAFlatRoundTripAxisOrder:
     """Regression test for axis-order layout bug in inverse_transform.
 
