@@ -253,15 +253,18 @@ class SphericalHarmonicAnalysis(
 
         Parameters
         ----------
-        X_transformed : ndarray of shape (n_coefficients,)
-            Flat SPHARM coefficient vector for one sample.
+        X_transformed : ndarray of shape (3 * (n_harmonics + 1)**2,)
+            Flat SPHARM coefficient vector for one sample, in axis-major
+            layout (cx block, cy block, cz block).
         theta_range : array-like of shape (n_theta,)
             Polar angle values (colatitude, 0 to pi).
         phi_range : array-like of shape (n_phi,)
             Azimuthal angle values (0 to 2*pi).
         l_max : int, optional
             Maximum degree of harmonics to use. Defaults to
-            ``self.n_harmonics``.
+            ``self.n_harmonics``. When less than ``self.n_harmonics``,
+            the leading ``(l_max + 1) ** 2`` coefficients of each axis
+            block are kept and higher-degree terms are dropped.
 
         Returns
         -------
@@ -271,9 +274,16 @@ class SphericalHarmonicAnalysis(
         if l_max is None:
             l_max = self.n_harmonics
 
+        n_per_lm_full = (self.n_harmonics + 1) ** 2
+        n_per_lm = (l_max + 1) ** 2
+
+        # Axis-major layout: (3, n_per_lm_full) → take leading n_per_lm cols.
+        coef_per_lm = (
+            np.asarray(X_transformed).reshape(3, n_per_lm_full)[:, :n_per_lm].T
+        )
         x, y, z = spharm(
             l_max,
-            cvt_spharm_coef_to_list(X_transformed.T),
+            cvt_spharm_coef_to_list(coef_per_lm),
             theta_range,
             phi_range,
         )
@@ -291,8 +301,10 @@ class SphericalHarmonicAnalysis(
 
         Parameters
         ----------
-        X_transformed : array-like of shape (n_samples, n_coefficients)
-            SPHARM coefficients.
+        X_transformed : array-like of shape (n_samples, 3 * (l_max + 1)**2)
+            Flat SPHARM coefficient vectors as returned by
+            :meth:`transform`.  Layout is axis-major:
+            ``[cx_0_0, cx_1_-1, ..., cy_0_0, ..., cz_0_0, ...]``.
         theta_range : array-like of shape (n_theta,), optional
             Polar angle values (colatitude). Defaults to
             ``np.linspace(0, pi, 90)``.
@@ -301,12 +313,20 @@ class SphericalHarmonicAnalysis(
             ``np.linspace(0, 2*pi, 180)``.
         l_max : int, optional
             Maximum degree of harmonics to use. Defaults to
-            ``self.n_harmonics``.
+            ``self.n_harmonics``. When smaller, the input coefficient
+            vector is truncated to the leading ``(l_max + 1) ** 2``
+            terms per axis. Values greater than ``self.n_harmonics``
+            raise ``ValueError``.
 
         Returns
         -------
         X_coords : ndarray of shape (n_samples, n_theta, n_phi, 3)
             Reconstructed surface coordinates.
+
+        Raises
+        ------
+        ValueError
+            If ``l_max`` is negative or greater than ``self.n_harmonics``.
         """
         if theta_range is None:
             theta_range = np.linspace(0, np.pi, 90)
@@ -314,6 +334,13 @@ class SphericalHarmonicAnalysis(
             phi_range = np.linspace(0, 2 * np.pi, 180)
         if l_max is None:
             l_max = self.n_harmonics
+        if l_max < 0:
+            raise ValueError(f"l_max must be >= 0, got {l_max}")
+        if l_max > self.n_harmonics:
+            raise ValueError(
+                f"l_max ({l_max}) cannot exceed n_harmonics "
+                f"({self.n_harmonics})"
+            )
 
         X_coords = np.stack(
             Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
@@ -571,28 +598,50 @@ def spharm(
 def cvt_spharm_coef_to_list(
     coef: npt.NDArray[np.float64],
 ) -> list[npt.NDArray[np.float64]]:
-    """Convert flat SPHARM coefficient matrix to a nested list by degree.
+    """Convert SPHARM coefficient matrix to a nested list by degree.
 
     Parameters
     ----------
-    coef : ndarray of shape (3, (l_max+1)**2) or ((l_max+1)**2, 3)
-        SPHARM coefficient matrix.
+    coef : ndarray of shape ((l_max+1)**2, D) or (D, (l_max+1)**2)
+        SPHARM coefficient matrix. ``D`` is the number of components of
+        the field expanded on the sphere (``D=3`` for 3D Cartesian
+        coordinates).  Both orientations are accepted; if the second
+        axis matches ``(l_max+1)**2``, the matrix is transposed.
 
     Returns
     -------
     coef_list : list of ndarray
-        ``coef_list[l]`` has shape ``(2*l+1, 3)`` for degree ``l``.
+        ``coef_list[l]`` has shape ``(2*l+1, D)`` for degree ``l``.
+
+    Raises
+    ------
+    ValueError
+        If ``coef`` is not 2-D, or neither axis is a perfect square
+        (``(l_max+1)**2``).
     """
-    coef_ = coef.reshape((-1, 3))
-    lmax_plus_one = np.sqrt(coef_.shape[0])
-    if not lmax_plus_one.is_integer():
+    coef_arr = np.asarray(coef)
+    if coef_arr.ndim != 2:
         raise ValueError(
-            f"Invalid coefficient count: {coef_.shape[0]} is not a perfect square "
-            f"((lmax+1)^2)."
+            f"coef must be 2-D ((n_lm, D) or (D, n_lm)); got shape {coef_arr.shape}."
         )
-    lmax = int(lmax_plus_one) - 1
+
+    n_rows, n_cols = coef_arr.shape
+    rows_sqrt = np.sqrt(n_rows)
+    cols_sqrt = np.sqrt(n_cols)
+    if rows_sqrt.is_integer():
+        coef_per_lm = coef_arr
+        lmax = int(rows_sqrt) - 1
+    elif cols_sqrt.is_integer():
+        coef_per_lm = coef_arr.T
+        lmax = int(cols_sqrt) - 1
+    else:
+        raise ValueError(
+            f"Invalid coefficient shape {coef_arr.shape}: neither axis is a "
+            f"perfect square ((l_max+1)**2)."
+        )
+
     coef_list = [
-        np.array([coef_[l**2 + l + m] for m in range(-l, l + 1, 1)])
+        np.array([coef_per_lm[l**2 + l + m] for m in range(-l, l + 1, 1)])
         for l in range(0, lmax + 1, 1)
     ]
     return coef_list

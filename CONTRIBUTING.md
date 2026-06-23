@@ -209,8 +209,16 @@ Module naming:
 - Public API is re-exported through `__init__.py`
 - I/O module: one file per format (`_tps.py`, `_chc.py`, `_spharm_pdm.py`)
 - Dataset loaders: `load_<type>_<name>()` functions in `_base.py`
+- Name a module at the level of what it covers: analysis modules by their
+  representation or method (e.g. `harmonic`, `landmark`); theoretical morphological model
+  modules by the phenomenon they model, so that structure terms stay available
+  to analysis modules.
 
-Import conventions:
+Parameter naming:
+
+- When a parameter transcribes a published model's mathematical symbol, use the
+  lowercased, snake_case form of that symbol (PEP 8). 
+  Recommend to document the symbol and its source equation in the docstring.
 
 ```python
 # Within a subpackage: relative imports

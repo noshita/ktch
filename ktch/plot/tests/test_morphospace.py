@@ -77,8 +77,8 @@ class TestMorphospacePlotWithShapes:
             n_shapes=2,
         )
         assert isinstance(ax, mpl.axes.Axes)
-        # Should have inset axes (2*2 = 4 insets + 1 main)
-        assert len(ax.figure.axes) > 1
+        # Should have 4 = n_shapes * n_shapes insets parented to ax.
+        assert len(list(ax.child_axes)) == 4
 
     def test_surface_3d_explicit(self, pca_data, mock_descriptor_3d_surface):
         pca, df = pca_data
@@ -129,6 +129,147 @@ class TestMorphospacePlotWithShapes:
             ax=ax_in,
         )
         assert ax_out is ax_in
+
+
+class TestMorphospacePlotInsetAlignment:
+    """Regression tests: shape insets must follow parent ax under layout passes.
+
+    Before the fix, ``morphospace_plot`` placed insets via
+    ``fig.add_axes([…fig-fractional…])`` with positions frozen at call time.
+    Subsequent ``tight_layout``, ``subplots_adjust``, or
+    ``constrained_layout`` would shift the parent ax without updating
+    inset positions, causing visible misalignment.
+    """
+
+    def _get_inset_axes(self, ax):
+        """Return matplotlib Axes inserted as children of *ax* by the call."""
+        return list(ax.child_axes)
+
+    def test_insets_are_parented_to_ax(self, pca_data, mock_descriptor_2d):
+        pca, df = pca_data
+        fig, ax = plt.subplots()
+        morphospace_plot(
+            data=df, x="PC1", y="PC2",
+            reducer=pca, descriptor=mock_descriptor_2d,
+            n_shapes=2, ax=ax,
+        )
+        insets = self._get_inset_axes(ax)
+        assert len(insets) == 4  # n_shapes * n_shapes
+
+    def test_insets_track_parent_under_tight_layout(
+        self, pca_data, mock_descriptor_2d
+    ):
+        pca, df = pca_data
+        fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+        morphospace_plot(
+            data=df, x="PC1", y="PC2",
+            reducer=pca, descriptor=mock_descriptor_2d,
+            n_shapes=2, ax=axes[0],
+        )
+        insets = self._get_inset_axes(axes[0])
+        assert len(insets) == 4
+
+        fig.canvas.draw()
+        before = [a.get_position().bounds for a in insets]
+        ax_before = axes[0].get_position().bounds
+
+        fig.tight_layout()
+        fig.canvas.draw()
+        after = [a.get_position().bounds for a in insets]
+        ax_after = axes[0].get_position().bounds
+
+        # Parent moved: confirms tight_layout actually changed positions.
+        assert not np.allclose(ax_before, ax_after), (
+            "tight_layout did not move the parent ax; test cannot detect drift."
+        )
+        # Insets moved with the parent (not frozen at call time).
+        for b, a in zip(before, after):
+            assert not np.allclose(b, a), (
+                f"Inset bbox unchanged under tight_layout: {b} == {a}"
+            )
+
+    def test_insets_track_parent_under_set_position(
+        self, pca_data, mock_descriptor_2d
+    ):
+        pca, df = pca_data
+        fig, ax = plt.subplots()
+        morphospace_plot(
+            data=df, x="PC1", y="PC2",
+            reducer=pca, descriptor=mock_descriptor_2d,
+            n_shapes=2, ax=ax,
+        )
+        insets = self._get_inset_axes(ax)
+
+        fig.canvas.draw()
+        before = [a.get_position().bounds for a in insets]
+
+        ax.set_position([0.05, 0.05, 0.4, 0.4])
+        fig.canvas.draw()
+        after = [a.get_position().bounds for a in insets]
+
+        for b, a in zip(before, after):
+            assert not np.allclose(b, a), (
+                f"Inset bbox did not follow ax.set_position: {b} == {a}"
+            )
+
+    def test_insets_3d_projection_supported(
+        self, pca_data, mock_descriptor_3d_surface
+    ):
+        pca, df = pca_data
+        fig, ax = plt.subplots()
+        morphospace_plot(
+            data=df, x="PC1", y="PC2",
+            reducer=pca, descriptor=mock_descriptor_3d_surface,
+            shape_type="surface_3d", n_shapes=2, ax=ax,
+        )
+        insets = self._get_inset_axes(ax)
+        # Each inset should have a 3D Axes instance.
+        from mpl_toolkits.mplot3d import Axes3D
+
+        assert all(isinstance(a, Axes3D) for a in insets)
+        assert len(insets) == 4
+
+
+class TestMorphospacePlotZOrder:
+    """Regression tests: scatter must remain on top of inset shapes.
+
+    The Issue 1 fix moved insets from sibling axes (``fig.add_axes``) to
+    child axes (``Axes.inset_axes``). The latter defaults to ``zorder=5``,
+    which is above the seaborn scatter default (``zorder=1``). Without
+    explicitly lowering the inset z-order, scatter markers were drawn
+    behind the inset shapes.
+    """
+
+    def test_inset_zorder_below_scatter(self, pca_data, mock_descriptor_2d):
+        pca, df = pca_data
+        fig, ax = plt.subplots()
+        morphospace_plot(
+            data=df, x="PC1", y="PC2",
+            reducer=pca, descriptor=mock_descriptor_2d,
+            n_shapes=2, ax=ax,
+        )
+        scatter_zorders = [c.get_zorder() for c in ax.collections]
+        inset_zorders = [a.get_zorder() for a in ax.child_axes]
+        assert scatter_zorders, "scatter collection missing"
+        assert inset_zorders, "inset axes missing"
+        assert max(inset_zorders) < min(scatter_zorders), (
+            f"inset zorder {max(inset_zorders)} must be below "
+            f"scatter zorder {min(scatter_zorders)}"
+        )
+
+    def test_does_not_mutate_parent_ax_state(self, pca_data, mock_descriptor_2d):
+        """morphospace_plot must not silently change ax.zorder or patch alpha."""
+        pca, df = pca_data
+        fig, ax = plt.subplots()
+        zorder_before = ax.get_zorder()
+        alpha_before = ax.patch.get_alpha()
+        morphospace_plot(
+            data=df, x="PC1", y="PC2",
+            reducer=pca, descriptor=mock_descriptor_2d,
+            n_shapes=2, ax=ax,
+        )
+        assert ax.get_zorder() == zorder_before
+        assert ax.patch.get_alpha() == alpha_before
 
 
 class TestMorphospacePlotErrors:

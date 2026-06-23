@@ -70,7 +70,7 @@ def plot_images(images, title_suffix="", cmap=None, outlines_per_image=None, lab
                     title += f" ({title_suffix})"
                 ax.set_title(title)
         ax.axis("off")
-    plt.tight_layout()
+
 ```
 
 ```{code-cell} ipython3
@@ -256,7 +256,7 @@ if len(all_outlines) > 0:
         ax.plot(outline[:, 0], -outline[:, 1], alpha=0.5, linewidth=1)
     ax.set_aspect("equal")
     ax.set_title(f"All Extracted Outlines ({len(all_outlines)} leaves)")
-    plt.tight_layout()
+
 else:
     print("No outlines to plot")
 ```
