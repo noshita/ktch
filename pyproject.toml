@@ -39,36 +39,49 @@ Homepage = "https://doc.ktch.dev"
 Repository = "https://github.com/noshita/ktch"
 
 [dependency-groups]
+# Runtime dependencies needed to execute the example notebooks.
+notebook = [
+  "matplotlib>=3.10",
+  "seaborn>=0.13.2",
+  "plotly>=6.0",
+  "opencv-python>=4.11",
+  "vtk>=9.5.2",
+  "pillow>=9.0",
+  "pooch>=1.3",
+  # ipykernel 7's asyncio `_control_lock` is corrupted under Sphinx's parallel
+  # (-j) build on Linux (fork), raising a TraitError during notebook execution.
+  # Pin <7 until the upstream/-j interaction is resolved.
+  "ipykernel<7",
+]
 dev = [
+  { include-group = "notebook" },
   "jupyter>=1.1",
   "jupyterlab>=4.3",
   "licensecheck>=2025.1",
   "llvmlite>=0.44",
-  "matplotlib>=3.10",
   "networkx>=3.6",
   "numba>=0.61",
-  "opencv-python>=4.11",
-  "plotly>=6.0",
   "pytest>=8.3",
   "pytest-benchmark>=5.1.0",
   "pytest-cov>=6.0",
-  "seaborn>=0.13",
   "tqdm>=4.67",
   "tslearn>=0.6.3",
-  "vtk>=9.5.2",
   "xarray>=2025.1",
 ]
 doc = [
+  { include-group = "notebook" },
   "myst-nb>=1.1",
   "numpydoc>=1.8",
-  "pooch>=1.3",
   "pydata-sphinx-theme>=0.16",
-  "sphinx>=8.1",
+  # sphinx-multiversion is incompatible with Sphinx >=9
+  # (upstream issue #201: Config.read() TypeError).
+  "sphinx>=8.1,<9.0",
   "sphinx-autobuild>=2024.10,<2026.0",
   "sphinx-favicon>=1.0.1",
   "sphinx-gallery>=0.18",
-  # NOTE: GitHub version required for SPHINX_MULTIVERSION_NAME env var support
-  "sphinx-multiversion @ git+https://github.com/sphinx-contrib/multiversion.git",
+  # NOTE: GitHub version required for SPHINX_MULTIVERSION_NAME env var support;
+  # pinned to a commit (latest as of 2025-11-24).
+  "sphinx-multiversion @ git+https://github.com/sphinx-contrib/multiversion.git@cd4c0db66473f04d7e037188f5f13444574b4b0e",
   "sphinx-sitemap>=2.6",
   "sphinxcontrib-bibtex>=2.6",
   "sphinxcontrib-mermaid>=2.0",
