@@ -134,6 +134,7 @@ def load_landmark_mosquito_wings(*, as_frame: bool = False) -> Bunch:
     -------
     data : :class:`~sklearn.utils.Bunch`
         Dictionary-like object, with the following attributes.
+
         coords : {ndarray of shape (127, 18, 2), dataframe}
             The coordinate data (127 specimens x 18 landmarks, 2D).
             If `as_frame=True`, `coords` will be a pandas DataFrame
@@ -147,7 +148,9 @@ def load_landmark_mosquito_wings(*, as_frame: bool = False) -> Bunch:
 
     References
     ----------
-    .. [Rohlf_and_Slice_1990] Rohlf, F.J., Slice, D., 1990. Extensions of the Procrustes Method for the Optimal Superimposition of Landmarks. Systematic Zoology 39, 40. https://doi.org/10.2307/2992207
+    .. [Rohlf_and_Slice_1990] Rohlf, F.J., Slice, D., 1990. Extensions of the
+       Procrustes Method for the Optimal Superimposition of Landmarks.
+       Systematic Zoology 39, 40. https://doi.org/10.2307/2992207
 
     """
     dataset_name = "landmark_mosquito_wings"
@@ -228,7 +231,11 @@ def load_landmark_trilobite_cephala(*, as_frame: bool = False) -> Bunch:
 
     References
     ----------
-    .. [Serra_2023] Serra, F., Balseiro, D., Monnet, C., Randolfe, E., Bignon, A., Rustán, J.J., Bault, V., Muñoz, D.F., Vaccari, N.E., Martinetto, M., Crônier, C., Waisfeld, B.G., 2023. A dynamic and collaborative database for morphogeometric information of trilobites. Sci. Data 10, 841. https://doi.org/10.1038/s41597-023-02724-9
+    .. [Serra_2023] Serra, F., Balseiro, D., Monnet, C., Randolfe, E., Bignon, A.,
+       Rustán, J.J., Bault, V., Muñoz, D.F., Vaccari, N.E., Martinetto, M.,
+       Crônier, C., Waisfeld, B.G., 2023. A dynamic and collaborative database
+       for morphogeometric information of trilobites. Sci. Data 10, 841.
+       https://doi.org/10.1038/s41597-023-02724-9
     """
     from ktch.io import read_tps
 
@@ -296,6 +303,7 @@ def load_outline_mosquito_wings(*, as_frame: bool = False) -> Bunch:
     -------
     data : :class:`~sklearn.utils.Bunch`
         Dictionary-like object, with the following attributes.
+
         coords : {ndarray of shape (126, 100, 2), dataframe}
             The coordinate data (126 specimens x 100 points, 2D).
             If `as_frame=True`, `coords` will be a pandas DataFrame
@@ -309,7 +317,9 @@ def load_outline_mosquito_wings(*, as_frame: bool = False) -> Bunch:
 
     References
     ----------
-    .. [Rohlf_and_Archie_1984] Rohlf, F.J., Archie, J.W., 1984. A Comparison of Fourier Methods for the Description of Wing Shape in Mosquitoes (Diptera: Culicidae). Syst Zool 33, 302. https://doi.org/10.2307/2413076
+    .. [Rohlf_and_Archie_1984] Rohlf, F.J., Archie, J.W., 1984. A Comparison of
+       Fourier Methods for the Description of Wing Shape in Mosquitoes
+       (Diptera: Culicidae). Syst Zool 33, 302. https://doi.org/10.2307/2413076
 
     """
     dataset_name = "outline_mosquito_wings"
@@ -366,6 +376,7 @@ def load_outline_leaf_bending(*, as_frame: bool = False) -> Bunch:
     -------
     data : :class:`~sklearn.utils.Bunch`
         Dictionary-like object, with the following attributes.
+
         coords : {ndarray of shape (60, 200, 3), dataframe}
             The coordinate data. If `as_frame=True`, `coords` will be a pandas
             DataFrame with MultiIndex (specimen_id, coord_id).

@@ -115,10 +115,21 @@ class EllipticFourierAnalysis(
 
     References
     ----------
-    .. [Kuhl_Giardina_1982] Kuhl, F.P., Giardina, C.R. (1982) Elliptic Fourier features of a closed contour. Comput. Graph. Image Process. 18: 236–258. https://doi.org/10.1016/0146-664X(82)90034-X
-    .. [Lestrel_1997]  Lestrel, P.E., 1997. Introduction and overview of Fourier descriptors, in: Fourier Descriptors and Their Applications in Biology. Cambridge University Press, pp. 22–44. https://doi.org/10.1017/cbo9780511529870.003
-    .. [Lestrel_et_al_1997] Lestrel, P.E., Read, D.W., Wolfe, C., 1997. Size and shape of the rabbit orbit: 3-D Fourier descriptors, in: Lestrel, P.E. (Ed.), Fourier Descriptors and Their Applications in Biology. Cambridge University Press, pp. 359–378. https://doi.org/10.1017/cbo9780511529870.017
-    .. [Godefroy_et_al_2012] Godefroy, J.E., Bornert, F., Gros, C.I., Constantinesco, A., 2012. Elliptical Fourier descriptors for contours in three dimensions: A new tool for morphometrical analysis in biology. C. R. Biol. 335, 205–213. https://doi.org/10.1016/j.crvi.2011.12.004
+    .. [Kuhl_Giardina_1982] Kuhl, F.P., Giardina, C.R. (1982) Elliptic Fourier
+       features of a closed contour. Comput. Graph. Image Process. 18: 236–258.
+       https://doi.org/10.1016/0146-664X(82)90034-X
+    .. [Lestrel_1997] Lestrel, P.E., 1997. Introduction and overview of Fourier
+       descriptors, in: Fourier Descriptors and Their Applications in Biology.
+       Cambridge University Press, pp. 22–44.
+       https://doi.org/10.1017/cbo9780511529870.003
+    .. [Lestrel_et_al_1997] Lestrel, P.E., Read, D.W., Wolfe, C., 1997. Size and
+       shape of the rabbit orbit: 3-D Fourier descriptors, in: Lestrel, P.E.
+       (Ed.), Fourier Descriptors and Their Applications in Biology. Cambridge
+       University Press, pp. 359–378. https://doi.org/10.1017/cbo9780511529870.017
+    .. [Godefroy_et_al_2012] Godefroy, J.E., Bornert, F., Gros, C.I.,
+       Constantinesco, A., 2012. Elliptical Fourier descriptors for contours in
+       three dimensions: A new tool for morphometrical analysis in biology.
+       C. R. Biol. 335, 205–213. https://doi.org/10.1016/j.crvi.2011.12.004
 
     """
 
@@ -209,7 +220,8 @@ class EllipticFourierAnalysis(
               ``[a_0..a_n, b_0..b_n, c_0..c_n, d_0..d_n, e_0..e_n, f_0..f_n]``
               length = ``6 * (n_harmonics + 1)``.
             - 3D (return_orientation_scale=True):
-              Same as above with ``[alpha, beta, gamma, phi, scale]`` appended (length +5).
+              Same as above with ``[alpha, beta, gamma, phi, scale]`` appended
+              (length +5).
         """
         n_dim = self.n_dim
         norm = self.norm
@@ -266,8 +278,11 @@ class EllipticFourierAnalysis(
         ----------
         X_transformed : array-like of shape (n_samples, n_features)
             Elliptic Fourier coefficients. Accepted lengths per sample:
+
               - 2D: ``4*(n_harmonics+1)`` or ``4*(n_harmonics+1)+2`` (psi, scale).
-              - 3D: ``6*(n_harmonics+1)`` or ``6*(n_harmonics+1)+5`` (alpha, beta, gamma, phi, scale).
+              - 3D: ``6*(n_harmonics+1)`` or ``6*(n_harmonics+1)+5``
+                (alpha, beta, gamma, phi, scale).
+
             Orientation/scale columns, if present, are ignored for reconstruction.
         t_num : int, default = 100
             Number of coordinate values.

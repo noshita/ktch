@@ -1,3 +1,7 @@
+---
+orphan: true
+---
+
 # Contributing documentation
 
 This guide describes the structure, conventions, and writing guidelines for the ktch documentation.
