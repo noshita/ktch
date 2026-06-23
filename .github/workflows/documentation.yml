@@ -72,6 +72,14 @@ jobs:
           restore-keys: |
             jupyter-cache-${{ runner.os }}-
 
+      - name: Initialize notebook cache (serialize jupyter-cache schema creation)
+        run: |
+          # jupyter-cache 1.0.1 is not concurrency-safe on first init: a parallel
+          # sphinx build (-j auto) races to CREATE the schema on a cold cache and
+          # fails with "table settings already exists". Create the DB serially first.
+          mkdir -p doc/_build/.jupyter_cache
+          python -c "from jupyter_cache import get_cache; get_cache('doc/_build/.jupyter_cache').list_cache_records()"
+
       - name: Build multi-version docs
         run: |
           # Build all versions with sphinx-multiversion
