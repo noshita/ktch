@@ -128,6 +128,22 @@ def render_fn(coords, ax, *, color="gray", alpha=1.0, links=None, **kwargs):
 This enables filled shapes, custom projections, annotation overlays, or any other matplotlib drawing without modifying the reconstruction pipeline.
 Additional keyword arguments can be passed via `**render_kw` and are forwarded to the renderer.
 
+## Performance
+
+The reconstruction pipeline calls `descriptor.inverse_transform` once with all `n_shapes ** 2` grid points stacked along the batch dimension.
+For 3-D shape types this call dominates the runtime — typically 80–90 % of the total time spent in `morphospace_plot`.
+
+ktch's bundled descriptors (`EllipticFourierAnalysis`, `SphericalHarmonicAnalysis`, `DiskHarmonicAnalysis`) all parallelize their `inverse_transform` over the batch dimension via joblib.
+Configuring `n_jobs` on the descriptor at construction time therefore parallelizes shape reconstruction for plotting at no additional cost:
+
+```python
+sha = SphericalHarmonicAnalysis(n_harmonics=20, n_jobs=-1)
+sha.fit(specimens, theta_phi=theta_phi_list)
+morphospace_plot(data=df, x="PC1", y="PC2", reducer=pca, descriptor=sha)
+```
+
+`morphospace_plot` itself does not expose an `n_jobs` argument because the descriptor's batch-level parallelism already covers the dominant cost, and adding a second layer would risk nested parallelism with no further speedup.
+
 ## Naming Conventions
 
 Plot functions in ktch use a `<noun>_plot` suffix: `morphospace_plot`, `shape_variation_plot`, `explained_variance_ratio_plot`, `tps_grid_2d_plot`.
