@@ -168,8 +168,6 @@ def morphospace_plot(
     and reducing surface resolution via a
     ``descriptor_inverse_transform`` wrapper.
 
-    Performance
-    -----------
     For 3-D shape types, ``descriptor.inverse_transform`` typically
     dominates the runtime. ``morphospace_plot`` issues a single batched
     call covering all ``n_shapes ** 2`` grid points, so descriptors that
