@@ -1,5 +1,58 @@
 # Changelog
 
+## [0.9.1](https://github.com/noshita/ktch/compare/v0.9.0...v0.9.1) (2026-06-23)
+
+
+### Features
+
+* ✨  add danshaku SPHARM coef as bundled example ([3f026e0](https://github.com/noshita/ktch/commit/3f026e09fd8f3967c1a344f0b73b8f1f5dbfa068))
+* ✨ configuration_plot ([81e0f4b](https://github.com/noshita/ktch/commit/81e0f4bd6d2d9156b4e808850e7d2dd7073e0393))
+* ✨ configuration_plot ([abb22a4](https://github.com/noshita/ktch/commit/abb22a40bcbad66cd42a91b93a951de8cbd754b3))
+* **datasets:** ✨ add fetch() for bundled and remote example data files ([b104890](https://github.com/noshita/ktch/commit/b10489095638a69a46a9f5b2539d67d4a2556963))
+* **io,harmonic:** ✨ consolidate converters, add SPHARM-PDM bridge, convert SHA to real SH ([294a73d](https://github.com/noshita/ktch/commit/294a73dc1330bffcc751e7078a458a0801b13b7a))
+* **io,harmonic:** consolidate converters, add SPHARM-PDM bridge, convert SHA to real SH ([c2cd8ec](https://github.com/noshita/ktch/commit/c2cd8ecccc1adf5e0baa6818bc4b88372a94e845))
+
+
+### Bug Fixes
+
+* **ci:** 🐛  serialize jupyter-cache init for the parallel doc build ([67a224e](https://github.com/noshita/ktch/commit/67a224e901bc27cb79de6495e56d225d723f0df6))
+* **ci:** 🐛 install doc deps from pyproject and pin ipykernel&lt;7 ([b8014ea](https://github.com/noshita/ktch/commit/b8014ea7788e0b0f4151d5a1df871c09e50b4ae9))
+* **harmonic:** 🐛 correct axis layout in SHA inverse_transform ([fb24bf4](https://github.com/noshita/ktch/commit/fb24bf41c68b924955543852001e06c92424e709))
+* **harmonic:** 🐛 truncate coefficients when l_max &lt; n_harmonics in SHA inverse_transform ([44fc535](https://github.com/noshita/ktch/commit/44fc5352b91c0afe03008cda4a1b952bd1386c49))
+* **plot:** 🐛 anchor morphospace insets to parent ax via inset_axes ([1f4a142](https://github.com/noshita/ktch/commit/1f4a142f0a1ed4255f01bb9f6cbd4a20519078dd))
+* **plot:** 🐛 keep morphospace scatter on top of inset shapes ([9720361](https://github.com/noshita/ktch/commit/9720361bfcc827e5990d1590e45f6a2d70941e0c))
+
+
+### Documentation
+
+* 📚 add io module explanation and update API reference ([849e0e1](https://github.com/noshita/ktch/commit/849e0e1abc50beb280945c76ac31ebda2f24e7d1))
+* 📚 add module and parameter naming conventions ([03bdae2](https://github.com/noshita/ktch/commit/03bdae2ba738a57969c3449affeff86773be25ea))
+* 📚 document 2D landmark digitization ([7e49ff2](https://github.com/noshita/ktch/commit/7e49ff237451cbecfb40108efc1c8eb9a71f6091))
+* 📚 fix docstring reST/line-length and orphan doc/CONTRIBUTING ([b72fd96](https://github.com/noshita/ktch/commit/b72fd96c98329ea29536e53eed0d291d4e5fa8c7))
+* 📚 remove unused cell in GPA tutorial ([d8a5625](https://github.com/noshita/ktch/commit/d8a562564b85aa91ec3c732f39bc8275b5240a06))
+* 📚 rewrite load_spharm how-to and drop SHA reshape workaround ([3e0097e](https://github.com/noshita/ktch/commit/3e0097ebb38ab9553e332ddabc3c66215727b65e))
+* 📚 update API reference and how-to guide for fetch, load_surface_leaf_bending ([b4ace8c](https://github.com/noshita/ktch/commit/b4ace8cf96e565089959df87b794767ae34c5473))
+* 📚 update Pipeline and cross-validation how-to guides for EFA ([68e9088](https://github.com/noshita/ktch/commit/68e90888f7412c0e94928d08ed052ee2a7a29f4d))
+* 📚 use fetch() in tutorials, document examples in MAINTAINING.md ([5e21da3](https://github.com/noshita/ktch/commit/5e21da3d5b5802a6b09e3e1fc0cdc5abdaad97f8))
+* 📚 use sentence case for headings ([5389686](https://github.com/noshita/ktch/commit/53896868bf1fba5e464681060cb3256e1d410fc0))
+* **plot:** 📚 document morphospace_plot performance and n_jobs ([6785060](https://github.com/noshita/ktch/commit/6785060d36aba34fb76d6c4223dca9ecd065c633))
+* **plot:** 📚 merge Performance section into Notes ([6eaa6c1](https://github.com/noshita/ktch/commit/6eaa6c12a67701a88c7b045a456aa3080507da28))
+
+
+### Miscellaneous Chores
+
+* 🔧 bump versions of Actions ([2455694](https://github.com/noshita/ktch/commit/2455694a869693436002e2a1b47bce34b7120c52))
+* 🔧 bump versions of Actions ([f26eb60](https://github.com/noshita/ktch/commit/f26eb60ee1238be4854eac5e3e3d684f9be46cbd))
+* 🔧 remove unused requirements.txt (dead conda-build artifact) ([f6202cb](https://github.com/noshita/ktch/commit/f6202cb9a482a0001b15700270e2a98edaeae5df))
+* 🔧 update locked dependencies ([f382abb](https://github.com/noshita/ktch/commit/f382abbc41f29949e305eb9bb09ef799a4ec387c))
+
+
+### Code Refactoring
+
+* **datasets:** ♻️ clean up datasets API (exception types, docstrings, deprecated stubs) ([0f0ee3a](https://github.com/noshita/ktch/commit/0f0ee3aeb59fa5af8558bb7f87bfc844460b2545))
+* **harmonic:** ♻️ add sklearn API and Pipeline tests for EFA, consolidate redundant tests ([b3a528a](https://github.com/noshita/ktch/commit/b3a528a7b6d2b7780a75ef2848478c01fdea8a64))
+* **scripts:** ♻️ extend update_registry for examples, improve TOML validation ([cc31754](https://github.com/noshita/ktch/commit/cc3175483c1033bbf829f967c360d9e1dc5198bc))
+
 ## [0.9.0](https://github.com/noshita/ktch/compare/v0.8.1...v0.9.0) (2026-03-24)
 
 
