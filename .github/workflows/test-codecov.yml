@@ -7,7 +7,6 @@ on:
         "ktch/**",
         .github/workflows/test-codecov.yml,
         pyproject.toml,
-        requirements.txt,
       ]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
