@@ -1,5 +1,9 @@
-"""ktch: A Python package for model-based morphometrics"""
-# Copyright 2020 Koji Noshita
+"""
+The :mod:`ktch.coiling` module implements theoretical morphological models of
+coiling patterns.
+"""
+
+# Copyright 2026 Koji Noshita
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,18 +17,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from importlib.metadata import version
-
-from . import coiling, datasets, harmonic, io, landmark, plot
-
-__version__ = version(__name__)
+from ._growing_tube import GrowingTubeModel, growing_tube
+from ._raup import RaupModel, raup
 
 __all__ = [
-    "landmark",
-    "harmonic",
-    "coiling",
-    "io",
-    "datasets",
-    "plot",
-    "__version__",
+    "RaupModel",
+    "raup",
+    "GrowingTubeModel",
+    "growing_tube",
 ]
