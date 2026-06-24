@@ -8,3 +8,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Security updates only.
+    # A limit of 0 disables version-update PRs while still allowing
+    # Dependabot security updates, which ignore this limit.
+    open-pull-requests-limit: 0
