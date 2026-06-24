@@ -58,7 +58,7 @@ jobs:
 
       - name: Restore notebook execution cache
         if: ${{ github.event.inputs.no-cache != 'true' }}
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: doc/_build/.jupyter_cache
           key: jupyter-cache-${{ runner.os }}-${{ hashFiles('doc/**/*.md', 'ktch/**/*.py') }}
