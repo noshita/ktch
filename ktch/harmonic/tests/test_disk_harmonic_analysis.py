@@ -628,9 +628,9 @@ class TestDHA2DEdgeCases:
         assert list(dha.get_feature_names_out()) == ["cx_0_0", "cy_0_0"]
 
     def test_invalid_n_dim_raises(self):
-        dha = DiskHarmonicAnalysis(n_harmonics=2, n_dim=4, n_jobs=1)
-        with pytest.raises(ValueError, match="n_dim must be 2 or 3"):
-            dha.transform([np.zeros((10, 4))], r_theta=[np.zeros((10, 2))])
+        dha = DiskHarmonicAnalysis(n_harmonics=2, n_dim=0, n_jobs=1)
+        with pytest.raises(ValueError, match="n_dim must be a positive integer"):
+            dha.transform([np.zeros((10, 2))], r_theta=[np.zeros((10, 2))])
 
 
 class TestDiskHarm2DReconstruction:
@@ -661,3 +661,60 @@ class TestDiskHarm2DReconstruction:
         x, y, z = disk_harm(n_max, coef_list)
 
         assert x.shape == (180, 100)
+
+
+class TestDHANDim:
+    """Codomain generalization to dims other than 2/3 (incl. scalar field)."""
+
+    def test_scalar_field_round_trip(self):
+        """n_dim=1 (scalar field on the disk) recovers exact coefficients."""
+        n_max = 4
+        vertices, r_theta, coef_true = _generate_synthetic_surface(n_max, 500, n_dim=1)
+        dha = DiskHarmonicAnalysis(n_harmonics=n_max, n_dim=1, n_jobs=1)
+        transformed = dha.fit_transform([vertices], r_theta=[r_theta])
+
+        assert transformed.shape == (1, (n_max + 1) ** 2)
+        assert_allclose(transformed[0], coef_true, atol=1e-8)
+
+    def test_4d_round_trip(self):
+        n_max = 3
+        vertices, r_theta, coef_true = _generate_synthetic_surface(n_max, 500, n_dim=4)
+        dha = DiskHarmonicAnalysis(n_harmonics=n_max, n_dim=4, n_jobs=1)
+        transformed = dha.fit_transform([vertices], r_theta=[r_theta])
+
+        assert transformed.shape == (1, 4 * (n_max + 1) ** 2)
+        assert_allclose(transformed[0], coef_true, atol=1e-8)
+
+    def test_inverse_scalar_field_shape(self):
+        n_max = 2
+        vertices, r_theta, _ = _generate_synthetic_surface(n_max, 200, n_dim=1)
+        dha = DiskHarmonicAnalysis(n_harmonics=n_max, n_dim=1, n_jobs=1)
+        transformed = dha.fit_transform([vertices], r_theta=[r_theta])
+
+        r_range = np.linspace(0, 1, 20)
+        theta_range = np.linspace(0, 2 * np.pi, 30)
+        rec = dha.inverse_transform(
+            transformed, r_range=r_range, theta_range=theta_range
+        )
+        assert rec.shape == (1, len(theta_range), len(r_range), 1)
+
+    def test_feature_names_scalar(self):
+        dha = DiskHarmonicAnalysis(n_harmonics=1, n_dim=1)
+        names = list(dha.get_feature_names_out())
+        assert names == ["cx_0_0", "cx_1_-1", "cx_1_0", "cx_1_1"]
+
+    def test_feature_names_4d(self):
+        dha = DiskHarmonicAnalysis(n_harmonics=1, n_dim=4)
+        names = list(dha.get_feature_names_out())
+        assert len(names) == 4 * 4
+        assert names[0] == "c0_0_0"
+        assert names[4] == "c1_0_0"
+
+    def test_n_features_out_4d(self):
+        dha = DiskHarmonicAnalysis(n_harmonics=2, n_dim=4)
+        assert dha._n_features_out == 4 * 9
+
+    def test_data_dim_mismatch_raises(self):
+        dha = DiskHarmonicAnalysis(n_harmonics=2, n_dim=3, n_jobs=1)
+        with pytest.raises(ValueError, match="n_dim=3"):
+            dha.transform([np.zeros((10, 2))], r_theta=[np.zeros((10, 2))])

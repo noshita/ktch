@@ -49,8 +49,17 @@ class EllipticFourierAnalysis(
     n_harmonics: int, default=20
         Number of harmonics
     n_dim: int, default=2
-        Dimension of the coordinate space.
-        Must be 2 (for planar curves) or 3 (for space curves).
+        Dimension of the codomain (number of components on the
+        curve). Any positive integer is supported for the raw expansion
+        (``norm=False``). ``norm=True`` normalization is implemented only
+        for ``2`` (planar curves) and ``3`` (space curves);
+        for other dimensions use ``norm=False``.
+        Arc-length parameterization is computed automatically only for
+        ``n_dim`` in ``(2, 3)`` (spatial shape coordinates). For ``n_dim=1``
+        or ``n_dim>3`` the codomain is treated as non-shape data, so the
+        parameter ``t`` is required and must be supplied explicitly (e.g.
+        derived from the corresponding shape); it is not inferred from the
+        codomain values.
     norm : bool, default=True
         Normalize the elliptic Fourier coefficients by the 1st harmonic
         ellipse (scaling method controlled by ``norm_method``).
@@ -211,6 +220,12 @@ class EllipticFourierAnalysis(
         X_transformed : ndarray of shape (n_samples, n_features_out)
             Elliptic Fourier coefficients.
 
+            For a general codomain dimension ``n_dim=D`` with
+            ``norm=False`` the layout is, per axis, ``[cos_0..cos_n,
+            sin_0..sin_n]`` concatenated over the ``D`` axes, giving length
+            ``2 * D * (n_harmonics + 1)``.  The 2D/3D cases below are special
+            cases of this layout (with letter names ``a, b, c, d, ...``).
+
             - 2D (return_orientation_scale=False):
               ``[a_0..a_n, b_0..b_n, c_0..c_n, d_0..d_n]``
               length = ``4 * (n_harmonics + 1)``.
@@ -227,8 +242,8 @@ class EllipticFourierAnalysis(
         norm = self.norm
         return_orientation_scale = self.return_orientation_scale
 
-        if n_dim not in (2, 3):
-            raise ValueError("n_dim must be 2 or 3")
+        if n_dim < 1:
+            raise ValueError(f"n_dim must be a positive integer, got {n_dim}")
         if self.norm_method not in self._VALID_NORM_METHODS:
             raise ValueError(
                 f"norm_method must be None, 'area', or 'semi_major_axis', "
@@ -254,20 +269,11 @@ class EllipticFourierAnalysis(
         else:
             X_ = X
 
-        if n_dim == 2:
-            X_transformed = np.stack(
-                Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
-                    delayed(self._transform_single_2d)(X_[i], t_[i])
-                    for i in range(len(X_))
-                )
+        X_transformed = np.stack(
+            Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
+                delayed(self._transform_single)(X_[i], t_[i]) for i in range(len(X_))
             )
-        elif n_dim == 3:
-            X_transformed = np.stack(
-                Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
-                    delayed(self._transform_single_3d)(X_[i], t_[i])
-                    for i in range(len(X_))
-                )
-            )
+        )
 
         return X_transformed
 
@@ -297,7 +303,7 @@ class EllipticFourierAnalysis(
         """
         X_list = []
         sp_num = X_transformed.shape[0]
-        col_names = ["x", "y", "z"][: self.n_dim]
+        col_names = _coord_names(self.n_dim)
 
         for i in range(sp_num):
             if as_frame:
@@ -326,7 +332,7 @@ class EllipticFourierAnalysis(
     #
     ###########################################################
 
-    def _transform_single_2d(
+    def _transform_single(
         self,
         X: np.ndarray,
         t: np.ndarray | None = None,
@@ -334,46 +340,120 @@ class EllipticFourierAnalysis(
     ):
         """Fit the model with a single outline.
 
+        Computes the raw Fourier coefficients for an ``n_dim``-valued closed
+        curve and, when ``self.norm`` is set, applies the dimension-specific
+        normalization.
+
         Parameters
         ----------
-        X: ndarray of shape (n_coords, 2)
-            Coordinate values of an 2D outline.
-
-        t: ndarray of shape  (n_coords, ), optional
-            A parameter indicating the position on the outline.
-            If `t=None`, then t is calculated based on
-            the coordinate values with the linear interpolation.
+        X : ndarray of shape (n_coords, n_dim)
+            Coordinate values of the outline.
+        t : ndarray of shape (n_coords,), optional
+            A parameter indicating the position on the outline. For
+            ``n_dim`` in ``(2, 3)`` (spatial shape coordinates), ``None``
+            triggers automatic arc-length parameterization. For ``n_dim=1``
+            or ``n_dim>3`` the codomain is treated as non-shape data, so
+            ``t`` is required and is not inferred from the codomain values.
+        duplicated_points : str, default="infinitesimal"
+            Strategy for zero-length segments
+            (``"infinitesimal"`` or ``"deletion"``).
 
         Returns
         -------
-        X_transformed: ndarray of shape (4*(n_harmonics+1), )
-            Coefficients of Fourier series.
-
+        X_transformed : ndarray
+            Flat Fourier coefficient vector. Per axis the layout is
+            ``[cos_0..cos_n, sin_0..sin_n]``, concatenated over the axes.
         """
         n_harmonics = self.n_harmonics
 
+        if t is None and self.n_dim not in (2, 3):
+            raise ValueError(
+                "Automatic arc-length parameterization is only available for "
+                f"n_dim in (2, 3); got n_dim={self.n_dim}. For n_dim=1 or "
+                "n_dim>3 the codomain is treated as non-shape data, so `t` "
+                "must be supplied explicitly (e.g. a parameterization derived "
+                "from the corresponding shape)."
+            )
+
         X_arr, diffs, dt = _preprocess_outline(X, t, duplicated_points)
-        dx, dy = diffs[:, 0], diffs[:, 1]
+        n_dim = X_arr.shape[1]
+        if n_dim != self.n_dim:
+            raise ValueError(
+                f"Each sample must have n_dim={self.n_dim} columns; got {n_dim}."
+            )
 
         # Fourier series expansion
         T = np.sum(dt)
-        a0 = 2 * np.sum(X_arr[1:, 0] * dt) / T
-        c0 = 2 * np.sum(X_arr[1:, 1] * dt) / T
-        an = np.append(a0, _cse(dx, dt, n_harmonics))
-        bn = np.append(0, _sse(dx, dt, n_harmonics))
-        cn = np.append(c0, _cse(dy, dt, n_harmonics))
-        dn = np.append(0, _sse(dy, dt, n_harmonics))
+        # DC offset per axis (weighted mean over the contour)
+        offsets = 2.0 * (dt @ X_arr[1:]) / T
+        cos_rows = [
+            np.append(offsets[d], _cse(diffs[:, d], dt, n_harmonics))
+            for d in range(n_dim)
+        ]
+        sin_rows = [
+            np.append(0.0, _sse(diffs[:, d], dt, n_harmonics)) for d in range(n_dim)
+        ]
 
         # Normalize
         if self.norm:
-            an, bn, cn, dn, psi, scale = self._normalize_2d(an, bn, cn, dn)
+            if n_dim == 2:
+                an, bn, cn, dn, psi, scale = self._normalize_2d(
+                    cos_rows[0], sin_rows[0], cos_rows[1], sin_rows[1]
+                )
+                rows = [an, bn, cn, dn]
+                extras = [psi, scale]
+            elif n_dim == 3:
+                (
+                    an,
+                    bn,
+                    cn,
+                    dn,
+                    en,
+                    fn,
+                    alpha,
+                    beta,
+                    gamma,
+                    phi,
+                    scale,
+                ) = self._normalize_3d(
+                    cos_rows[0],
+                    sin_rows[0],
+                    cos_rows[1],
+                    sin_rows[1],
+                    cos_rows[2],
+                    sin_rows[2],
+                )
+                rows = [an, bn, cn, dn, en, fn]
+                extras = [alpha, beta, gamma, phi, scale]
+            else:
+                raise ValueError(
+                    "norm=True is currently implemented only for n_dim in "
+                    f"(2, 3); got n_dim={n_dim}. Use norm=False for other "
+                    "dimensions."
+                )
+        else:
+            rows = []
+            for d in range(n_dim):
+                rows.append(cos_rows[d])
+                rows.append(sin_rows[d])
+            extras = []
 
         if self.return_orientation_scale:
-            X_transformed = np.hstack([an, bn, cn, dn, psi, scale])
-        else:
-            X_transformed = np.hstack([an, bn, cn, dn])
+            return np.hstack(rows + extras)
+        return np.hstack(rows)
 
-        return X_transformed
+    def _transform_single_2d(
+        self,
+        X: np.ndarray,
+        t: np.ndarray | None = None,
+        duplicated_points: str = "infinitesimal",
+    ):
+        """Backward-compatible 2D entry point.
+
+        Thin wrapper over :meth:`_transform_single`; retained for callers
+        that target the 2D path explicitly.
+        """
+        return self._transform_single(X, t=t, duplicated_points=duplicated_points)
 
     def _normalize_2d(self, an, bn, cn, dn, keep_start_point=False):
         """Normalize Fourier coefficients.
@@ -451,17 +531,21 @@ class EllipticFourierAnalysis(
     def _inverse_transform_single(self, X_transformed, t_num=100):
         coef_array = np.asarray(X_transformed, dtype=float)
         n_axes = 2 * self.n_dim
-        n_extras = {2: 2, 3: 5}[self.n_dim]
+        n_extras = {2: 2, 3: 5}.get(self.n_dim, 0)
         expected_base = n_axes * (self.n_harmonics + 1)
 
-        if coef_array.shape[0] == expected_base + n_extras:
-            coef_core = coef_array[:expected_base]
-        elif coef_array.shape[0] == expected_base:
+        if coef_array.shape[0] == expected_base:
             coef_core = coef_array
+        elif n_extras and coef_array.shape[0] == expected_base + n_extras:
+            coef_core = coef_array[:expected_base]
         else:
+            allowed = (
+                f"{expected_base} or {expected_base + n_extras}"
+                if n_extras
+                else f"{expected_base}"
+            )
             raise ValueError(
-                f"Expected {expected_base} or {expected_base + n_extras} "
-                f"coefficients, got {coef_array.shape[0]}."
+                f"Expected {allowed} coefficients, got {coef_array.shape[0]}."
             )
 
         # Reshape to (n_axes, n_harmonics+1).
@@ -501,53 +585,12 @@ class EllipticFourierAnalysis(
         t: np.ndarray | None = None,
         duplicated_points: str = "infinitesimal",
     ):
-        """Fit the model with a single 3D outline.
+        """Backward-compatible 3D entry point.
 
-        Parameters
-        ----------
-        X : ndarray of shape (n_coords, 3)
-            Coordinate values of a 3D outline.
-
-        t : ndarray of shape (n_coords,), optional
-            A parameter indicating the position on the outline.
-            If ``None``, arc-length parameterization is computed automatically.
-
-        Returns
-        -------
-        X_transformed : ndarray of shape (6*(n_harmonics+1),) or (6*(n_harmonics+1)+5,)
-            Coefficients of Fourier series.
+        Thin wrapper over :meth:`_transform_single`; retained for callers
+        that target the 3D path explicitly.
         """
-        n_harmonics = self.n_harmonics
-
-        X_arr, diffs, dt = _preprocess_outline(X, t, duplicated_points)
-        dx, dy, dz = diffs[:, 0], diffs[:, 1], diffs[:, 2]
-
-        # Fourier series expansion
-        T = np.sum(dt)
-        a0 = 2 * np.sum(X_arr[1:, 0] * dt) / T
-        c0 = 2 * np.sum(X_arr[1:, 1] * dt) / T
-        e0 = 2 * np.sum(X_arr[1:, 2] * dt) / T
-        an = np.append(a0, _cse(dx, dt, n_harmonics))
-        bn = np.append(0, _sse(dx, dt, n_harmonics))
-        cn = np.append(c0, _cse(dy, dt, n_harmonics))
-        dn = np.append(0, _sse(dy, dt, n_harmonics))
-        en = np.append(e0, _cse(dz, dt, n_harmonics))
-        fn = np.append(0, _sse(dz, dt, n_harmonics))
-
-        # Normalize
-        if self.norm:
-            an, bn, cn, dn, en, fn, alpha, beta, gamma, phi, scale = self._normalize_3d(
-                an, bn, cn, dn, en, fn
-            )
-
-        if self.return_orientation_scale:
-            X_transformed = np.hstack(
-                [an, bn, cn, dn, en, fn, alpha, beta, gamma, phi, scale]
-            )
-        else:
-            X_transformed = np.hstack([an, bn, cn, dn, en, fn])
-
-        return X_transformed
+        return self._transform_single(X, t=t, duplicated_points=duplicated_points)
 
     def _normalize_3d(self, an, bn, cn, dn, en, fn):
         """Normalize 3D EFA coefficients.
@@ -715,15 +758,18 @@ class EllipticFourierAnalysis(
         return base
 
     def _build_feature_names(self, include_orientation: bool) -> list[str]:
-        an = [f"a_{i}" for i in range(self.n_harmonics + 1)]
-        bn = [f"b_{i}" for i in range(self.n_harmonics + 1)]
-        cn = [f"c_{i}" for i in range(self.n_harmonics + 1)]
-        dn = [f"d_{i}" for i in range(self.n_harmonics + 1)]
-        feature_names = an + bn + cn + dn
-        if self.n_dim == 3:
-            en = [f"e_{i}" for i in range(self.n_harmonics + 1)]
-            fn = [f"f_{i}" for i in range(self.n_harmonics + 1)]
-            feature_names = feature_names + en + fn
+        n = self.n_harmonics + 1
+        # Legacy letter names for the common 1D/2D/3D cases; systematic
+        # ``x{d}_cos_i`` / ``x{d}_sin_i`` names for higher dimensions.
+        legacy_letters = ["a", "b", "c", "d", "e", "f"]
+        feature_names: list[str] = []
+        if self.n_dim <= 3:
+            for letter in legacy_letters[: 2 * self.n_dim]:
+                feature_names += [f"{letter}_{i}" for i in range(n)]
+        else:
+            for d in range(self.n_dim):
+                feature_names += [f"x{d}_cos_{i}" for i in range(n)]
+                feature_names += [f"x{d}_sin_{i}" for i in range(n)]
         if include_orientation:
             if self.n_dim == 3:
                 feature_names += ["alpha", "beta", "gamma", "phi", "scale"]
@@ -737,6 +783,18 @@ class EllipticFourierAnalysis(
 #   utility functions
 #
 ###########################################################
+
+
+def _coord_names(n_dim: int) -> list[str]:
+    """Return coordinate column names for ``n_dim``-valued reconstructions.
+
+    Uses ``x``/``y``/``z`` for ``n_dim <= 3`` and systematic ``x0``,
+    ``x1``, ... names otherwise.
+    """
+    base = ["x", "y", "z"]
+    if n_dim <= len(base):
+        return base[:n_dim]
+    return [f"x{d}" for d in range(n_dim)]
 
 
 def _preprocess_outline(X, t, duplicated_points="infinitesimal"):

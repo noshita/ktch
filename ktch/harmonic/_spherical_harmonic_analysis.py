@@ -42,6 +42,11 @@ class SphericalHarmonicAnalysis(
     ----------
     n_harmonics: int, default=10
         Number of harmonics to use ($l_\mathrm{max}$).
+    n_dim: int, default=3
+        Dimension of the codomain, i.e. the number of components
+        of the :math:`\mathbb{R}^D`-valued function expanded on the sphere.
+        Any positive integer is supported; ``3`` is the common surface
+        mapping and ``1`` corresponds to a scalar field on the sphere.
     n_jobs: int, default=None
         The number of jobs to run in parallel. None means 1 unless in a
         joblib.parallel_backend context. -1 means using all processors.
@@ -74,8 +79,12 @@ class SphericalHarmonicAnalysis(
     References
     ----------
 
-    .. [Ritche_Kemp_1999] Ritchie, D.W., Kemp, G.J.L. (1999) Fast computation, rotation, and comparison of low resolution spherical harmonic molecular surfaces. J. Comput. Chem. 20: 383–395.
-    .. [Shen_etal_2009] Shen, L., Farid, H., McPeek, M.A. (2009) Modeling three-dimensional morphological structures using spherical harmonics. Evolution (N. Y). 63: 1003–1016.
+    .. [Ritche_Kemp_1999] Ritchie, D.W., Kemp, G.J.L. (1999) Fast computation, r
+       otation, and comparison of low resolution spherical harmonic molecular surfaces.
+       J. Comput. Chem. 20: 383–395.
+    .. [Shen_etal_2009] Shen, L., Farid, H., McPeek, M.A. (2009)
+       Modeling three-dimensional morphological structures using spherical harmonics.
+       Evolution (N. Y). 63: 1003–1016.
 
 
 
@@ -84,10 +93,12 @@ class SphericalHarmonicAnalysis(
     def __init__(
         self,
         n_harmonics=10,
+        n_dim=3,
         n_jobs=None,
         verbose=0,
     ):
         self.n_harmonics = n_harmonics
+        self.n_dim = n_dim
         self.n_jobs = n_jobs
         self.verbose = verbose
 
@@ -192,8 +203,15 @@ class SphericalHarmonicAnalysis(
                 "Provide surface parameterization for each sample."
             )
 
+        if self.n_dim < 1:
+            raise ValueError(f"n_dim must be a positive integer, got {self.n_dim}")
+
+        n_dim = self.n_dim
         if isinstance(X, pd.DataFrame):
-            X_ = [row.dropna().to_numpy().reshape(3, -1).T for idx, row in X.iterrows()]
+            X_ = [
+                row.dropna().to_numpy().reshape(n_dim, -1).T
+                for idx, row in X.iterrows()
+            ]
         else:
             X_ = X
 
@@ -202,6 +220,13 @@ class SphericalHarmonicAnalysis(
                 f"theta_phi ({len(theta_phi)}) must have the same length "
                 f"as X ({len(X_)})"
             )
+
+        if len(X_) > 0:
+            d_data = np.asarray(X_[0]).shape[1]
+            if d_data != n_dim:
+                raise ValueError(
+                    f"Each sample must have n_dim={n_dim} columns; got {d_data}."
+                )
 
         X_transformed = np.stack(
             Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
@@ -231,12 +256,12 @@ class SphericalHarmonicAnalysis(
     @property
     def _n_features_out(self):
         """Number of transformed output features."""
-        return 3 * (self.n_harmonics + 1) ** 2
+        return self.n_dim * (self.n_harmonics + 1) ** 2
 
     def _build_feature_names(self) -> list[str]:
         l_max = self.n_harmonics
         names = []
-        for axis in ("cx", "cy", "cz"):
+        for axis in _axis_prefixes(self.n_dim):
             for l in range(l_max + 1):
                 for m in range(-l, l + 1):
                     names.append(f"{axis}_{l}_{m}")
@@ -253,9 +278,9 @@ class SphericalHarmonicAnalysis(
 
         Parameters
         ----------
-        X_transformed : ndarray of shape (3 * (n_harmonics + 1)**2,)
+        X_transformed : ndarray of shape (n_dim * (n_harmonics + 1)**2,)
             Flat SPHARM coefficient vector for one sample, in axis-major
-            layout (cx block, cy block, cz block).
+            layout (one ``(n_harmonics + 1)**2`` block per coordinate).
         theta_range : array-like of shape (n_theta,)
             Polar angle values (colatitude, 0 to pi).
         phi_range : array-like of shape (n_phi,)
@@ -268,7 +293,7 @@ class SphericalHarmonicAnalysis(
 
         Returns
         -------
-        X_coords : ndarray of shape (n_theta, n_phi, 3)
+        X_coords : ndarray of shape (n_theta, n_phi, n_dim)
             Reconstructed surface coordinates.
         """
         if l_max is None:
@@ -277,17 +302,17 @@ class SphericalHarmonicAnalysis(
         n_per_lm_full = (self.n_harmonics + 1) ** 2
         n_per_lm = (l_max + 1) ** 2
 
-        # Axis-major layout: (3, n_per_lm_full) → take leading n_per_lm cols.
+        # Axis-major layout: (n_dim, n_per_lm_full) → take leading n_per_lm cols.
         coef_per_lm = (
-            np.asarray(X_transformed).reshape(3, n_per_lm_full)[:, :n_per_lm].T
+            np.asarray(X_transformed).reshape(self.n_dim, n_per_lm_full)[:, :n_per_lm].T
         )
-        x, y, z = spharm(
+        coords = spharm(
             l_max,
             cvt_spharm_coef_to_list(coef_per_lm),
             theta_range,
             phi_range,
         )
-        X_coords = np.stack([x, y, z], axis=-1)
+        X_coords = np.stack(coords, axis=-1)
         return X_coords
 
     def inverse_transform(
@@ -338,8 +363,7 @@ class SphericalHarmonicAnalysis(
             raise ValueError(f"l_max must be >= 0, got {l_max}")
         if l_max > self.n_harmonics:
             raise ValueError(
-                f"l_max ({l_max}) cannot exceed n_harmonics "
-                f"({self.n_harmonics})"
+                f"l_max ({l_max}) cannot exceed n_harmonics ({self.n_harmonics})"
             )
 
         X_coords = np.stack(
@@ -359,6 +383,18 @@ class SphericalHarmonicAnalysis(
 #   utility functions
 #
 ###########################################################
+
+
+def _axis_prefixes(n_dim: int) -> list[str]:
+    """Return per-axis feature-name prefixes for a ``n_dim``-valued field.
+
+    Uses the legacy ``cx``/``cy``/``cz`` names for ``n_dim <= 3`` (so that
+    ``1`` -> ``["cx"]``) and systematic ``c0``, ``c1``, ... names otherwise.
+    """
+    base = ["cx", "cy", "cz"]
+    if n_dim <= len(base):
+        return base[:n_dim]
+    return [f"c{d}" for d in range(n_dim)]
 
 
 def _real_sph_harm_y(
@@ -390,8 +426,10 @@ def _real_sph_harm_y(
     elif m > 0:
         return np.sqrt(2) * (-1) ** m * np.real(sp.special.sph_harm_y(l, m, theta, phi))
     else:
-        return np.sqrt(2) * (-1) ** abs(m) * np.imag(
-            sp.special.sph_harm_y(l, abs(m), theta, phi)
+        return (
+            np.sqrt(2)
+            * (-1) ** abs(m)
+            * np.imag(sp.special.sph_harm_y(l, abs(m), theta, phi))
         )
 
 
@@ -468,8 +506,8 @@ def _complex_to_real_sph_coef(
                 coef_real[idx] = np.sqrt(2) * (-1) ** m * np.real(coef_complex[idx])
             else:
                 idx_pos = l**2 + l + (-m)
-                coef_real[idx] = -np.sqrt(2) * (-1) ** abs(m) * np.imag(
-                    coef_complex[idx_pos]
+                coef_real[idx] = (
+                    -np.sqrt(2) * (-1) ** abs(m) * np.imag(coef_complex[idx_pos])
                 )
 
     return coef_real
@@ -507,9 +545,7 @@ def _real_to_complex_sph_coef(
             idx_pos = l**2 + l + m
             idx_neg = l**2 + l - m
             c_pos = (
-                (-1) ** m
-                * (coef_real[idx_pos] - 1j * coef_real[idx_neg])
-                / np.sqrt(2)
+                (-1) ** m * (coef_real[idx_pos] - 1j * coef_real[idx_neg]) / np.sqrt(2)
             )
             coef_complex[idx_pos] = c_pos
             coef_complex[idx_neg] = (-1) ** m * np.conj(c_pos)
@@ -539,8 +575,7 @@ def xyz2spherical(xyz: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     phi = np.where(
         is_pole,
         0.0,
-        np.sign(xyz[:, 1])
-        * np.arccos(xyz[:, 0] / np.where(is_pole, 1.0, xy_norm)),
+        np.sign(xyz[:, 1]) * np.arccos(xyz[:, 0] / np.where(is_pole, 1.0, xy_norm)),
     )
     return np.array([theta, phi]).T
 
@@ -558,9 +593,9 @@ def spharm(
     l_max : int
         Maximum degree of spherical harmonics.
     coef : list of array-like
-        Real SPHARM coefficients. ``coef[l]`` has shape ``(2*l+1, 3)``
-        and ``coef[l][l+m]`` holds ``(c_x, c_y, c_z)`` for degree ``l``
-        and order ``m``.
+        Real SPHARM coefficients. ``coef[l]`` has shape ``(2*l+1, D)``
+        and ``coef[l][l+m]`` holds the ``D`` components for
+        degree ``l`` and order ``m`` (``D=3`` for 3D Cartesian surfaces).
     theta_range : array-like of shape (n_theta,), optional
         Polar angle values (colatitude, 0 to pi). Defaults to
         ``np.linspace(0, pi, 90)``.
@@ -570,8 +605,9 @@ def spharm(
 
     Returns
     -------
-    x, y, z : ndarray of shape (n_theta, n_phi)
-        Reconstructed surface coordinates.
+    tuple of ndarray of shape (n_theta, n_phi)
+        Reconstructed coordinates. The tuple length equals the codomain
+        dimension ``D`` (e.g. ``(x, y, z)`` for ``D=3``).
     """
     if theta_range is None:
         theta_range = np.linspace(0, np.pi, 90)
@@ -581,18 +617,15 @@ def spharm(
     theta_grid, phi_grid = np.meshgrid(theta_range, phi_range, indexing="ij")
     B = _real_sph_harm_basis_matrix(l_max, theta_grid.ravel(), phi_grid.ravel())
 
-    coef_matrix = np.vstack(
-        [coef[l] for l in range(l_max + 1)]
-    )  # ((l_max+1)^2, 3)
+    coef_matrix = np.vstack([coef[l] for l in range(l_max + 1)])  # ((l_max+1)^2, D)
 
-    coords = B @ coef_matrix  # (N, 3)
+    coords = B @ coef_matrix  # (N, D)
     n_theta = len(theta_range)
     n_phi = len(phi_range)
 
-    x = coords[:, 0].reshape(n_theta, n_phi)
-    y = coords[:, 1].reshape(n_theta, n_phi)
-    z = coords[:, 2].reshape(n_theta, n_phi)
-    return x, y, z
+    return tuple(
+        coords[:, d].reshape(n_theta, n_phi) for d in range(coef_matrix.shape[1])
+    )
 
 
 def cvt_spharm_coef_to_list(

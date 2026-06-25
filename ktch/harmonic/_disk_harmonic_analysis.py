@@ -41,8 +41,11 @@ class DiskHarmonicAnalysis(
     n_harmonics : int, default=10
         Maximum radial degree (:math:`n_\mathrm{max}`).
     n_dim : int, default=3
-        Dimension of the coordinate space.
-        Must be 2 (for planar mappings) or 3 (for surface mappings).
+        Dimension of the codomain, i.e. the number of components
+        of the :math:`\mathbb{R}^D`-valued function expanded on the unit disk.
+        Any positive integer is supported; ``2``/``3`` are the common
+        planar/surface mappings and ``1`` corresponds to a scalar field on
+        the disk.
     n_jobs : int, default=None
         The number of jobs to run in parallel. None means 1 unless in a
         joblib.parallel_backend context. -1 means using all processors.
@@ -51,7 +54,7 @@ class DiskHarmonicAnalysis(
 
     Notes
     -----
-    [Wolf_1979]_, [Boyd_etal_2011]_, [Shaqfa_etal_2025]_
+    [Wolf_1979]_, [Verrall_Kakarala_1998]_, [Boyd_etal_2011]_, [Shaqfa_etal_2025]_
 
     The surface is expanded as:
 
@@ -80,9 +83,10 @@ class DiskHarmonicAnalysis(
     References
     ----------
     .. [Wolf_1979] Wolf, K.B., 1979. Normal Mode Expansion and Bessel Series 221–251.
-    .. [Boyd_etal_2011] Boyd, J.P., Yu, F., 2011. Comparing seven spectral methods for interpolation and for solving the Poisson equation in a disk: Zernike polynomials, Logan–Shepp ridge polynomials, Chebyshev–Fourier Series, cylindrical Robert functions, Bessel–Fourier expansions, square-to-disk conformal mapping and radial basis functions. J. Comput. Phys. 230, 1408–1438. 
-    .. [Shaqfa_etal_2025] Shaqfa, M., Choi, G.P.T., Anciaux, G., Beyer, K., 2025. Disk harmonics for analysing curved and flat self-affine rough surfaces and the topological reconstruction of open surfaces. J. Comput. Phys. 522, 113578. 
-    
+    .. [Verrall_Kakarala_1998] Verrall, S.C., Kakarala, R., 1998. Disk-harmonic coefficients for invariant pattern recognition. J. Opt. Soc. Am. A 15, 389.
+    .. [Boyd_etal_2011] Boyd, J.P., Yu, F., 2011. Comparing seven spectral methods for interpolation and for solving the Poisson equation in a disk: Zernike polynomials, Logan–Shepp ridge polynomials, Chebyshev–Fourier Series, cylindrical Robert functions, Bessel–Fourier expansions, square-to-disk conformal mapping and radial basis functions. J. Comput. Phys. 230, 1408–1438.
+    .. [Shaqfa_etal_2025] Shaqfa, M., Choi, G.P.T., Anciaux, G., Beyer, K., 2025. Disk harmonics for analysing curved and flat self-affine rough surfaces and the topological reconstruction of open surfaces. J. Comput. Phys. 522, 113578.
+
     """
 
     def __init__(
@@ -190,8 +194,8 @@ class DiskHarmonicAnalysis(
         X_transformed : ndarray of shape (n_samples, n_features)
             Disk harmonic coefficients.
         """
-        if self.n_dim not in (2, 3):
-            raise ValueError(f"n_dim must be 2 or 3, got {self.n_dim}")
+        if self.n_dim < 1:
+            raise ValueError(f"n_dim must be a positive integer, got {self.n_dim}")
 
         if r_theta is None:
             raise ValueError(
@@ -211,6 +215,13 @@ class DiskHarmonicAnalysis(
             raise ValueError(
                 f"r_theta ({len(r_theta)}) must have the same length as X ({len(X_)})"
             )
+
+        if len(X_) > 0:
+            d_data = np.asarray(X_[0]).shape[1]
+            if d_data != n_dim:
+                raise ValueError(
+                    f"Each sample must have n_dim={n_dim} columns; got {d_data}."
+                )
 
         X_transformed = np.stack(
             Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
@@ -237,8 +248,6 @@ class DiskHarmonicAnalysis(
         """
         return np.asarray(self._build_feature_names(), dtype=str)
 
-    _AXIS_NAMES = {2: ("cx", "cy"), 3: ("cx", "cy", "cz")}
-
     @property
     def _n_features_out(self):
         """Number of transformed output features."""
@@ -246,7 +255,7 @@ class DiskHarmonicAnalysis(
 
     def _build_feature_names(self) -> list[str]:
         n_max = self.n_harmonics
-        axes = self._AXIS_NAMES[self.n_dim]
+        axes = _axis_prefixes(self.n_dim)
         names = []
         for axis in axes:
             for n in range(n_max + 1):
@@ -426,6 +435,18 @@ def disk_harm(
 #   Private helpers
 #
 ###########################################################
+
+
+def _axis_prefixes(n_dim: int) -> list[str]:
+    """Return per-axis feature-name prefixes for a ``n_dim``-valued field.
+
+    Uses the legacy ``cx``/``cy``/``cz`` names for ``n_dim <= 3`` (so that
+    ``1`` -> ``["cx"]``) and systematic ``c0``, ``c1``, ... names otherwise.
+    """
+    base = ["cx", "cy", "cz"]
+    if n_dim <= len(base):
+        return base[:n_dim]
+    return [f"c{d}" for d in range(n_dim)]
 
 
 def _calc_eigenvalues(n_max: int) -> np.ndarray:

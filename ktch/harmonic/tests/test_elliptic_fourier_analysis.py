@@ -2690,3 +2690,106 @@ def test_efa_pipeline_metadata_routing_t():
         pipe2.fit(X, t=t)
         result2 = pipe2.transform(X, t=t)
         assert_array_almost_equal(result, result2)
+
+
+def _assemble_efa_coef(cos_rows, sin_rows):
+    """Interleave per-axis [cos_row, sin_row] into a flat EFA coef vector."""
+    rows = []
+    for cos_row, sin_row in zip(cos_rows, sin_rows):
+        rows.append(cos_row)
+        rows.append(sin_row)
+    return np.hstack(rows)
+
+
+class TestEllipticFourierNDim:
+    """Raw (norm=False) transform/inverse for codomain dims other than 2/3."""
+
+    def test_1d_coefficient_round_trip(self):
+        """1D periodic signal: inverse_transform -> transform recovers coefs."""
+        n_h = 3
+        # Layout per axis is [cos_0..cos_n, sin_0..sin_n]; sin offset is 0.
+        c_true = np.array([0.6, 1.0, 0.0, -0.2, 0.0, 0.0, 0.5, 0.0])
+        efa = EllipticFourierAnalysis(n_harmonics=n_h, n_dim=1, norm=False)
+
+        t_num = 720
+        X = efa.inverse_transform(c_true[None, :], t_num=t_num)
+        assert X.shape == (1, t_num, 1)
+
+        t = np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
+        c_rec = efa.fit_transform([X[0]], t=[t])
+        assert c_rec.shape == (1, 2 * (n_h + 1))
+        assert_array_almost_equal(c_rec[0], c_true, decimal=3)
+
+    def test_4d_round_trip(self):
+        """General n_dim=4 raw transform/inverse is self-consistent."""
+        rng = np.random.default_rng(0)
+        n_h, n_dim = 4, 4
+        n = n_h + 1
+        cos = rng.standard_normal((n_dim, n))
+        sin = rng.standard_normal((n_dim, n))
+        sin[:, 0] = 0.0  # sine offset is always zero
+        c_true = _assemble_efa_coef(cos, sin)
+
+        efa = EllipticFourierAnalysis(n_harmonics=n_h, n_dim=n_dim, norm=False)
+        t_num = 720
+        X = efa.inverse_transform(c_true[None, :], t_num=t_num)
+        assert X.shape == (1, t_num, n_dim)
+
+        t = np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
+        c_rec = efa.fit_transform([X[0]], t=[t])
+        assert c_rec.shape == (1, 2 * n_dim * n)
+        assert_array_almost_equal(c_rec[0], c_true, decimal=3)
+
+    def test_feature_names_1d(self):
+        efa = EllipticFourierAnalysis(n_harmonics=2, n_dim=1, norm=False)
+        names = list(efa.get_feature_names_out())
+        assert names == ["a_0", "a_1", "a_2", "b_0", "b_1", "b_2"]
+
+    def test_feature_names_4d(self):
+        efa = EllipticFourierAnalysis(n_harmonics=1, n_dim=4, norm=False)
+        names = list(efa.get_feature_names_out())
+        assert len(names) == 2 * 4 * 2
+        assert names[0] == "x0_cos_0"
+        assert "x3_sin_1" in names
+
+    def test_n_features_out_ndim(self):
+        efa = EllipticFourierAnalysis(n_harmonics=3, n_dim=4, norm=False)
+        assert efa._n_features_out == 4 * 2 * (3 + 1)
+
+    def test_norm_true_unsupported_dim_raises(self):
+        efa = EllipticFourierAnalysis(n_harmonics=2, n_dim=1, norm=True)
+        t = np.linspace(2 * np.pi / 50, 2 * np.pi, 50)
+        X = np.cos(t)[:, None]
+        with pytest.raises(ValueError, match="norm=True is currently"):
+            efa.fit_transform([X], t=[t])
+
+    def test_invalid_n_dim_raises(self):
+        efa = EllipticFourierAnalysis(n_harmonics=2, n_dim=0, norm=False)
+        with pytest.raises(ValueError, match="n_dim must be a positive integer"):
+            efa.fit_transform([np.zeros((10, 1))])
+
+    def test_data_dim_mismatch_raises(self):
+        efa = EllipticFourierAnalysis(n_harmonics=2, n_dim=3, norm=False)
+        coords_2d = _make_circle(t_num=50)  # non-degenerate 2D outline
+        with pytest.raises(ValueError, match="n_dim=3"):
+            efa.fit_transform([coords_2d])
+
+    @pytest.mark.parametrize("n_dim", [1, 4])
+    def test_ndim_requires_explicit_t(self, n_dim):
+        """Auto arc-length is disallowed for n_dim not in (2, 3); t required."""
+        rng = np.random.default_rng(0)
+        X = rng.standard_normal((30, n_dim))
+        efa = EllipticFourierAnalysis(n_harmonics=2, n_dim=n_dim, norm=False)
+        with pytest.raises(ValueError, match="Automatic arc-length"):
+            efa.fit_transform([X])
+
+    @pytest.mark.parametrize("n_dim", [1, 4])
+    def test_ndim_with_explicit_t_ok(self, n_dim):
+        """Supplying t lets n_dim not in (2, 3) proceed."""
+        rng = np.random.default_rng(1)
+        n_pts = 60
+        X = rng.standard_normal((n_pts, n_dim))
+        t = np.linspace(2 * np.pi / n_pts, 2 * np.pi, n_pts)
+        efa = EllipticFourierAnalysis(n_harmonics=3, n_dim=n_dim, norm=False)
+        out = efa.fit_transform([X], t=[t])
+        assert out.shape == (1, 2 * n_dim * (3 + 1))

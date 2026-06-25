@@ -342,9 +342,7 @@ class TestSHAInverseTransformLMaxTruncation:
         """
         sha, flat, th, ph = self._make_axis_asymmetric_sha(n_harmonics=6)
         full = sha.inverse_transform(flat, theta_range=th, phi_range=ph)[0]
-        trunc = sha.inverse_transform(
-            flat, theta_range=th, phi_range=ph, l_max=3
-        )[0]
+        trunc = sha.inverse_transform(flat, theta_range=th, phi_range=ph, l_max=3)[0]
         for k in range(3):
             assert_allclose(full[..., k].std(), trunc[..., k].std(), rtol=0.05)
 
@@ -507,3 +505,115 @@ class TestComplexRealSphCoefRoundtrip:
         coef_complex = _real_to_complex_sph_coef(coef_real)
         coef_real_rt = _complex_to_real_sph_coef(coef_complex)
         assert_allclose(coef_real_rt, coef_real, atol=1e-14)
+
+
+def _synthetic_sphere(l_max, n_points, n_dim, seed=0):
+    """Generate a synthetic R^D-valued field on the sphere with known coefs.
+
+    Returns (X, theta_phi, coef_true) where coef_true is the flat real
+    coefficient vector of shape (n_dim*(l_max+1)^2,).
+    """
+    rng = np.random.default_rng(seed)
+    n_coeffs = (l_max + 1) ** 2
+    coef_matrix = rng.standard_normal((n_coeffs, n_dim))
+
+    # Roughly uniform sampling on the sphere.
+    theta = np.arccos(rng.uniform(-1.0, 1.0, n_points))
+    phi = rng.uniform(0.0, 2.0 * np.pi, n_points)
+
+    B = _real_sph_harm_basis_matrix(l_max, theta, phi)
+    X = B @ coef_matrix
+
+    theta_phi = np.column_stack([theta, phi])
+    return X, theta_phi, coef_matrix.T.ravel()
+
+
+class TestSPHARMNDim:
+    """Codomain generalization to dims other than 3 (incl. scalar field)."""
+
+    def test_default_n_dim_is_3(self):
+        assert SphericalHarmonicAnalysis().n_dim == 3
+
+    def test_scalar_field_round_trip(self):
+        """n_dim=1 (scalar field on the sphere) recovers exact coefficients."""
+        l_max = 3
+        X, theta_phi, coef_true = _synthetic_sphere(l_max, 400, n_dim=1)
+        sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_dim=1, n_jobs=1)
+        transformed = sha.fit_transform([X], theta_phi=[theta_phi])
+
+        assert transformed.shape == (1, (l_max + 1) ** 2)
+        assert_allclose(transformed[0], coef_true, atol=1e-8)
+
+    def test_4d_round_trip(self):
+        l_max = 2
+        X, theta_phi, coef_true = _synthetic_sphere(l_max, 400, n_dim=4)
+        sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_dim=4, n_jobs=1)
+        transformed = sha.fit_transform([X], theta_phi=[theta_phi])
+
+        assert transformed.shape == (1, 4 * (l_max + 1) ** 2)
+        assert_allclose(transformed[0], coef_true, atol=1e-8)
+
+    def test_inverse_scalar_field_round_trip(self):
+        """Grid-based transform -> inverse round trip for a scalar field."""
+        l_max = 2
+        theta_range = np.linspace(0, np.pi, 7)
+        phi_range = np.linspace(0, 2 * np.pi, 9)
+
+        rng = np.random.default_rng(1)
+        coef_list = [rng.standard_normal((2 * l + 1, 1)) for l in range(l_max + 1)]
+
+        coords_tuple = spharm(
+            l_max, coef_list, theta_range=theta_range, phi_range=phi_range
+        )
+        assert len(coords_tuple) == 1
+        scalar = coords_tuple[0]
+
+        theta_grid, phi_grid = np.meshgrid(theta_range, phi_range, indexing="ij")
+        theta_phi = np.stack([theta_grid.ravel(), phi_grid.ravel()], axis=-1)
+        coords = scalar.reshape(-1, 1)
+
+        sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_dim=1, n_jobs=1)
+        transformed = sha.fit_transform([coords], theta_phi=[theta_phi])
+        assert transformed.shape == (1, (l_max + 1) ** 2)
+
+        reconstructed = sha.inverse_transform(
+            transformed, theta_range=theta_range, phi_range=phi_range
+        )
+        assert reconstructed.shape == (
+            1,
+            len(theta_range),
+            len(phi_range),
+            1,
+        )
+        assert_array_almost_equal(reconstructed[0, ..., 0], scalar, decimal=6)
+
+    def test_spharm_returns_tuple_len_d(self):
+        l_max = 1
+        coef_list = [np.zeros((2 * l + 1, 2)) for l in range(l_max + 1)]
+        coef_list[0][0] = [1.0, -0.5]
+        out = spharm(
+            l_max, coef_list, np.linspace(0, np.pi, 4), np.linspace(0, 2 * np.pi, 5)
+        )
+        assert isinstance(out, tuple)
+        assert len(out) == 2
+
+    def test_feature_names_scalar(self):
+        sha = SphericalHarmonicAnalysis(n_harmonics=1, n_dim=1)
+        names = list(sha.get_feature_names_out())
+        assert names == ["cx_0_0", "cx_1_-1", "cx_1_0", "cx_1_1"]
+
+    def test_feature_names_4d(self):
+        sha = SphericalHarmonicAnalysis(n_harmonics=1, n_dim=4)
+        names = list(sha.get_feature_names_out())
+        assert len(names) == 4 * 4
+        assert names[0] == "c0_0_0"
+        assert names[4] == "c1_0_0"
+
+    def test_n_features_out_4d(self):
+        sha = SphericalHarmonicAnalysis(n_harmonics=2, n_dim=4)
+        assert sha._n_features_out == 4 * 9
+
+    def test_data_dim_mismatch_raises(self):
+        sha = SphericalHarmonicAnalysis(n_harmonics=2, n_dim=3, n_jobs=1)
+        with pytest.raises(ValueError, match="n_dim=3"):
+            sha.transform([np.zeros((10, 2))], theta_phi=[np.zeros((10, 2))])
