@@ -9,7 +9,7 @@ ktch is a Python package for model-based morphometrics with scikit-learn compati
 ktch implements the following morphometric analysis methods:
 
 - Landmark-based methods: Generalized Procrustes Analysis (GPA) with curve/surface semilandmark sliding, thin-plate spline interpolation
-- Harmonic-based methods: Elliptic Fourier Analysis (EFA) for 2D/3D closed curves, spherical harmonic analysis (SPHARM) for 3D closed surfaces
+- Harmonic-based methods: Elliptic Fourier Analysis (EFA) for 2D/3D closed curves, spherical harmonic analysis (SPHARM) and disk harmonic analysis (DHA) for surfaces
 - Theoretical morphological models of coiling: Raup's model and the growing tube model
 - File I/O: Support for standard morphometric file formats (TPS, CHC, SPHARM-PDM)
 - Datasets: Built-in example datasets for learning and testing

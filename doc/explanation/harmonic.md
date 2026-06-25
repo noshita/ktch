@@ -79,6 +79,10 @@ coefficients_3d = efa_3d.fit_transform(outlines_3d)
 
 3D normalization follows the algorithm described in Godefroy et al. (2012), removing size, orientation (via Euler ZXZ decomposition), and starting point variation from the first-harmonic ellipse.
 
+### General Codomain Dimension
+
+The same expansion applies to data of any codomain dimension $D$ with `norm=False`. Here `t` plays the role of the parameterization, analogous to `r_theta` in DHA and `theta_phi` in SPHARM. For $D \in \{2, 3\}$ (spatial shape coordinates) `t` defaults to automatic arc-length parameterization. For $D=1$ or $D>3$ the codomain holds non-shape data, `t` is required and should be derived from the corresponding shape, onto which the data is then mapped.
+
 ## Spherical Harmonic Analysis
 
 For 3D closed surfaces, spherical harmonics provide an analogous decomposition. A closed surface can be represented using spherical harmonic basis functions $Y_l^m$, where $l$ is the degree (analogous to harmonic number) and $m$ is the order.
@@ -94,6 +98,8 @@ sha = SphericalHarmonicAnalysis(n_harmonics=15)
 coefficients = sha.fit_transform(parameterized_surfaces)
 ```
 
+The codomain dimension is set by `n_dim` (default 3): use `n_dim=1` for a scalar field on the sphere, or any $D$ for an $\mathbb{R}^D$-valued field.
+
 ### Applications
 
 Spherical harmonic analysis is used for:
@@ -101,6 +107,17 @@ Spherical harmonic analysis is used for:
 - Fruit shape analysis
 - Grain morphology
 - Organ shape quantification
+
+## Disk Harmonic Analysis
+
+For surfaces or scalar fields parameterized on a unit disk, disk harmonics provide a decomposition using Fourier–Bessel basis functions. `DiskHarmonicAnalysis` expands an $\mathbb{R}^D$-valued function on the disk, with `n_dim` setting the codomain dimension (`n_dim=1` for a scalar field, `2`/`3` for planar/surface mappings). It requires a pre-estimated disk parameterization $(r, \theta)$.
+
+```python
+from ktch.harmonic import DiskHarmonicAnalysis
+
+dha = DiskHarmonicAnalysis(n_harmonics=10, n_dim=3)
+coefficients = dha.fit_transform(surfaces, r_theta=r_theta)
+```
 
 ## Statistical Analysis
 
@@ -148,3 +165,5 @@ ktch provides built-in plot functions for these visualizations; see {doc}`visual
 - Crampton, J. S. (1995). Elliptic Fourier shape analysis of fossil bivalves. Lethaia, 28(2), 147-158.
 - Godefroy, J. E., Bornert, F., Gros, C. I., & Constantinesco, A. (2012). Elliptical Fourier descriptors for contours in three dimensions: A new tool for morphometrical analysis in biology. Comptes Rendus Biologies, 335(3), 205-213. https://doi.org/10.1016/j.crvi.2011.12.004
 - Shen, L., & Makedon, F. (2006). Spherical mapping for processing of 3D closed surfaces. Image and Vision Computing, 24(7), 743-761.
+- Verrall, S. C., & Kakarala, R. (1998). Disk-harmonic coefficients for invariant pattern recognition. Journal of the Optical Society of America A, 15(2), 389.
+- Shaqfa, M., Choi, G. P. T., Anciaux, G., & Beyer, K. (2025). Disk harmonics for analysing curved and flat self-affine rough surfaces and the topological reconstruction of open surfaces. Journal of Computational Physics, 522, 113578.
