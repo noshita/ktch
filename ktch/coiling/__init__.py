@@ -17,12 +17,16 @@ coiling patterns.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._growing_tube import GrowingTubeModel, growing_tube
-from ._raup import RaupModel, raup
+from ._growing_tube import GrowingTubeModel, growing_tube, l_g, s_g
+from ._raup import RaupModel, l_r, raup, theta_r
 
 __all__ = [
     "RaupModel",
     "raup",
     "GrowingTubeModel",
     "growing_tube",
+    "l_r",
+    "theta_r",
+    "l_g",
+    "s_g",
 ]

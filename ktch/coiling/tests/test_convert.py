@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from scipy.integrate import cumulative_trapezoid
 
-from ktch.coiling import raup
+from ktch.coiling import l_g, l_r, raup
 from ktch.coiling._convert import (
     growing_tube_aperture_to_raup,
     growing_tube_to_raup,
@@ -35,7 +35,13 @@ def test_planispiral_has_zero_torsion():
 
 @pytest.mark.parametrize(
     "w_r, t_r, d_r",
-    [(1.5, 2.6, 0.6), (1.8, 1.0, 0.4), (1.3, 0.5, 0.2), (2.0, 3.0, 0.7)],
+    [
+        (1.5, 2.6, 0.6),
+        (1.8, 1.0, 0.4),
+        (1.3, 0.5, 0.2),
+        (2.0, 3.0, 0.7),
+        (1.6, 1.0, -0.3),
+    ],
 )
 def test_locus_round_trip(w_r, t_r, d_r):
     e_g, c_g, t_g = raup_to_growing_tube(w_r, t_r, d_r)
@@ -167,3 +173,17 @@ def test_aperture_round_trip(w_r, t_r, d_r, delta_r, gamma_r):
     delta_g, gamma_g = raup_aperture_to_growing_tube(w_r, t_r, d_r, delta_r, gamma_r)
     d2, g2 = growing_tube_aperture_to_raup(w_r, t_r, d_r, gamma_g, delta_g)
     np.testing.assert_allclose([d2, g2], [delta_r, gamma_r], rtol=1e-4, atol=1e-6)
+
+
+# --- arc-length consistency between models -----------------------------------
+
+
+@pytest.mark.parametrize("w_r, t_r, d_r", [(1.5, 2.6, 0.6), (2.0, 0.5, 0.05)])
+def test_raup_growing_tube_arc_length_consistency(w_r, t_r, d_r):
+    # The arc length l is one geometric quantity: l_r(theta) and l_g(s) agree at
+    # the same physical point (theta = D_G * s).
+    e_g, c_g, t_g = raup_to_growing_tube(w_r, t_r, d_r)
+    d_g = np.hypot(c_g, t_g)
+    theta = np.linspace(0.0, 2.0 * np.pi * 3.0, 40)
+    s = theta / d_g
+    np.testing.assert_allclose(l_r(theta, w_r, t_r, d_r), l_g(s, e_g), rtol=1e-7)

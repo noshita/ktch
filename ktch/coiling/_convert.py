@@ -17,11 +17,13 @@
 import numpy as np
 from scipy.optimize import least_squares
 
+from ._raup import _raup_discriminant
+
 
 def raup_to_growing_tube(
     w_r: float, t_r: float, d_r: float
 ) -> tuple[float, float, float]:
-    """Convert Raup parameters to growing-tube parameters.
+    r"""Convert Raup parameters to growing-tube parameters.
 
     Raup's model is the constant-parameter special case of the growing tube
     model [Noshita_2014]_. The closed forms here are re-derived from
@@ -32,19 +34,19 @@ def raup_to_growing_tube(
     ----------
     w_r, t_r, d_r : float
         Raup whorl expansion rate, translation rate, and generating-curve
-        position. ``w_r > 1`` and ``0 <= d_r < 1``.
+        position. ``w_r > 1`` and ``-1 < d_r < 1``.
 
     Returns
     -------
     e_g, c_g, t_g : float
-        Standardized expansion rate, curvature, and torsion.
+        Expansion rate, standardized curvature, and torsion.
 
     Notes
     -----
     Correct two errors in [Noshita_2014]_:
-    (the ``4*t_r`` term in ``delta`` should be ``4*t_r**2``;
-    the ``(1-d_r)**2`` factor in ``c_g`` should be ``(1-d_r**2)``).
-    Verified against the trajectory geometry in the test suite.
+    (the ``4*t_r`` term in the trajectory discriminant :math:`\Lambda` should be
+    ``4*t_r**2``; the ``(1-d_r)**2`` factor in ``c_g`` should be ``(1-d_r**2)``).
+    See :func:`~ktch.coiling._raup._raup_discriminant`.
 
     References
     ----------
@@ -54,17 +56,16 @@ def raup_to_growing_tube(
     """
     if not w_r > 1.0:
         raise ValueError(f"w_r must be > 1, got {w_r}")
-    if not (0.0 <= d_r < 1.0):
-        raise ValueError(f"d_r must be in [0, 1), got {d_r}")
+    if not (-1.0 < d_r < 1.0):
+        raise ValueError(f"d_r must be in (-1, 1), got {d_r}")
 
     log_w = np.log(w_r)
     one_m_d = 1.0 - d_r
-    one_p_d = 1.0 + d_r
-    delta = 4.0 * np.pi**2 * one_p_d**2 + log_w**2 * (one_p_d**2 + 4.0 * t_r**2)
+    disc = _raup_discriminant(w_r, t_r, d_r)
 
-    e_g = one_m_d * log_w / np.sqrt(delta)
-    c_g = 2.0 * np.pi * (1.0 - d_r**2) * np.sqrt(4.0 * np.pi**2 + log_w**2) / delta
-    t_g = 4.0 * np.pi * t_r * one_m_d * log_w / delta
+    e_g = one_m_d * log_w / np.sqrt(disc)
+    c_g = 2.0 * np.pi * (1.0 - d_r**2) * np.sqrt(4.0 * np.pi**2 + log_w**2) / disc
+    t_g = 4.0 * np.pi * t_r * one_m_d * log_w / disc
     return float(e_g), float(c_g), float(t_g)
 
 
@@ -79,7 +80,7 @@ def growing_tube_to_raup(
     Parameters
     ----------
     e_g, c_g, t_g : float
-        Standardized expansion rate, curvature, and torsion. ``c_g > 0``.
+        Expansion rate, standardized curvature, and torsion. ``c_g > 0``.
 
     Returns
     -------
@@ -108,7 +109,7 @@ def growing_tube_to_raup(
         residual,
         x0=np.array([1.5, 1.0, 0.5]),
         bounds=(
-            np.array([1.0 + eps, -np.inf, 0.0]),
+            np.array([1.0 + eps, -np.inf, -1.0 + eps]),
             np.array([np.inf, np.inf, 1.0 - eps]),
         ),
         xtol=1e-12,
@@ -153,10 +154,7 @@ def raup_aperture_to_growing_tube(
         2.0 * t_r * cd * log_w * (2.0 * np.pi * cg - log_w * sg)
         - (1.0 + d_r) * (four_pi2 + log_w**2) * sd
     )
-    den = np.sqrt(
-        (four_pi2 + log_w**2)
-        * (four_pi2 * (1.0 + d_r) ** 2 + ((1.0 + d_r) ** 2 + 4.0 * t_r**2) * log_w**2)
-    )
+    den = np.sqrt((four_pi2 + log_w**2) * _raup_discriminant(w_r, t_r, d_r))
     delta_g = np.arcsin(num / den)
     return float(delta_g), float(gamma_g)
 

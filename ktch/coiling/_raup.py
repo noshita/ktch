@@ -28,10 +28,27 @@ from ._generating_curve import _pad_orientation, _surfaces_to_frame, whorl_theta
 def _validate_raup_params(w_r: float, t_r: float, d_r: float, r0: float) -> None:
     if not w_r > 1.0:
         raise ValueError(f"w_r (whorl expansion rate) must be > 1, got {w_r}")
-    if not (0.0 <= d_r < 1.0):
-        raise ValueError(f"d_r must be in [0, 1), got {d_r}")
+    if not (-1.0 < d_r < 1.0):
+        raise ValueError(f"d_r must be in (-1, 1), got {d_r}")
     if not r0 > 0.0:
         raise ValueError(f"r0 must be > 0, got {r0}")
+
+
+def _raup_discriminant(w_r: float, t_r: float, d_r: float) -> float:
+    r"""Trajectory discriminant :math:`\Lambda` of Raup's model.
+
+    .. math::
+
+        \Lambda = 4\pi^2 (1 + D_R)^2
+            + (\ln W_R)^2 \bigl[(1 + D_R)^2 + 4 T_R^2\bigr].
+
+    :math:`\Lambda` is the radicand of the arc-length relation and
+    the denominator of the Raup-to-growing tube conversion (Noshita 2014).
+    The published ``4 T_R`` term is corrected to ``4 T_R**2``.
+    """
+    log_w = np.log(w_r)
+    one_p_d = 1.0 + d_r
+    return 4.0 * np.pi**2 * one_p_d**2 + log_w**2 * (one_p_d**2 + 4.0 * t_r**2)
 
 
 def _rotation_x(angle: float) -> npt.NDArray[np.float64]:
@@ -57,7 +74,7 @@ def _raup_surface(
 ) -> npt.NDArray[np.float64]:
     r"""Surface of Raup's model (see :func:`raup`).
 
-    Raup's model [Raup_1965]_ [Raup_1967]_, built in the global frame
+    Raup's model [Raup_1965]_ [Raup_1966]_, built in the global frame
     following the definition in [Noshita_2014]_:
 
     .. math::
@@ -72,8 +89,8 @@ def _raup_surface(
     ----------
     .. [Raup_1965] Raup, D.M., Michelson, A., 1965. Theoretical Morphology of
        the Coiled Shell. Science 147, 1294–1295.
-    .. [Raup_1967] Raup, D.M., 1967. Geometric analysis of shell coiling: coiling in
-       ammonoids. Journal of Paleontology 41, 43–65.
+    .. [Raup_1966] Raup, D.M., 1966. Geometric analysis of shell coiling: general
+       problems. Journal of Paleontology 40, 1178–1190.
     .. [Noshita_2014] Noshita, K., 2014. Quantification and geometric analysis of
        coiling patterns in gastropod shells based on 3D and 2D image data.
        Journal of Theoretical Biology 363, 93–104.
@@ -120,7 +137,7 @@ def raup(
 ) -> npt.NDArray[np.float64]:
     r"""Generate a form from Raup's model.
 
-    Raup’s logarithmic shell coiling model [Raup_1965]_ [Raup_1967]_ describes a shell
+    Raup’s logarithmic shell coiling model [Raup_1965]_ [Raup_1966]_ describes a shell
     by a trajectory of a generating curve that expands, rotates, and translates
     along a fixed coiling axis.
 
@@ -157,8 +174,8 @@ def raup(
     ----------
     .. [Raup_1965] Raup, D.M., Michelson, A., 1965. Theoretical Morphology of
        the Coiled Shell. Science 147, 1294–1295.
-    .. [Raup_1967] Raup, D.M., 1967. Geometric analysis of shell coiling: coiling in
-       ammonoids. Journal of Paleontology 41, 43–65.
+    .. [Raup_1966] Raup, D.M., 1966. Geometric analysis of shell coiling: general
+       problems. Journal of Paleontology 40, 1178–1190.
     """
     if output != "surface":
         raise NotImplementedError(
@@ -169,10 +186,106 @@ def raup(
     )
 
 
+def l_r(theta, w_r, t_r, d_r, r0=1.0):
+    r"""Arc length of growth trajectory at coiling angle ``theta``.
+
+    Maps the coiling angle :math:`\theta` of the Raup's model to
+    the arc length :math:`l_R` of the reference-point trajectory ([Noshita_2014]_):
+
+    .. math::
+
+        l_R(\theta) = r_0\,(W_R^{\theta / 2\pi} - 1)\,
+            \frac{\sqrt{\Lambda}}{(1 - D_R)\,\ln W_R},
+
+    where :math:`\Lambda` is the trajectory discriminant. The relation is
+    closed-form for constant parameters; ``theta`` may be array-like.
+
+    Parameters
+    ----------
+    theta : array-like
+        Coiling angle :math:`\theta` (radians).
+    w_r, t_r, d_r : float
+        Raup parameters (``w_r > 1``, ``-1 < d_r < 1``).
+    r0 : float, default = 1.0
+        Initial tube radius (arc length scales with ``r0``).
+
+    Returns
+    -------
+    l_r : float or ndarray
+        Trajectory arc length at ``theta``.
+
+    See Also
+    --------
+    theta_r : Inverse function (arc length to coiling angle).
+
+    References
+    ----------
+    .. [Noshita_2014] Noshita, K., 2014. Quantification and geometric analysis of
+       coiling patterns in gastropod shells based on 3D and 2D image data.
+       Journal of Theoretical Biology 363, 93–104.
+    """
+    _validate_raup_params(w_r, t_r, d_r, r0)
+    theta = np.asarray(theta, dtype=float)
+    log_w = np.log(w_r)
+    sqrt_lambda = np.sqrt(_raup_discriminant(w_r, t_r, d_r))
+    out = (
+        r0
+        * (w_r ** (theta / (2.0 * np.pi)) - 1.0)
+        * sqrt_lambda
+        / ((1.0 - d_r) * log_w)
+    )
+    return float(out) if out.ndim == 0 else out
+
+
+def theta_r(l_r, w_r, t_r, d_r, r0=1.0):
+    r"""Coiling angle of growth trajectory at arc length ``l_r``.
+
+    Inverse of :func:`l_r` (analytic, since the arc length is affine in
+    :math:`W_R^{\theta/2\pi}`):
+
+    .. math::
+
+        \theta(l_R) = \frac{2\pi}{\ln W_R}\,
+            \ln\!\left(1 + \frac{l_R\,(1 - D_R)\,\ln W_R}{r_0\,\sqrt{\Lambda}}\right).
+
+    Parameters
+    ----------
+    l_r : array-like
+        Trajectory arc length.
+    w_r, t_r, d_r : float
+        Raup parameters (``w_r > 1``, ``-1 < d_r < 1``).
+    r0 : float, default = 1.0
+        Initial tube radius.
+
+    Returns
+    -------
+    theta : float or ndarray
+        Coiling angle :math:`\theta` (radians).
+
+    See Also
+    --------
+    l_r : Inverse function (coiling angle to arc length).
+
+    References
+    ----------
+    .. [Noshita_2014] Noshita, K., 2014. Quantification and geometric analysis of
+       coiling patterns in gastropod shells based on 3D and 2D image data.
+       Journal of Theoretical Biology 363, 93–104.
+    """
+    _validate_raup_params(w_r, t_r, d_r, r0)
+    l_r = np.asarray(l_r, dtype=float)
+    log_w = np.log(w_r)
+    sqrt_lambda = np.sqrt(_raup_discriminant(w_r, t_r, d_r))
+    out = (2.0 * np.pi / log_w) * np.log1p(
+        l_r * (1.0 - d_r) * log_w / (r0 * sqrt_lambda)
+    )
+    return float(out) if out.ndim == 0 else out
+
+
 class RaupModel(ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator):
     """Raup's model.
 
-    Raup’s logarithmic shell coiling model [Raup_1965]_ [Raup_1967]_.
+    Raup’s logarithmic shell coiling model [Raup_1965]_ [Raup_1966]_.
     ``inverse_transform`` is the generative map
     ``Phi: (w_r, t_r, d_r, delta_r, gamma_r) -> form``.
     ``transform`` (parameter estimation from measurement data) is not implemented
@@ -193,8 +306,8 @@ class RaupModel(ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator
     ----------
     .. [Raup_1965] Raup, D.M., Michelson, A., 1965. Theoretical Morphology of
        the Coiled Shell. Science 147, 1294–1295.
-    .. [Raup_1967] Raup, D.M., 1967. Geometric analysis of shell coiling: coiling in
-       ammonoids. Journal of Paleontology 41, 43–65.
+    .. [Raup_1966] Raup, D.M., 1966. Geometric analysis of shell coiling: general
+       problems. Journal of Paleontology 40, 1178–1190.
     """
 
     def __init__(

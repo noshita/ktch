@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ktch.coiling import RaupModel, raup
+from ktch.coiling import RaupModel, l_r, raup, theta_r
 
 
 def test_raup_shape_and_finite():
@@ -28,11 +28,19 @@ def test_raup_orientation_changes_surface():
 
 @pytest.mark.parametrize(
     "w_r, t_r, d_r",
-    [(1.0, 1.0, 0.5), (0.9, 1.0, 0.5), (1.5, 1.0, 1.0), (1.5, 1.0, -0.1)],
+    [(1.0, 1.0, 0.5), (0.9, 1.0, 0.5), (1.5, 1.0, 1.0), (1.5, 1.0, -1.0)],
 )
 def test_raup_invalid_params(w_r, t_r, d_r):
     with pytest.raises(ValueError):
         raup(w_r, t_r, d_r)
+
+
+@pytest.mark.parametrize("d_r", [-0.3, -0.9])
+def test_raup_negative_d_in_range(d_r):
+    theta = np.linspace(0, 2 * np.pi * 2, 100)
+    phi = np.linspace(0, 2 * np.pi, 20)
+    X = raup(1.5, 1.0, d_r, theta_range=theta, phi_range=phi)
+    assert np.all(np.isfinite(X))
 
 
 def test_raup_output_reserved():
@@ -102,3 +110,55 @@ def test_raup_model_fit_returns_self():
 def test_raup_model_transform_not_implemented():
     with pytest.raises(NotImplementedError):
         RaupModel().transform([np.zeros((10, 2))])
+
+
+# --- arc-length conversion (l_r, theta_r) -----------------------------------
+
+ARC_CASES = [(1.5, 2.6, 0.6), (1.3, 1.5, 0.2), (2.0, 0.5, 0.05), (1.1, 0.0, 0.4)]
+
+
+def _raup_reference_trajectory(theta, w_r, t_r, d_r, r0=1.0):
+    """Reference-point trajectory (circle centre), matching _raup_surface."""
+    vx = (1.0 + d_r) / (1.0 - d_r)
+    vz = 2.0 * t_r / (1.0 - d_r)
+    scale = r0 * w_r ** (theta / (2.0 * np.pi))
+    return np.column_stack(
+        [scale * vx * np.cos(theta), scale * vx * np.sin(theta), scale * vz]
+    )
+
+
+@pytest.mark.parametrize("w_r, t_r, d_r", ARC_CASES)
+def test_l_r_matches_numerical_arc_length(w_r, t_r, d_r):
+    theta = np.linspace(0.0, 2.0 * np.pi * 4.0, 400001)
+    p = _raup_reference_trajectory(theta, w_r, t_r, d_r)
+    seg = np.sqrt(np.sum(np.diff(p, axis=0) ** 2, axis=1))
+    l_num = np.concatenate([[0.0], np.cumsum(seg)])
+    assert np.max(np.abs(l_r(theta, w_r, t_r, d_r) - l_num)) / l_num[-1] < 1e-6
+
+
+@pytest.mark.parametrize("w_r, t_r, d_r", ARC_CASES)
+def test_raup_theta_l_roundtrip(w_r, t_r, d_r):
+    theta = np.linspace(0.0, 2.0 * np.pi * 4.0, 50)
+    np.testing.assert_allclose(
+        theta_r(l_r(theta, w_r, t_r, d_r), w_r, t_r, d_r), theta, atol=1e-9
+    )
+
+
+def test_l_r_r0_scaling():
+    theta = np.linspace(0.1, 2.0 * np.pi * 2.0, 30)
+    np.testing.assert_allclose(
+        l_r(theta, 1.4, 1.0, 0.2, r0=3.0), 3.0 * l_r(theta, 1.4, 1.0, 0.2)
+    )
+
+
+def test_l_r_scalar_and_array():
+    assert isinstance(l_r(1.0, 1.4, 1.0, 0.2), float)
+    assert isinstance(theta_r(0.5, 1.4, 1.0, 0.2), float)
+    x = np.linspace(0.1, 1.0, 7)
+    assert l_r(x, 1.4, 1.0, 0.2).shape == x.shape
+
+
+@pytest.mark.parametrize("bad_r0", [0.0, -1.0])
+def test_l_r_invalid_r0(bad_r0):
+    with pytest.raises(ValueError):
+        l_r(1.0, 1.4, 1.0, 0.2, r0=bad_r0)

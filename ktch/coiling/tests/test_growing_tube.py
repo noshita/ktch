@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from scipy.integrate import cumulative_trapezoid
 
-from ktch.coiling import GrowingTubeModel, growing_tube
+from ktch.coiling import GrowingTubeModel, growing_tube, l_g, s_g
 
 
 def test_growing_tube_shape_and_finite():
@@ -157,3 +157,45 @@ def test_growing_tube_varying_requires_ode():
 def test_growing_tube_varying_requires_s_range():
     with pytest.raises(ValueError):
         growing_tube(0.02, lambda u: 0.1 + 0.01 * u, 0.05)
+
+
+# --- arc-length conversion (l_g, s_g) ---------------------------------------
+
+
+@pytest.mark.parametrize("e_g", [0.02, 0.1, -0.05])
+def test_l_g_matches_numerical_arc_length(e_g):
+    s = np.linspace(0.0, 80.0, 200001)
+    r = np.exp(e_g * s)  # r0 = 1
+    l_num = cumulative_trapezoid(r, s, initial=0.0)
+    assert np.max(np.abs(l_g(s, e_g) - l_num)) / l_num[-1] < 1e-6
+
+
+@pytest.mark.parametrize("e_g", [0.02, 0.1, -0.05])
+def test_growing_tube_s_l_roundtrip(e_g):
+    s = np.linspace(0.0, 80.0, 50)
+    np.testing.assert_allclose(s_g(l_g(s, e_g), e_g), s, atol=1e-9)
+
+
+def test_l_g_e_g_zero_limit():
+    s = np.linspace(0.0, 10.0, 20)
+    np.testing.assert_allclose(l_g(s, 0.0, r0=2.0), 2.0 * s)
+    np.testing.assert_allclose(s_g(2.0 * s, 0.0, r0=2.0), s)
+    np.testing.assert_allclose(l_g(s, 1e-9), l_g(s, 0.0), atol=1e-6)
+
+
+def test_l_g_r0_scaling():
+    s = np.linspace(0.1, 20.0, 30)
+    np.testing.assert_allclose(l_g(s, 0.05, r0=3.0), 3.0 * l_g(s, 0.05))
+
+
+def test_l_g_scalar_and_array():
+    assert isinstance(l_g(1.0, 0.05), float)
+    assert isinstance(s_g(0.5, 0.05), float)
+    x = np.linspace(0.1, 1.0, 7)
+    assert l_g(x, 0.05).shape == x.shape
+
+
+@pytest.mark.parametrize("bad_r0", [0.0, -1.0])
+def test_l_g_invalid_r0(bad_r0):
+    with pytest.raises(ValueError):
+        l_g(1.0, 0.05, r0=bad_r0)

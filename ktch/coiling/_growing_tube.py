@@ -249,7 +249,7 @@ def growing_tube(
         Growth-stage samples. Defaults to three whorls (a fixed span if the
         tube is straight).
     phi_range : array-like of shape (n_phi,), optional
-        Aperture-angle samples. Defaults to ``np.linspace(0, 2*pi, 60)``.
+        Aperture-angle samples. Defaults to ``np.linspace(0, 2*pi, 90)``.
     aperture : None
         Aperture shape; only the circular default is supported.
     p0 : array-like of shape (3,), optional
@@ -296,6 +296,101 @@ def growing_tube(
         frame0,
         method,
     )
+
+
+def l_g(s, e_g, r0=1.0):
+    r"""Arc length of the growth trajectory at growth stage ``s``.
+
+    Maps the growth stage :math:`s` to the trajectory arc length :math:`l_G`
+    ([Noshita_2014]_):
+
+    .. math::
+
+        l_G(s) = \frac{r_0}{E_G}\left(e^{E_G s} - 1\right),
+
+    with the limit :math:`l_G(s) = r_0 s` as :math:`E_G \to 0`. Because
+    :math:`|dp/ds| = r(s)`, the arc length depends only on the expansion rate
+    ``e_g`` (and ``r0``), not on ``c_g``/``t_g``. ``s`` may be array-like.
+
+    Parameters
+    ----------
+    s : array-like
+        Growth stage :math:`s`.
+    e_g : float
+        Expansion rate :math:`E_G` (the logarithm of Okamoto's
+        original :math:`E`).
+    r0 : float, default = 1.0
+        Initial tube radius (arc length scales with ``r0``).
+
+    Returns
+    -------
+    l_g : float or ndarray
+        Trajectory arc length at ``s``.
+
+    See Also
+    --------
+    s_g : Inverse function (arc length to growth stage).
+
+    References
+    ----------
+    .. [Noshita_2014] Noshita, K., 2014. Quantification and geometric analysis of
+       coiling patterns in gastropod shells based on 3D and 2D image data.
+       Journal of Theoretical Biology 363, 93–104.
+    """
+    if not r0 > 0.0:
+        raise ValueError(f"r0 must be > 0, got {r0}")
+    s = np.asarray(s, dtype=float)
+    if e_g == 0.0:
+        out = r0 * s
+    else:
+        out = (r0 / e_g) * np.expm1(e_g * s)
+    return float(out) if out.ndim == 0 else out
+
+
+def s_g(l_g, e_g, r0=1.0):
+    r"""Growth stage of the growth trajectory at arc length ``l_g``.
+
+    Inverse of :func:`l_g` ([Noshita_2014]_):
+
+    .. math::
+
+        s(l_G) = \frac{1}{E_G}\,\ln\!\left(1 + \frac{E_G\, l_G}{r_0}\right),
+
+    with the limit :math:`s = l_G / r_0` as :math:`E_G \to 0`. ``l_g`` may be
+    array-like.
+
+    Parameters
+    ----------
+    l_g : array-like
+        Trajectory arc length.
+    e_g : float
+        Expansion rate :math:`E_G`.
+    r0 : float, default = 1.0
+        Initial tube radius.
+
+    Returns
+    -------
+    s : float or ndarray
+        Growth stage :math:`s`.
+
+    See Also
+    --------
+    l_g : Inverse function (growth stage to arc length).
+
+    References
+    ----------
+    .. [Noshita_2014] Noshita, K., 2014. Quantification and geometric analysis of
+       coiling patterns in gastropod shells based on 3D and 2D image data.
+       Journal of Theoretical Biology 363, 93–104.
+    """
+    if not r0 > 0.0:
+        raise ValueError(f"r0 must be > 0, got {r0}")
+    l_g = np.asarray(l_g, dtype=float)
+    if e_g == 0.0:
+        out = l_g / r0
+    else:
+        out = (1.0 / e_g) * np.log1p(e_g * l_g / r0)
+    return float(out) if out.ndim == 0 else out
 
 
 class GrowingTubeModel(
