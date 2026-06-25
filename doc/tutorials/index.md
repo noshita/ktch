@@ -11,4 +11,5 @@ Step-by-step guides for learning ktch through hands-on examples.
     preprocessing/index
     landmark/index
     harmonic/index
+    coiling/index
 ```
