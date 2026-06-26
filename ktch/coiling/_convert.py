@@ -14,10 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
+
 import numpy as np
 from scipy.optimize import least_squares
 
 from ._raup import _raup_discriminant
+
+# Residual norm above which a least-squares inversion is treated as not having
+# reached its target (the inputs lie outside the Raup model's range).
+_RESIDUAL_TOL = 1e-4
 
 
 def raup_to_growing_tube(
@@ -115,6 +121,15 @@ def growing_tube_to_raup(
         xtol=1e-12,
         ftol=1e-12,
     )
+    residual_norm = float(np.linalg.norm(sol.fun))
+    if residual_norm > _RESIDUAL_TOL:
+        warnings.warn(
+            "growing_tube_to_raup did not converge to the target "
+            f"(residual norm {residual_norm:.3e}); the growing-tube parameters "
+            "may lie outside the Raup model's representable range.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
     w_r, t_r, d_r = sol.x
     return float(w_r), float(t_r), float(d_r)
 
@@ -187,5 +202,14 @@ def growing_tube_aperture_to_raup(
         xtol=1e-12,
         ftol=1e-12,
     )
+    residual_norm = float(np.linalg.norm(sol.fun))
+    if residual_norm > _RESIDUAL_TOL:
+        warnings.warn(
+            "growing_tube_aperture_to_raup did not converge to the target "
+            f"(residual norm {residual_norm:.3e}); the aperture parameters "
+            "may lie outside the Raup model's representable range.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
     delta_r, gamma_r = sol.x
     return float(delta_r), float(gamma_r)

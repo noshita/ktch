@@ -54,6 +54,24 @@ def test_growing_tube_to_raup_straight_raises():
         growing_tube_to_raup(0.1, 0.0, 0.05)
 
 
+def test_growing_tube_to_raup_unreachable_warns():
+    # A fast-expanding, near-straight locus lies outside the Raup model's range,
+    # so the inversion cannot reach the target and should warn.
+    with pytest.warns(RuntimeWarning, match="did not converge"):
+        growing_tube_to_raup(5.0, 0.1, 0.0)
+
+
+def test_growing_tube_to_raup_representable_does_not_warn(recwarn):
+    e_g, c_g, t_g = raup_to_growing_tube(1.6, 1.0, 0.4)
+    growing_tube_to_raup(e_g, c_g, t_g)
+    assert not [w for w in recwarn.list if "did not converge" in str(w.message)]
+
+
+def test_growing_tube_aperture_to_raup_unreachable_warns():
+    with pytest.warns(RuntimeWarning, match="did not converge"):
+        growing_tube_aperture_to_raup(1.6, 1.0, 0.4, 3.0, 3.0)
+
+
 def _raup_locus_standardized(w_r, t_r, d_r, r0=1.0, n_whorls=2.0, n=4000):
     theta = np.linspace(0.0, 2.0 * np.pi * n_whorls, n)
     dtheta = theta[1] - theta[0]
