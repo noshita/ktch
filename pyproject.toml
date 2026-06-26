@@ -175,6 +175,9 @@ select = ["E", "F", "W", "I", "D", "NPY201"]
 "__init__.py" = ["F401"]
 "ktch/plot/tests/test_base.py" = ["F401"]
 "ktch/harmonic/_disk_harmonic_analysis.py" = ["F401"]
+# Plot tests set the non-interactive Agg backend before importing pyplot,
+# so module-level imports intentionally follow code (E402).
+"ktch/plot/tests/*.py" = ["E402"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
