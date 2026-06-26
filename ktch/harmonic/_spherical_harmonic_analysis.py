@@ -22,6 +22,8 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import scipy as sp
+from scipy.spatial.transform import Rotation
+from scipy.special import factorial
 from sklearn.base import (
     BaseEstimator,
     ClassNamePrefixFeaturesOutMixin,
@@ -29,8 +31,16 @@ from sklearn.base import (
 )
 from sklearn.utils.parallel import Parallel, delayed
 
+from ._registration import moment_register, validate_registration
+
 # Tolerance for detecting pole singularity in xyz2spherical.
 _POLE_TOL = 1e-12
+
+# Tolerance for a degenerate first-order ellipsoid (near-zero semi-major axis).
+_FIRST_ORDER_TOL = 1e-12
+
+# Tolerance below which a principal-axis skewness is treated as zero.
+_SKEW_TOL = 1e-9
 
 
 class SphericalHarmonicAnalysis(
@@ -47,6 +57,30 @@ class SphericalHarmonicAnalysis(
         of the :math:`\mathbb{R}^D`-valued function expanded on the sphere.
         Any positive integer is supported; ``3`` is the common surface
         mapping and ``1`` corresponds to a scalar field on the sphere.
+    registration : {"auto", None, "first_order", "moment"}, default="auto"
+        Shape-registration method (2D/3D shape data only). ``"auto"`` (default)
+        registers the 3D surface case (``n_dim=3``) with ``"first_order"`` and
+        leaves other dimensions unregistered (``None``). ``None`` returns raw
+        coefficients. ``"first_order"`` uses the l=1 ellipsoid (first-order
+        ellipsoid canonicalization, Brechbühler et al. 1995) to align both the
+        codomain orientation and the parameter sphere (SO(3)); it requires
+        ``n_dim=3``. ``"moment"`` aligns the codomain to the inertia-tensor
+        principal axes and scales by centroid size.
+    scale : bool, default=True
+        Whether registration removes size (shape space) or keeps it (form
+        space). Only used when ``registration != None``.
+    scale_method : {None, "semi_major_axis", "ellipsoid_volume", "centroid_size"}, default=None
+        Size measure when ``scale=True``. ``None`` resolves to the method
+        default (``"first_order"``: ``"semi_major_axis"``; ``"moment"``:
+        ``"centroid_size"``).
+    align_parameter : bool, default=True
+        Parameter-domain (SO(3)) alignment. ``"first_order"`` always applies
+        it; the toggle is not yet separately honored.
+    reflect : bool, default=False
+        Whether to also remove reflection (chirality). Not yet honored for
+        the codomain (orientation is preserved).
+    return_transform : bool, default=False
+        Reserved; not yet implemented.
     n_jobs: int, default=None
         The number of jobs to run in parallel. None means 1 unless in a
         joblib.parallel_backend context. -1 means using all processors.
@@ -90,17 +124,164 @@ class SphericalHarmonicAnalysis(
 
     """
 
+    # Size measures permitted per registration method (SPHARM = ellipsoid-based).
+    _SCALE_METHODS_BY_REGISTRATION = {
+        "first_order": {None, "semi_major_axis", "ellipsoid_volume"},
+        "moment": {None, "centroid_size"},
+    }
+
     def __init__(
         self,
         n_harmonics=10,
         n_dim=3,
+        registration="auto",
+        scale=True,
+        scale_method=None,
+        align_parameter=True,
+        reflect=False,
+        return_transform=False,
         n_jobs=None,
         verbose=0,
     ):
         self.n_harmonics = n_harmonics
         self.n_dim = n_dim
+        self.registration = registration
+        self.scale = scale
+        self.scale_method = scale_method
+        self.align_parameter = align_parameter
+        self.reflect = reflect
+        self.return_transform = return_transform
         self.n_jobs = n_jobs
         self.verbose = verbose
+
+    def _resolve_method(self):
+        """Resolve ``"auto"`` to a concrete method: ``"first_order"`` for the
+        3D surface case (``n_dim=3``) with at least the l=1 modes, ``None``
+        otherwise.
+        """
+        if self.registration == "auto":
+            if self.n_dim == 3 and self.n_harmonics >= 1:
+                return "first_order"
+            return None
+        return self.registration
+
+    def _validate_registration(self):
+        """Validate registration settings (raises on invalid combinations)."""
+        method = self._resolve_method()
+        validate_registration(
+            method,
+            self.scale_method,
+            self._SCALE_METHODS_BY_REGISTRATION,
+            n_dim=self.n_dim,
+            return_transform=self.return_transform,
+            allow_first_order=True,
+        )
+        if method == "first_order" and self.n_dim != 3:
+            raise ValueError(
+                "registration='first_order' for SPHARM requires n_dim=3 (the "
+                "l=1 ellipsoid spans a full 3D frame). Use registration="
+                "'moment' or None for n_dim=2."
+            )
+
+    def _register(self, coef_flat):
+        """Apply the configured registration to one flat coefficient vector."""
+        method = self._resolve_method()
+        if method is None:
+            return coef_flat
+        if method == "moment":
+            return moment_register(
+                coef_flat, self.n_dim, scale=self.scale, reflect=self.reflect
+            )
+        if method == "first_order":
+            return self._first_order_register(coef_flat)
+        raise NotImplementedError(f"registration='{method}' is not implemented yet.")
+
+    def _first_order_register(self, coef_flat):
+        """first_order registration for SPHARM (n_dim=3): A + B, coef-only.
+
+        Implements the first-order-ellipsoid canonicalization theory
+        (Brechbühler et al. 1995, §4.1): the degree-1 part of the expansion is
+        an ellipsoid (the affine image of the sphere). Writing its l=1
+        coordinate matrix (columns x, y, z) as ``M1 = U Σ Vᵀ``:
+
+        - object/codomain rotation (A): align the ellipsoid's principal axes to
+          the coordinate axes by applying ``Uᵀ`` to every coefficient vector;
+        - parameter-sphere rotation (B): apply the corresponding SO(3) rotation
+          ``V`` to all degrees via the Wigner-D representation
+          (:func:`rotate_real_sph_coef`);
+        - axis ordering by descending semi-axis (largest -> x), via the SVD;
+        - translation removed by dropping the constant (l=0) mode;
+        - size by the longest semi-axis (``semi_major_axis``) or the ellipsoid
+          volume.
+
+        After this the registered first-order ellipsoid is diagonal (canonical)
+        with descending positive semi-axes. The remaining sign freedom is the
+        ellipsoid's intrinsic Klein-four symmetry (180-deg rotations about each
+        principal axis), which degree 1 alone cannot resolve; it is broken with
+        a higher-order, rotation- and reparameterization-invariant shape
+        moment (see :func:`_axis_third_moments`). Operates purely on
+        coefficients (no re-fit), so it composes and is reusable for rotation
+        optimization.
+        """
+        l_max = self.n_harmonics
+        if l_max < 1:
+            raise ValueError("registration='first_order' requires n_harmonics >= 1.")
+        n_coeffs = (l_max + 1) ** 2
+        mat = np.asarray(coef_flat, dtype=float).reshape(3, n_coeffs)
+
+        # l=1 ellipsoid: columns m=-1,0,1 -> permute to (x, y, z).
+        # Real l=1 SH: S_1^{-1} ~ y, S_1^0 ~ z, S_1^1 ~ x.
+        m1_xyz = mat[:, [1, 2, 3]][:, [2, 0, 1]]  # columns x, y, z
+
+        u_mat, sig, wt = np.linalg.svd(m1_xyz)  # m1_xyz = u_mat @ diag(sig) @ wt
+        if sig[0] < _FIRST_ORDER_TOL:
+            raise ValueError(
+                "Degenerate first-order ellipsoid (near-zero semi-major axis); "
+                "cannot register. Use registration='moment' or None."
+            )
+        w_mat = wt.T
+
+        # Sign convention: break the ellipsoid's intrinsic Klein-four symmetry
+        # (degree 1 fixes axes only up to 180-deg flips) using higher-order
+        # shape information, as Brechbühler et al. (1995) suggest. We make the
+        # shape's third moment along each codomain axis positive. The third
+        # moment is a geometric integral over the sphere, hence invariant to
+        # BOTH codomain rotation and sphere reparameterization (unlike a sum of
+        # cubes over modes). Flip the coupled (U, V) columns together.
+        m3 = _axis_third_moments(mat, u_mat, l_max)
+        for i in range(3):
+            if abs(m3[i]) > _SKEW_TOL:
+                if m3[i] < 0:
+                    u_mat[:, i] = -u_mat[:, i]
+                    w_mat[:, i] = -w_mat[:, i]
+            else:
+                col = u_mat[:, i]
+                k = int(np.argmax(np.abs(col)))
+                if col[k] < 0:
+                    u_mat[:, i] = -u_mat[:, i]
+                    w_mat[:, i] = -w_mat[:, i]
+        # Proper codomain rotation unless reflection is allowed.
+        if not self.reflect and np.linalg.det(u_mat) < 0:
+            u_mat[:, -1] = -u_mat[:, -1]
+            w_mat[:, -1] = -w_mat[:, -1]
+
+        # (B) Parameter SO(3) alignment in the coefficient domain: rotate the
+        # sphere by R = w_mat^T via Wigner-D (per axis).
+        rotated = rotate_real_sph_coef(mat.T, w_mat.T)  # (n_coeffs, 3)
+
+        # (A) Codomain rotation + scale + translation removal.
+        if self.scale:
+            scale_method = self.scale_method or "semi_major_axis"
+            if scale_method == "ellipsoid_volume":
+                s = (4.0 / 3.0) * np.pi * sig[0] * sig[1] * sig[2]
+            else:  # "semi_major_axis"
+                s = sig[0]
+        else:
+            s = 1.0
+
+        out = (u_mat.T @ rotated.T) / s
+        out[:, 0] = 0.0  # drop the constant (l=0) mode
+        return out.ravel()
 
     def fit(self, X, y=None):
         """Fit the model (no-op for stateless transformer).
@@ -176,7 +357,7 @@ class SphericalHarmonicAnalysis(
         sol = sp.linalg.lstsq(B, X)
         X_transformed = sol[0].T.ravel()
 
-        return X_transformed
+        return self._register(X_transformed)
 
     def transform(self, X, theta_phi=None):
         """Compute SPHARM coefficients.
@@ -205,6 +386,8 @@ class SphericalHarmonicAnalysis(
 
         if self.n_dim < 1:
             raise ValueError(f"n_dim must be a positive integer, got {self.n_dim}")
+
+        self._validate_registration()
 
         n_dim = self.n_dim
         if isinstance(X, pd.DataFrame):
@@ -395,6 +578,151 @@ def _axis_prefixes(n_dim: int) -> list[str]:
     if n_dim <= len(base):
         return base[:n_dim]
     return [f"c{d}" for d in range(n_dim)]
+
+
+def _axis_third_moments(mat, axes, l_max, n_theta=30, n_phi=60):
+    """Shape third moments along given codomain axes (rotation-invariant sign).
+
+    Reconstructs the surface on a uniform sphere grid and integrates
+    ``(p · axis)**3`` with the ``sin(theta)`` area weight. The result is a
+    geometric integral over the sphere, hence invariant to both codomain
+    rotation and sphere reparameterization; its sign canonicalizes each axis.
+
+    Parameters
+    ----------
+    mat : ndarray of shape (n_dim, (l_max+1)**2)
+        Flat SPHARM coefficients reshaped per axis.
+    axes : ndarray of shape (n_dim, k)
+        Codomain axes (columns) to evaluate the third moment along.
+    l_max : int
+        Maximum degree.
+
+    Returns
+    -------
+    ndarray of shape (k,)
+        Third moment along each axis.
+    """
+    # Center the shape (drop the l=0 constant mode) so the moment is
+    # translation-invariant.
+    mat_centered = np.asarray(mat, dtype=float).copy()
+    mat_centered[:, 0] = 0.0
+
+    theta_g = np.linspace(0.0, np.pi, n_theta)
+    phi_g = np.linspace(0.0, 2.0 * np.pi, n_phi, endpoint=False)
+    tg, pg = np.meshgrid(theta_g, phi_g, indexing="ij")
+    basis = _real_sph_harm_basis_matrix(l_max, tg.ravel(), pg.ravel())
+    p = basis @ mat_centered.T  # (n_grid, n_dim)
+    weights = np.sin(tg).ravel()
+    proj = p @ axes  # (n_grid, k)
+    return np.sum(weights[:, None] * proj**3, axis=0)
+
+
+def _wigner_d_small(l: int, beta: float) -> npt.NDArray[np.float64]:
+    """Wigner small-d matrix ``d^l_{m'm}(beta)`` (rows m', cols m, -l..l).
+
+    Standard real Wigner small-d (closed-form factorial series), matching
+    Ritchie & Kemp (1999) Eq. (10) and Shen et al. (2009) Eq. (14); verified
+    against the textbook ``d^1`` to machine precision. Adequate for moderate
+    degrees (``l <= ~30``); rows/columns are ordered ``m = -l, ..., l``.
+    """
+    dim = 2 * l + 1
+    d = np.zeros((dim, dim))
+    cb, sb = np.cos(beta / 2.0), np.sin(beta / 2.0)
+    orders = range(-l, l + 1)
+    for i, mp in enumerate(orders):
+        for j, m in enumerate(orders):
+            pref = np.sqrt(
+                factorial(l + mp)
+                * factorial(l - mp)
+                * factorial(l + m)
+                * factorial(l - m)
+            )
+            s_min, s_max = max(0, m - mp), min(l + m, l - mp)
+            total = 0.0
+            for s in range(s_min, s_max + 1):
+                den = (
+                    factorial(l + m - s)
+                    * factorial(s)
+                    * factorial(mp - m + s)
+                    * factorial(l - mp - s)
+                )
+                total += (
+                    (-1.0) ** (mp - m + s)
+                    / den
+                    * cb ** (2 * l - mp + m - 2 * s)
+                    * sb ** (mp - m + 2 * s)
+                )
+            d[i, j] = pref * total
+    return d
+
+
+def _wigner_D(
+    l: int, alpha: float, beta: float, gamma: float
+) -> npt.NDArray[np.complexfloating]:
+    """Complex Wigner-D matrix ``D^l_{m'm} = e^{-i m' a} d^l_{m'm}(b) e^{-i m g}``.
+
+    ZYZ Euler convention (alpha, gamma about z; beta about y), matching
+    Ritchie & Kemp (1999) Eq. (9) and Shen et al. (2009) Eq. (14).
+    """
+    d = _wigner_d_small(l, beta)
+    m = np.arange(-l, l + 1)
+    return np.exp(-1j * m * alpha)[:, None] * d * np.exp(-1j * m * gamma)[None, :]
+
+
+def rotate_real_sph_coef(
+    coef_per_lm: npt.NDArray[np.float64], rotation: npt.NDArray[np.float64]
+) -> npt.NDArray[np.float64]:
+    """Rotate real SPHARM coefficients by a 3D rotation, in the coefficient domain.
+
+    Applies the Wigner-D rotational property of spherical harmonics (Ritchie &
+    Kemp 1999, Eqs. 9/13; Shen et al. 2009, Eq. 14): per degree ``l`` the
+    coefficients transform as ``c'_m = sum_n D^l_{m n}(R) c_n``. This is the
+    method the literature uses for SPHARM rotation/registration (rotating
+    coefficients, NOT re-fitting a re-parameterized surface). It is reusable
+    for rotation optimization (e.g. axis-constrained rotational matching,
+    Ritchie & Kemp 1999). As a property, the result equals re-expanding after
+    rotating the sphere parameterization by ``rotation`` (``p -> rotation @ p``).
+
+    Parameters
+    ----------
+    coef_per_lm : ndarray of shape ((l_max+1)**2,) or ((l_max+1)**2, D)
+        Real SPHARM coefficients in flat ``(l, m)`` ordering.
+    rotation : ndarray of shape (3, 3)
+        Orthogonal matrix applied to the parameter sphere. Proper rotations
+        (``det=+1``) and improper ones (``det=-1``, i.e. with a reflection)
+        are both accepted; an improper map is handled as inversion composed
+        with a proper rotation (parity ``(-1)**l`` per degree).
+
+    Returns
+    -------
+    ndarray of same shape as ``coef_per_lm``
+        Rotated real coefficients.
+    """
+    coef = np.asarray(coef_per_lm)
+    squeeze = coef.ndim == 1
+    if squeeze:
+        coef = coef[:, None]
+    l_max = int(round(np.sqrt(coef.shape[0]))) - 1
+
+    rot = np.asarray(rotation, dtype=float)
+    parity = np.linalg.det(rot) < 0
+    if parity:
+        rot = -rot  # -R is proper for 3x3; the inversion adds (-1)**l per degree
+
+    with warnings.catch_warnings():
+        # At gimbal lock (beta = 0 or pi) the ZYZ split is non-unique, but any
+        # valid decomposition yields the same D^l(R); scipy's warning is benign.
+        warnings.simplefilter("ignore", UserWarning)
+        alpha, beta, gamma = Rotation.from_matrix(rot).as_euler("ZYZ")
+    cc = _real_to_complex_sph_coef(coef.astype(np.complex128))
+    out = np.empty_like(cc)
+    for l in range(l_max + 1):
+        block = _wigner_D(l, alpha, beta, gamma) @ cc[l * l : (l + 1) ** 2]
+        if parity:
+            block = block * ((-1) ** l)
+        out[l * l : (l + 1) ** 2] = block
+    rotated = _complex_to_real_sph_coef(out)
+    return rotated[:, 0] if squeeze else rotated
 
 
 def _real_sph_harm_y(

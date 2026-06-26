@@ -2756,12 +2756,22 @@ class TestEllipticFourierNDim:
         efa = EllipticFourierAnalysis(n_harmonics=3, n_dim=4, norm=False)
         assert efa._n_features_out == 4 * 2 * (3 + 1)
 
-    def test_norm_true_unsupported_dim_raises(self):
-        efa = EllipticFourierAnalysis(n_harmonics=2, n_dim=1, norm=True)
+    def test_default_auto_is_none_for_nd(self):
+        # Default registration="auto" -> None (raw) for n_dim not in (2, 3).
+        efa = EllipticFourierAnalysis(n_harmonics=2, n_dim=1)
         t = np.linspace(2 * np.pi / 50, 2 * np.pi, 50)
         X = np.cos(t)[:, None]
-        with pytest.raises(ValueError, match="norm=True is currently"):
-            efa.fit_transform([X], t=[t])
+        out = efa.fit_transform([X], t=[t])
+        assert out.shape == (1, 2 * 1 * (2 + 1))  # raw layout, no registration
+
+    def test_explicit_registration_requires_2d_3d(self):
+        # Registration applies to 2D/3D shape data only.
+        t = np.linspace(2 * np.pi / 50, 2 * np.pi, 50)
+        X = np.cos(t)[:, None]
+        for method in ("first_order", "moment"):
+            efa = EllipticFourierAnalysis(n_harmonics=2, n_dim=1, registration=method)
+            with pytest.raises(ValueError, match="2D/3D"):
+                efa.fit_transform([X], t=[t])
 
     def test_invalid_n_dim_raises(self):
         efa = EllipticFourierAnalysis(n_harmonics=2, n_dim=0, norm=False)
@@ -2793,3 +2803,103 @@ class TestEllipticFourierNDim:
         efa = EllipticFourierAnalysis(n_harmonics=3, n_dim=n_dim, norm=False)
         out = efa.fit_transform([X], t=[t])
         assert out.shape == (1, 2 * n_dim * (3 + 1))
+
+
+def _make_ellipse(t_num=200, a=3.0, b=1.5):
+    t = np.linspace(2 * np.pi / t_num, 2 * np.pi, t_num)
+    return np.stack([a * np.cos(t), b * np.sin(t)], axis=1)
+
+
+class TestEllipticFourierRegistration:
+    """New registration API: backward-compat aliases, moment, conflicts."""
+
+    def test_norm_true_equals_first_order(self):
+        X = _load_wings_as_list(n_specimens=5)
+        legacy = EllipticFourierAnalysis(n_harmonics=6, norm=True).fit_transform(X)
+        new = EllipticFourierAnalysis(
+            n_harmonics=6, registration="first_order"
+        ).fit_transform(X)
+        assert_array_almost_equal(legacy, new)
+
+    def test_norm_false_equals_registration_none(self):
+        X = _load_wings_as_list(n_specimens=5)
+        legacy = EllipticFourierAnalysis(n_harmonics=6, norm=False).fit_transform(X)
+        new = EllipticFourierAnalysis(n_harmonics=6, registration=None).fit_transform(X)
+        assert_array_almost_equal(legacy, new)
+
+    def test_norm_method_area_equals_ellipse_area_3d(self):
+        X, _ = _make_3d_outline(n_harmonics=4, t_num=240, rng=np.random.default_rng(0))
+        legacy = EllipticFourierAnalysis(
+            n_harmonics=4, n_dim=3, norm_method="area"
+        ).fit_transform([X])
+        new = EllipticFourierAnalysis(
+            n_harmonics=4, n_dim=3, scale_method="ellipse_area"
+        ).fit_transform([X])
+        assert_array_almost_equal(legacy, new)
+
+    @pytest.mark.parametrize("n_dim", [2, 3])
+    def test_moment_shape(self, n_dim):
+        rng = np.random.default_rng(n_dim)
+        n_pts = 80
+        X = rng.standard_normal((n_pts, n_dim))
+        t = np.linspace(2 * np.pi / n_pts, 2 * np.pi, n_pts)
+        efa = EllipticFourierAnalysis(n_harmonics=4, n_dim=n_dim, registration="moment")
+        out = efa.fit_transform([X], t=[t])
+        assert out.shape == (1, 2 * n_dim * (4 + 1))
+
+    def test_moment_rotation_scale_translation_invariance_2d(self):
+        coords = _make_ellipse(t_num=300)
+        efa = EllipticFourierAnalysis(n_harmonics=8, n_dim=2, registration="moment")
+        c1 = efa.fit_transform([coords])
+
+        ang = 0.7
+        R = np.array([[np.cos(ang), -np.sin(ang)], [np.sin(ang), np.cos(ang)]])
+        coords2 = 2.3 * (coords @ R.T) + np.array([5.0, -2.0])
+        c2 = efa.fit_transform([coords2])
+        assert_array_almost_equal(c1, c2, decimal=6)
+
+    def test_moment_scale_false_keeps_size(self):
+        coords = _make_ellipse(t_num=200)
+        shape = EllipticFourierAnalysis(
+            n_harmonics=6, n_dim=2, registration="moment", scale=True
+        ).fit_transform([coords])
+        form = EllipticFourierAnalysis(
+            n_harmonics=6, n_dim=2, registration="moment", scale=False
+        ).fit_transform([coords])
+        assert np.linalg.norm(form) > np.linalg.norm(shape)
+
+    def test_conflict_norm_and_registration(self):
+        efa = EllipticFourierAnalysis(n_harmonics=4, norm=False, registration="moment")
+        with pytest.raises(ValueError, match="norm.*registration"):
+            efa.fit_transform([_make_ellipse(t_num=80)])
+
+    def test_conflict_norm_method_and_scale_method(self):
+        efa = EllipticFourierAnalysis(
+            n_harmonics=4, norm_method="area", scale_method="ellipse_area"
+        )
+        with pytest.raises(ValueError, match="norm_method.*scale_method"):
+            efa.fit_transform([_make_ellipse(t_num=80)])
+
+    def test_conflict_return_flags(self):
+        efa = EllipticFourierAnalysis(
+            n_harmonics=4, return_orientation_scale=True, return_transform=True
+        )
+        with pytest.raises(
+            ValueError, match="return_orientation_scale.*return_transform"
+        ):
+            efa.fit_transform([_make_ellipse(t_num=80)])
+
+    def test_invalid_scale_method_for_moment(self):
+        efa = EllipticFourierAnalysis(
+            n_harmonics=4,
+            n_dim=2,
+            registration="moment",
+            scale_method="semi_major_axis",
+        )
+        with pytest.raises(ValueError, match="not valid for"):
+            efa.fit_transform([_make_ellipse(t_num=80)])
+
+    def test_reserved_registration_raises(self):
+        efa = EllipticFourierAnalysis(n_harmonics=4, n_dim=2, registration="landmark")
+        with pytest.raises(NotImplementedError, match="reserved"):
+            efa.fit_transform([_make_ellipse(t_num=80)])

@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import scipy as sp
 from numpy.testing import assert_allclose, assert_array_almost_equal
 
 from ktch.harmonic import SphericalHarmonicAnalysis, spharm, xyz2spherical
@@ -8,7 +9,89 @@ from ktch.harmonic._spherical_harmonic_analysis import (
     _real_sph_harm_basis_matrix,
     _real_to_complex_sph_coef,
     cvt_spharm_coef_to_list,
+    rotate_real_sph_coef,
 )
+
+
+def _spherical_to_xyz(theta_phi):
+    theta, phi = theta_phi[:, 0], theta_phi[:, 1]
+    return np.column_stack(
+        [np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)]
+    )
+
+
+class TestRotateRealSphCoef:
+    """Coefficient-domain SH rotation == rotate parameterization + re-fit."""
+
+    def _setup(self, seed):
+        rng = np.random.default_rng(seed)
+        l_max = 3
+        n_coeffs = (l_max + 1) ** 2
+        theta = np.arccos(rng.uniform(-1, 1, 600))
+        phi = rng.uniform(0, 2 * np.pi, 600)
+        theta_phi = np.column_stack([theta, phi])
+        basis = _real_sph_harm_basis_matrix(l_max, theta, phi)
+        coords = basis @ rng.standard_normal((n_coeffs, 3))
+        coef = sp.linalg.lstsq(basis, coords)[0]  # (n_coeffs, 3)
+        return l_max, theta_phi, coords, coef
+
+    def _refit_after_param_rotation(self, l_max, theta_phi, coords, R):
+        xyz = _spherical_to_xyz(theta_phi)
+        tp_rot = xyz2spherical(xyz @ R.T)  # point' = R point
+        b_rot = _real_sph_harm_basis_matrix(l_max, tp_rot[:, 0], tp_rot[:, 1])
+        return sp.linalg.lstsq(b_rot, coords)[0]
+
+    def test_matches_refit_proper(self):
+        l_max, theta_phi, coords, coef = self._setup(0)
+        R = sp.spatial.transform.Rotation.from_rotvec([0.3, -0.5, 0.8]).as_matrix()
+        expected = self._refit_after_param_rotation(l_max, theta_phi, coords, R)
+        got = rotate_real_sph_coef(coef, R)
+        assert_allclose(got, expected, atol=1e-7)
+
+    def test_matches_refit_improper(self):
+        # Reflection (det = -1) handled via parity.
+        l_max, theta_phi, coords, coef = self._setup(1)
+        R = sp.spatial.transform.Rotation.from_rotvec([0.2, 0.4, -0.1]).as_matrix()
+        R = R @ np.diag([1.0, 1.0, -1.0])  # make it improper
+        assert np.linalg.det(R) < 0
+        expected = self._refit_after_param_rotation(l_max, theta_phi, coords, R)
+        got = rotate_real_sph_coef(coef, R)
+        assert_allclose(got, expected, atol=1e-7)
+
+    def test_identity(self):
+        _, _, _, coef = self._setup(2)
+        got = rotate_real_sph_coef(coef, np.eye(3))
+        assert_allclose(got, coef, atol=1e-10)
+
+    def test_matches_refit_higher_degree(self):
+        # The convention is degree-independent; confirm it holds (and stays
+        # numerically sound) at a higher l_max.
+        rng = np.random.default_rng(20)
+        l_max = 8
+        n_coeffs = (l_max + 1) ** 2
+        theta = np.arccos(rng.uniform(-1, 1, 2000))
+        phi = rng.uniform(0, 2 * np.pi, 2000)
+        theta_phi = np.column_stack([theta, phi])
+        basis = _real_sph_harm_basis_matrix(l_max, theta, phi)
+        coords = basis @ rng.standard_normal((n_coeffs, 3))
+        coef = sp.linalg.lstsq(basis, coords)[0]
+
+        R = sp.spatial.transform.Rotation.from_rotvec([0.6, -0.2, 0.9]).as_matrix()
+        expected = self._refit_after_param_rotation(l_max, theta_phi, coords, R)
+        got = rotate_real_sph_coef(coef, R)
+        assert_allclose(got, expected, atol=1e-6)
+
+    def test_inverse_rotation_round_trip(self):
+        _, _, _, coef = self._setup(5)
+        R = sp.spatial.transform.Rotation.from_rotvec([0.4, 0.7, -0.3]).as_matrix()
+        back = rotate_real_sph_coef(rotate_real_sph_coef(coef, R), R.T)
+        assert_allclose(back, coef, atol=1e-9)
+
+    def test_1d_input(self):
+        _, _, _, coef = self._setup(3)
+        R = sp.spatial.transform.Rotation.from_rotvec([0.1, 0.2, 0.3]).as_matrix()
+        got = rotate_real_sph_coef(coef[:, 0], R)
+        assert got.shape == (coef.shape[0],)
 
 
 def test_xyz2spherical_axes():
@@ -71,7 +154,7 @@ def test_transform_and_inverse_roundtrip():
     theta_grid, phi_grid = np.meshgrid(theta_range, phi_range, indexing="ij")
     theta_phi = np.stack([theta_grid.ravel(), phi_grid.ravel()], axis=-1)
 
-    sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_jobs=1)
+    sha = SphericalHarmonicAnalysis(n_harmonics=l_max, registration=None, n_jobs=1)
     transformed = sha.fit_transform([coords], theta_phi=[theta_phi])
 
     assert transformed.shape == (1, 3 * (l_max + 1) ** 2)
@@ -198,7 +281,7 @@ class TestSHARoundTripMixedSpectrum:
         coords = np.stack([x, y, z], axis=-1).reshape(-1, 3)
         theta_phi = np.stack([theta_grid.ravel(), phi_grid.ravel()], axis=-1)
 
-        sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_jobs=1)
+        sha = SphericalHarmonicAnalysis(n_harmonics=l_max, registration=None, n_jobs=1)
         transformed = sha.fit_transform([coords], theta_phi=[theta_phi])
 
         n_terms = (l_max + 1) ** 2
@@ -233,7 +316,7 @@ class TestSHAInverseTransformDefaults:
         theta_grid, phi_grid = np.meshgrid(theta_range, phi_range, indexing="ij")
         theta_phi = np.stack([theta_grid.ravel(), phi_grid.ravel()], axis=-1)
 
-        sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_jobs=1)
+        sha = SphericalHarmonicAnalysis(n_harmonics=l_max, registration=None, n_jobs=1)
         transformed = sha.fit_transform([coords], theta_phi=[theta_phi])
 
         result = sha.inverse_transform(transformed)
@@ -392,7 +475,7 @@ class TestSHAFlatRoundTripAxisOrder:
         surface = np.stack([x, y, z], axis=-1)
         theta_phi = np.stack([tf, pf], axis=-1)
 
-        sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_jobs=1)
+        sha = SphericalHarmonicAnalysis(n_harmonics=l_max, registration=None, n_jobs=1)
         flat = sha.transform([surface], theta_phi=[theta_phi])
 
         # Pass the flat output directly (no manual reshape).
@@ -617,3 +700,122 @@ class TestSPHARMNDim:
         sha = SphericalHarmonicAnalysis(n_harmonics=2, n_dim=3, n_jobs=1)
         with pytest.raises(ValueError, match="n_dim=3"):
             sha.transform([np.zeros((10, 2))], theta_phi=[np.zeros((10, 2))])
+
+
+class TestSPHARMRegistration:
+    def test_default_is_auto(self):
+        assert SphericalHarmonicAnalysis().registration == "auto"
+
+    def test_moment_shape(self):
+        l_max = 2
+        X, theta_phi, _ = _synthetic_sphere(l_max, 300, n_dim=3, seed=3)
+        sha = SphericalHarmonicAnalysis(
+            n_harmonics=l_max, n_dim=3, registration="moment", n_jobs=1
+        )
+        out = sha.fit_transform([X], theta_phi=[theta_phi])
+        assert out.shape == (1, 3 * (l_max + 1) ** 2)
+
+    def test_moment_invariance(self):
+        l_max = 2
+        X, theta_phi, _ = _synthetic_sphere(l_max, 400, n_dim=3, seed=5)
+        sha = SphericalHarmonicAnalysis(
+            n_harmonics=l_max, n_dim=3, registration="moment", n_jobs=1
+        )
+        c1 = sha.fit_transform([X], theta_phi=[theta_phi])
+
+        rng = np.random.default_rng(6)
+        A = rng.standard_normal((3, 3))
+        R, _ = np.linalg.qr(A)
+        if np.linalg.det(R) < 0:
+            R[:, 0] = -R[:, 0]
+        X2 = 1.7 * (X @ R.T) + np.array([2.0, -1.0, 0.5])
+        c2 = sha.fit_transform([X2], theta_phi=[theta_phi])
+        assert_allclose(c1, c2, atol=1e-7)
+
+    def test_first_order_shape(self):
+        l_max = 3
+        X, theta_phi, _ = _synthetic_sphere(l_max, 400, n_dim=3, seed=2)
+        sha = SphericalHarmonicAnalysis(
+            n_harmonics=l_max, n_dim=3, registration="first_order", n_jobs=1
+        )
+        out = sha.fit_transform([X], theta_phi=[theta_phi])
+        assert out.shape == (1, 3 * (l_max + 1) ** 2)
+        # constant (l=0) mode removed
+        assert_allclose(out.reshape(3, -1)[:, 0], 0.0, atol=1e-10)
+
+    def test_first_order_ellipsoid_canonical_form(self):
+        # Theory (Brechbühler 1995 §4.1): after first_order registration the
+        # degree-1 ellipsoid is axis-aligned in object space (diagonal), with
+        # descending positive semi-axes; with semi_major_axis scaling the
+        # leading entry is 1.
+        l_max = 3
+        n_coeffs = (l_max + 1) ** 2
+        X, theta_phi, _ = _synthetic_sphere(l_max, 500, n_dim=3, seed=3)
+        sha = SphericalHarmonicAnalysis(
+            n_harmonics=l_max, n_dim=3, registration="first_order", n_jobs=1
+        )
+        out = sha.fit_transform([X], theta_phi=[theta_phi])[0].reshape(3, n_coeffs)
+        m1_xyz = out[:, [1, 2, 3]][:, [2, 0, 1]]  # l=1 columns x, y, z
+        diag = np.diag(m1_xyz)
+        assert_allclose(m1_xyz - np.diag(diag), 0.0, atol=1e-9)  # diagonal
+        assert diag[0] == pytest.approx(1.0, abs=1e-9)  # semi_major scaled
+        assert diag[0] >= diag[1] >= diag[2] > 0  # descending, positive
+
+    def test_first_order_codomain_invariance(self):
+        l_max = 3
+        X, theta_phi, _ = _synthetic_sphere(l_max, 600, n_dim=3, seed=4)
+        sha = SphericalHarmonicAnalysis(
+            n_harmonics=l_max, n_dim=3, registration="first_order", n_jobs=1
+        )
+        c1 = sha.fit_transform([X], theta_phi=[theta_phi])
+
+        rng = np.random.default_rng(12)
+        Q, _ = np.linalg.qr(rng.standard_normal((3, 3)))
+        if np.linalg.det(Q) < 0:
+            Q[:, 0] = -Q[:, 0]
+        X2 = 1.7 * (X @ Q.T) + np.array([2.0, -1.0, 0.5])
+        c2 = sha.fit_transform([X2], theta_phi=[theta_phi])
+        assert_allclose(c1, c2, atol=1e-6)
+
+    def test_first_order_parameter_so3_invariance(self):
+        # Rotating the sphere parameterization (SO(3)) and re-fitting must give
+        # the same registered coefficients (group B).
+        l_max = 3
+        X, theta_phi, _ = _synthetic_sphere(l_max, 800, n_dim=3, seed=7)
+        sha = SphericalHarmonicAnalysis(
+            n_harmonics=l_max, n_dim=3, registration="first_order", n_jobs=1
+        )
+        c1 = sha.fit_transform([X], theta_phi=[theta_phi])
+
+        rng = np.random.default_rng(13)
+        R, _ = np.linalg.qr(rng.standard_normal((3, 3)))
+        if np.linalg.det(R) < 0:
+            R[:, 0] = -R[:, 0]
+        theta, phi = theta_phi[:, 0], theta_phi[:, 1]
+        xyz = np.column_stack(
+            [np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)]
+        )
+        theta_phi_rot = xyz2spherical(xyz @ R.T)
+        c2 = sha.fit_transform([X], theta_phi=[theta_phi_rot])
+        assert_allclose(c1, c2, atol=1e-6)
+
+    def test_first_order_requires_3d(self):
+        X, theta_phi, _ = _synthetic_sphere(2, 200, n_dim=2, seed=1)
+        sha = SphericalHarmonicAnalysis(
+            n_harmonics=2, n_dim=2, registration="first_order", n_jobs=1
+        )
+        with pytest.raises(ValueError, match="n_dim=3"):
+            sha.fit_transform([X], theta_phi=[theta_phi])
+
+    def test_reserved_not_implemented(self):
+        sha = SphericalHarmonicAnalysis(n_harmonics=2, registration="rotational_match")
+        with pytest.raises(NotImplementedError, match="reserved"):
+            sha.transform([np.zeros((10, 3))], theta_phi=[np.zeros((10, 2))])
+
+    def test_invalid_scale_method_for_moment(self):
+        sha = SphericalHarmonicAnalysis(
+            n_harmonics=2, registration="moment", scale_method="ellipsoid_volume"
+        )
+        # ellipsoid_volume is a first_order measure, not valid for moment
+        with pytest.raises(ValueError, match="not valid for"):
+            sha.transform([np.zeros((10, 3))], theta_phi=[np.zeros((10, 2))])

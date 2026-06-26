@@ -295,7 +295,7 @@ class TestDHARoundTrip:
 
         vertices, r_theta, coef_true = _generate_synthetic_surface(n_max, n_points)
 
-        dha = DiskHarmonicAnalysis(n_harmonics=n_max, n_jobs=1)
+        dha = DiskHarmonicAnalysis(n_harmonics=n_max, registration=None, n_jobs=1)
         transformed = dha.fit_transform([vertices], r_theta=[r_theta])
 
         assert_allclose(transformed[0], coef_true, atol=1e-8)
@@ -463,7 +463,7 @@ class TestDHANHarmonicsOne:
         n_max = 1
         vertices, r_theta, coef_true = _generate_synthetic_surface(n_max, 100)
 
-        dha = DiskHarmonicAnalysis(n_harmonics=n_max, n_jobs=1)
+        dha = DiskHarmonicAnalysis(n_harmonics=n_max, registration=None, n_jobs=1)
         transformed = dha.fit_transform([vertices], r_theta=[r_theta])
 
         assert_allclose(transformed[0], coef_true, atol=1e-8)
@@ -560,7 +560,9 @@ class TestDHA2DRoundTrip:
         n_max = 3
         vertices, r_theta, coef_true = _generate_synthetic_surface(n_max, 500, n_dim=2)
 
-        dha = DiskHarmonicAnalysis(n_harmonics=n_max, n_dim=2, n_jobs=1)
+        dha = DiskHarmonicAnalysis(
+            n_harmonics=n_max, n_dim=2, registration=None, n_jobs=1
+        )
         transformed = dha.fit_transform([vertices], r_theta=[r_theta])
 
         assert_allclose(transformed[0], coef_true, atol=1e-8)
@@ -718,3 +720,93 @@ class TestDHANDim:
         dha = DiskHarmonicAnalysis(n_harmonics=2, n_dim=3, n_jobs=1)
         with pytest.raises(ValueError, match="n_dim=3"):
             dha.transform([np.zeros((10, 2))], r_theta=[np.zeros((10, 2))])
+
+
+class TestDHARegistration:
+    def test_default_is_auto(self):
+        assert DiskHarmonicAnalysis().registration == "auto"
+
+    def test_moment_shape(self):
+        n_max = 3
+        vertices, r_theta, _ = _generate_synthetic_surface(n_max, 400, n_dim=3, seed=3)
+        dha = DiskHarmonicAnalysis(
+            n_harmonics=n_max, n_dim=3, registration="moment", n_jobs=1
+        )
+        out = dha.fit_transform([vertices], r_theta=[r_theta])
+        assert out.shape == (1, 3 * (n_max + 1) ** 2)
+
+    def test_moment_invariance(self):
+        n_max = 3
+        vertices, r_theta, _ = _generate_synthetic_surface(n_max, 500, n_dim=3, seed=5)
+        dha = DiskHarmonicAnalysis(
+            n_harmonics=n_max, n_dim=3, registration="moment", n_jobs=1
+        )
+        c1 = dha.fit_transform([vertices], r_theta=[r_theta])
+
+        rng = np.random.default_rng(6)
+        A = rng.standard_normal((3, 3))
+        R, _ = np.linalg.qr(A)
+        if np.linalg.det(R) < 0:
+            R[:, 0] = -R[:, 0]
+        v2 = 1.4 * (vertices @ R.T) + np.array([1.0, 2.0, -1.0])
+        c2 = dha.fit_transform([v2], r_theta=[r_theta])
+        assert_allclose(c1, c2, atol=1e-7)
+
+    def test_first_order_shape(self):
+        n_max = 3
+        vertices, r_theta, _ = _generate_synthetic_surface(n_max, 400, n_dim=3, seed=2)
+        dha = DiskHarmonicAnalysis(
+            n_harmonics=n_max, n_dim=3, registration="first_order", n_jobs=1
+        )
+        out = dha.fit_transform([vertices], r_theta=[r_theta])
+        assert out.shape == (1, 3 * (n_max + 1) ** 2)
+        # constant (n=0, m=0) mode is removed (translation-free)
+        assert_allclose(out.reshape(3, -1)[:, 0], 0.0, atol=1e-10)
+
+    def test_first_order_codomain_scale_translation_invariance(self):
+        n_max = 3
+        vertices, r_theta, _ = _generate_synthetic_surface(n_max, 600, n_dim=3, seed=4)
+        dha = DiskHarmonicAnalysis(
+            n_harmonics=n_max, n_dim=3, registration="first_order", n_jobs=1
+        )
+        c1 = dha.fit_transform([vertices], r_theta=[r_theta])
+
+        rng = np.random.default_rng(11)
+        A = rng.standard_normal((3, 3))
+        R, _ = np.linalg.qr(A)
+        if np.linalg.det(R) < 0:
+            R[:, 0] = -R[:, 0]
+        v2 = 1.6 * (vertices @ R.T) + np.array([2.0, -1.0, 0.5])
+        c2 = dha.fit_transform([v2], r_theta=[r_theta])
+        assert_allclose(c1, c2, atol=1e-6)
+
+    def test_first_order_disk_rotation_invariance(self):
+        # Rotating the disk parameterization (theta -> theta + alpha) and
+        # re-fitting must give the same registered coefficients (group B).
+        n_max = 3
+        vertices, r_theta, _ = _generate_synthetic_surface(n_max, 600, n_dim=3, seed=7)
+        dha = DiskHarmonicAnalysis(
+            n_harmonics=n_max, n_dim=3, registration="first_order", n_jobs=1
+        )
+        c1 = dha.fit_transform([vertices], r_theta=[r_theta])
+
+        alpha = 0.9
+        r_theta2 = r_theta.copy()
+        r_theta2[:, 1] = r_theta[:, 1] + alpha
+        c2 = dha.fit_transform([vertices], r_theta=[r_theta2])
+        assert_allclose(c1, c2, atol=1e-6)
+
+    def test_first_order_requires_2d_3d(self):
+        vertices, r_theta, _ = _generate_synthetic_surface(2, 200, n_dim=1, seed=1)
+        dha = DiskHarmonicAnalysis(
+            n_harmonics=2, n_dim=1, registration="first_order", n_jobs=1
+        )
+        with pytest.raises(ValueError, match="2D/3D"):
+            dha.fit_transform([vertices], r_theta=[r_theta])
+
+    def test_invalid_scale_method_for_moment(self):
+        dha = DiskHarmonicAnalysis(
+            n_harmonics=2, registration="moment", scale_method="ellipse_area"
+        )
+        with pytest.raises(ValueError, match="not valid for"):
+            dha.transform([np.zeros((10, 3))], r_theta=[np.zeros((10, 2))])

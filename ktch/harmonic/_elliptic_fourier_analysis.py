@@ -26,6 +26,8 @@ from sklearn.base import (
 )
 from sklearn.utils.parallel import Parallel, delayed
 
+from ._registration import moment_register
+
 # Tolerance for detecting degenerate (near-zero) geometric quantities
 # (arc length, semi-axes, phase-angle denominator).
 _DEGENERACY_TOL = 1e-15
@@ -60,29 +62,61 @@ class EllipticFourierAnalysis(
         parameter ``t`` is required and must be supplied explicitly (e.g.
         derived from the corresponding shape); it is not inferred from the
         codomain values.
-    norm : bool, default=True
-        Normalize the elliptic Fourier coefficients by the 1st harmonic
-        ellipse (scaling method controlled by ``norm_method``).
-    return_orientation_scale : bool, default=False
-        Return orientation and scale of the outline (requires ``norm=True``).
-
-        - 2D: Appends ``[psi, scale]`` to the end of the coefficient vector.
-        - 3D: Appends ``[alpha, beta, gamma, phi, scale]`` to the end.
+    registration : {"auto", None, "first_order", "moment"}, default="auto"
+        Shape-registration method. ``"auto"`` (default) registers 2D/3D shape
+        data with ``"first_order"`` and leaves other dimensions unregistered
+        (``None``). ``None`` returns raw coefficients. ``"first_order"`` uses
+        the 1st-harmonic ellipse; ``"moment"`` uses the inertia tensor of all
+        coefficients. Registration applies to 2D/3D shape data only — for
+        ``n_dim`` not in ``(2, 3)`` it must be ``None`` (normalization of
+        non-shape n-D fields belongs to a separate interface).
+    scale : bool, default=True
+        Whether registration removes size (shape space). ``False`` keeps size
+        (form space). Only used when ``registration != None``. (``scale=False``
+        is currently implemented for ``"moment"`` only.)
+    scale_method : str or None, default=None
+        Size measure when ``scale=True``; one of ``"semi_major_axis"``,
+        ``"ellipse_area"``, ``"centroid_size"``, or ``None``.
+        ``None`` resolves to the method's
+        default (``"first_order"``: 2D ``"semi_major_axis"``, 3D
+        ``"ellipse_area"``; ``"moment"``: ``"centroid_size"``).
+        ``"semi_major_axis"`` and ``"ellipse_area"`` require
+        ``registration="first_order"``; ``"centroid_size"`` requires
+        ``registration="moment"``.
+    align_parameter : bool, default=True
+        Whether to remove the parameter-domain symmetry (phase/direction) in
+        ``"first_order"``. (Currently always applied for 2D/3D.)
+    reflect : bool, default=False
+        Whether to also remove reflection (chirality). ``False`` preserves
+        orientation.
+    return_transform : bool, default=False
+        Append the estimated similarity transform to the output. (The general
+        n-D layout is not yet implemented; use ``return_orientation_scale``
+        for the 2D/3D first-order layout.)
     n_jobs: int, default=None
         The number of jobs to run in parallel. None means 1 unless in a
         joblib.parallel_backend context. -1 means using all processors.
     verbose: int, default=0
         The verbosity level.
+    norm : bool, default=True
+        Deprecated alias. ``True`` maps to ``registration="first_order"``,
+        ``False`` to ``registration=None``. Use ``registration`` instead.
     norm_method : {None, "area", "semi_major_axis"}, default=None
-        Normalization (scaling) method when ``norm=True``.
-        When ``None`` (default), the dimension-appropriate convention is used:
-        ``"semi_major_axis"`` for 2D and ``"area"`` for 3D.
+        Deprecated alias for ``scale_method`` (``"area"`` ->
+        ``"ellipse_area"``). When ``None`` the dimension-appropriate
+        convention is used: ``"semi_major_axis"`` for 2D and ``"area"`` for 3D.
 
         - ``"area"``: Scale by ``sqrt(pi * a1 * b1)`` where ``a1`` and ``b1``
           are the semi-major and semi-minor axis lengths of the 1st harmonic
           ellipse (Godefroy et al. 2012).
         - ``"semi_major_axis"``: Scale by the semi-major axis length ``a1``
           of the 1st harmonic ellipse (Kuhl & Giardina 1982).
+    return_orientation_scale : bool, default=False
+        Deprecated alias for ``return_transform`` using the legacy layout
+        (requires ``registration != None``).
+
+        - 2D: Appends ``[psi, scale]`` to the end of the coefficient vector.
+        - 3D: Appends ``[alpha, beta, gamma, phi, scale]`` to the end.
 
     Notes
     -----
@@ -143,24 +177,167 @@ class EllipticFourierAnalysis(
     """
 
     _VALID_NORM_METHODS = {None, "area", "semi_major_axis"}
+    _VALID_REGISTRATIONS = {
+        None,
+        "first_order",
+        "moment",
+        "landmark",
+        "rotational_match",
+    }
+    _VALID_SCALE_METHODS = {
+        None,
+        "semi_major_axis",
+        "ellipse_area",
+        "centroid_size",
+    }
+    # Size measures permitted per registration method.
+    _SCALE_METHODS_BY_REGISTRATION = {
+        "first_order": {None, "semi_major_axis", "ellipse_area"},
+        "moment": {None, "centroid_size"},
+    }
+    # Deprecated norm_method -> new scale_method names.
+    _LEGACY_SCALE_METHOD_MAP = {
+        "area": "ellipse_area",
+        "semi_major_axis": "semi_major_axis",
+    }
+    # New scale_method -> legacy values understood by _normalize_2d/_normalize_3d.
+    _SCALE_METHOD_TO_LEGACY = {
+        "ellipse_area": "area",
+        "semi_major_axis": "semi_major_axis",
+    }
 
     def __init__(
         self,
         n_harmonics: int = 20,
         n_dim: int = 2,
-        norm: bool = True,
-        return_orientation_scale: bool = False,
+        registration: str | None = "auto",
+        scale: bool = True,
+        scale_method: str | None = None,
+        align_parameter: bool = True,
+        reflect: bool = False,
+        return_transform: bool = False,
         n_jobs: int | None = None,
         verbose: int = 0,
+        norm: bool = True,
         norm_method: str | None = None,
+        return_orientation_scale: bool = False,
     ):
         self.n_harmonics = n_harmonics
         self.n_dim = n_dim
-        self.norm = norm
-        self.return_orientation_scale = return_orientation_scale
+        self.registration = registration
+        self.scale = scale
+        self.scale_method = scale_method
+        self.align_parameter = align_parameter
+        self.reflect = reflect
+        self.return_transform = return_transform
         self.n_jobs = n_jobs
         self.verbose = verbose
+        # Deprecated aliases (kept for backward compatibility).
+        self.norm = norm
         self.norm_method = norm_method
+        self.return_orientation_scale = return_orientation_scale
+
+    def _resolve_registration(self):
+        """Resolve effective registration settings from new + legacy params.
+
+        Legacy params (``norm`` / ``norm_method`` /
+        ``return_orientation_scale``) map onto the new API. Setting a legacy
+        param to a non-default value together with its new counterpart raises
+        ``ValueError``.
+
+        Returns
+        -------
+        tuple
+            ``(method, scale, scale_method, return_extras, legacy_layout)``.
+        """
+        # registration <- norm (norm=False is the only active legacy signal;
+        # norm=True equals the default and does not override).
+        if self.norm is False:
+            if self.registration != "auto":
+                raise ValueError(
+                    "Cannot set both `norm` (deprecated) and `registration`. "
+                    "Use `registration` only."
+                )
+            method = None
+            scale = True
+        else:
+            method = self.registration
+            scale = self.scale
+
+        # Resolve "auto": register 2D/3D shape data, leave others unregistered.
+        if method == "auto":
+            method = "first_order" if self.n_dim in (2, 3) else None
+
+        # scale_method <- norm_method
+        if self.norm_method is not None:
+            if self.norm_method not in self._VALID_NORM_METHODS:
+                raise ValueError(
+                    f"norm_method must be None, 'area', or 'semi_major_axis', "
+                    f"got '{self.norm_method}'"
+                )
+            if self.scale_method is not None:
+                raise ValueError(
+                    "Cannot set both `norm_method` (deprecated) and "
+                    "`scale_method`. Use `scale_method` only."
+                )
+            scale_method = self._LEGACY_SCALE_METHOD_MAP[self.norm_method]
+        else:
+            scale_method = self.scale_method
+
+        # return columns <- return_orientation_scale
+        if self.return_orientation_scale:
+            if self.return_transform:
+                raise ValueError(
+                    "Cannot set both `return_orientation_scale` (deprecated) "
+                    "and `return_transform`. Use `return_transform` only."
+                )
+            return_extras = True
+            legacy_layout = True
+        else:
+            return_extras = self.return_transform
+            legacy_layout = False
+
+        return method, scale, scale_method, return_extras, legacy_layout
+
+    def _validate_registration(self, method, scale, scale_method, return_extras):
+        """Validate effective registration settings; raise on bad combos."""
+        if method not in self._VALID_REGISTRATIONS:
+            valid = sorted(str(m) for m in self._VALID_REGISTRATIONS)
+            raise ValueError(f"registration must be one of {valid}, got '{method}'")
+        if method in ("landmark", "rotational_match"):
+            raise NotImplementedError(
+                f"registration='{method}' is reserved and not implemented yet."
+            )
+        if scale_method not in self._VALID_SCALE_METHODS:
+            raise ValueError(
+                f"scale_method must be one of "
+                f"{sorted(str(m) for m in self._VALID_SCALE_METHODS)}, "
+                f"got '{scale_method}'"
+            )
+        if method is None:
+            if return_extras:
+                raise ValueError("return_transform requires registration != None.")
+            return
+        if self.n_dim not in (2, 3):
+            raise ValueError(
+                f"registration='{method}' applies to 2D/3D shape data only; "
+                f"got n_dim={self.n_dim}. Use registration=None for non-shape "
+                "data (normalization of n-D fields belongs to a separate "
+                "interface)."
+            )
+        allowed = self._SCALE_METHODS_BY_REGISTRATION[method]
+        if scale_method not in allowed:
+            raise ValueError(
+                f"scale_method='{scale_method}' is not valid for "
+                f"registration='{method}'; valid options: "
+                f"{sorted(str(m) for m in allowed)}."
+            )
+        if return_extras and not (method == "first_order" and self.n_dim in (2, 3)):
+            raise NotImplementedError(
+                "return_transform/return_orientation_scale is currently "
+                "implemented only for registration='first_order' with "
+                "n_dim in (2, 3)."
+            )
 
     def fit(self, X, y=None):
         """Fit the model (no-op for stateless transformer).
@@ -239,19 +416,13 @@ class EllipticFourierAnalysis(
               (length +5).
         """
         n_dim = self.n_dim
-        norm = self.norm
-        return_orientation_scale = self.return_orientation_scale
 
         if n_dim < 1:
             raise ValueError(f"n_dim must be a positive integer, got {n_dim}")
-        if self.norm_method not in self._VALID_NORM_METHODS:
-            raise ValueError(
-                f"norm_method must be None, 'area', or 'semi_major_axis', "
-                f"got '{self.norm_method}'"
-            )
 
-        if return_orientation_scale and not norm:
-            raise ValueError("return_orientation_scale requires norm=True.")
+        # Resolve + validate registration early (fail fast before dispatch).
+        method, scale, scale_method, return_extras, _ = self._resolve_registration()
+        self._validate_registration(method, scale, scale_method, return_extras)
 
         if t is None:
             t_ = [None] * len(X)
@@ -394,51 +565,79 @@ class EllipticFourierAnalysis(
             np.append(0.0, _sse(diffs[:, d], dt, n_harmonics)) for d in range(n_dim)
         ]
 
-        # Normalize
-        if self.norm:
-            if n_dim == 2:
-                an, bn, cn, dn, psi, scale = self._normalize_2d(
-                    cos_rows[0], sin_rows[0], cos_rows[1], sin_rows[1]
-                )
-                rows = [an, bn, cn, dn]
-                extras = [psi, scale]
-            elif n_dim == 3:
-                (
-                    an,
-                    bn,
-                    cn,
-                    dn,
-                    en,
-                    fn,
-                    alpha,
-                    beta,
-                    gamma,
-                    phi,
-                    scale,
-                ) = self._normalize_3d(
-                    cos_rows[0],
-                    sin_rows[0],
-                    cos_rows[1],
-                    sin_rows[1],
-                    cos_rows[2],
-                    sin_rows[2],
-                )
-                rows = [an, bn, cn, dn, en, fn]
-                extras = [alpha, beta, gamma, phi, scale]
-            else:
-                raise ValueError(
-                    "norm=True is currently implemented only for n_dim in "
-                    f"(2, 3); got n_dim={n_dim}. Use norm=False for other "
-                    "dimensions."
-                )
-        else:
-            rows = []
-            for d in range(n_dim):
-                rows.append(cos_rows[d])
-                rows.append(sin_rows[d])
-            extras = []
+        method, scale, scale_method, return_extras, _ = self._resolve_registration()
+        self._validate_registration(method, scale, scale_method, return_extras)
 
-        if self.return_orientation_scale:
+        def _raw_rows():
+            out = []
+            for d in range(n_dim):
+                out.append(cos_rows[d])
+                out.append(sin_rows[d])
+            return out
+
+        if method is None:
+            return np.hstack(_raw_rows())
+
+        if method == "moment":
+            if return_extras:
+                raise NotImplementedError(
+                    "return_transform is not yet implemented for registration='moment'."
+                )
+            raw_flat = np.hstack(_raw_rows())
+            return moment_register(raw_flat, n_dim, scale=scale, reflect=self.reflect)
+
+        # method == "first_order"
+        if not scale:
+            raise NotImplementedError(
+                "scale=False (form space) is not yet implemented for "
+                "registration='first_order'."
+            )
+        # New scale_method names map onto the legacy values understood by
+        # _normalize_2d/_normalize_3d ("ellipse_area" -> "area").
+        legacy_sm = (
+            None if scale_method is None else self._SCALE_METHOD_TO_LEGACY[scale_method]
+        )
+        if n_dim == 2:
+            an, bn, cn, dn, psi, s = self._normalize_2d(
+                cos_rows[0],
+                sin_rows[0],
+                cos_rows[1],
+                sin_rows[1],
+                scale_method=legacy_sm,
+            )
+            rows = [an, bn, cn, dn]
+            extras = [psi, s]
+        elif n_dim == 3:
+            (
+                an,
+                bn,
+                cn,
+                dn,
+                en,
+                fn,
+                alpha,
+                beta,
+                gamma,
+                phi,
+                s,
+            ) = self._normalize_3d(
+                cos_rows[0],
+                sin_rows[0],
+                cos_rows[1],
+                sin_rows[1],
+                cos_rows[2],
+                sin_rows[2],
+                scale_method=legacy_sm,
+            )
+            rows = [an, bn, cn, dn, en, fn]
+            extras = [alpha, beta, gamma, phi, s]
+        else:  # unreachable: _validate_registration rejects non-2D/3D first.
+            raise ValueError(
+                "registration applies to 2D/3D shape data only; "
+                f"got n_dim={n_dim}."
+            )
+
+        if return_extras:
             return np.hstack(rows + extras)
         return np.hstack(rows)
 
@@ -455,8 +654,11 @@ class EllipticFourierAnalysis(
         """
         return self._transform_single(X, t=t, duplicated_points=duplicated_points)
 
-    def _normalize_2d(self, an, bn, cn, dn, keep_start_point=False):
+    def _normalize_2d(self, an, bn, cn, dn, keep_start_point=False, scale_method=None):
         """Normalize Fourier coefficients.
+
+        ``scale_method`` accepts the legacy values ``"area"`` /
+        ``"semi_major_axis"``; ``None`` falls back to ``self.norm_method``.
 
         Todo:
             - [ ] Procrustes alignment -> in coordinate values?
@@ -495,7 +697,7 @@ class EllipticFourierAnalysis(
         c_s = c1 * cos_th + d1 * sin_th
         semi_major = np.sqrt(a_s**2 + c_s**2)
 
-        norm_method = self.norm_method
+        norm_method = scale_method if scale_method is not None else self.norm_method
         if norm_method is None:
             norm_method = "semi_major_axis"
 
@@ -552,9 +754,11 @@ class EllipticFourierAnalysis(
         # Axes are ordered [cos0, sin0, cos1, sin1, ...] per coordinate.
         axes = coef_core.reshape([n_axes, -1])
 
-        # Offsets sit at index 0 of the cos rows.
+        # Offsets sit at index 0 of the cos rows. Registered coefficients are
+        # translation-free (centered), so the stored offset is dropped.
         offsets = axes[::2, 0].copy()
-        if self.norm:
+        method, _, _, _, _ = self._resolve_registration()
+        if method is not None:
             offsets[:] = 0.0
 
         # (n_dim, n_harmonics)
@@ -592,11 +796,14 @@ class EllipticFourierAnalysis(
         """
         return self._transform_single(X, t=t, duplicated_points=duplicated_points)
 
-    def _normalize_3d(self, an, bn, cn, dn, en, fn):
+    def _normalize_3d(self, an, bn, cn, dn, en, fn, scale_method=None):
         """Normalize 3D EFA coefficients.
 
+        ``scale_method`` accepts the legacy values ``"area"`` /
+        ``"semi_major_axis"``; ``None`` falls back to ``self.norm_method``.
+
         Applies the 4-step normalization algorithm:
-        1. Rescaling by a scale factor determined by ``self.norm_method``
+        1. Rescaling by a scale factor determined by ``scale_method``
            (``None`` resolves to ``"area"`` for 3D):
 
            - ``"area"``: ``scale = sqrt(pi * a1 * b1)``
@@ -642,7 +849,7 @@ class EllipticFourierAnalysis(
             )
 
         # 1. Rescaling
-        norm_method = self.norm_method
+        norm_method = scale_method if scale_method is not None else self.norm_method
         if norm_method is None:
             norm_method = "area"
 
@@ -743,14 +950,21 @@ class EllipticFourierAnalysis(
             Transformed feature names.
 
         """
-        include_orientation = self.return_orientation_scale and self.norm
+        method, _, _, return_extras, legacy_layout = self._resolve_registration()
+        include_orientation = (
+            return_extras
+            and legacy_layout
+            and method == "first_order"
+            and self.n_dim in (2, 3)
+        )
         return np.asarray(self._build_feature_names(include_orientation), dtype=str)
 
     @property
     def _n_features_out(self):
         """Number of transformed output features."""
+        method, _, _, return_extras, legacy_layout = self._resolve_registration()
         base = (self.n_harmonics + 1) * (2 * self.n_dim)
-        if self.return_orientation_scale and self.norm:
+        if return_extras and legacy_layout and method == "first_order":
             if self.n_dim == 3:
                 return base + 5
             if self.n_dim == 2:

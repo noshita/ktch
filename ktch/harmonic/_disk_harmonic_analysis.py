@@ -30,6 +30,12 @@ from sklearn.base import (
 )
 from sklearn.utils.parallel import Parallel, delayed
 
+from ._elliptic_fourier_analysis import rotation_matrix_2d
+from ._registration import moment_register, validate_registration
+
+# Tolerance for a degenerate first-order ellipse (near-zero semi-major axis).
+_FIRST_ORDER_TOL = 1e-12
+
 
 class DiskHarmonicAnalysis(
     ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator
@@ -46,6 +52,28 @@ class DiskHarmonicAnalysis(
         Any positive integer is supported; ``2``/``3`` are the common
         planar/surface mappings and ``1`` corresponds to a scalar field on
         the disk.
+    registration : {"auto", None, "first_order", "moment"}, default="auto"
+        Shape-registration method (2D/3D shape data only; requires ``n_dim``
+        in ``(2, 3)``). ``"auto"`` (default) registers 2D/3D shape data with
+        ``"first_order"`` and leaves other dimensions unregistered (``None``).
+        ``None`` returns raw coefficients. ``"first_order"`` uses the
+        first-order disk in-plane ellipse (the ``n=1, m=±1`` modes) to align
+        orientation, disk phase, and scale. ``"moment"`` aligns the codomain to
+        the inertia-tensor principal axes and scales by centroid size.
+    scale : bool, default=True
+        Whether registration removes size (shape space) or keeps it (form
+        space). Only used when ``registration != None``.
+    scale_method : {None, "centroid_size"}, default=None
+        Size measure when ``scale=True`` (``None`` -> ``"centroid_size"`` for
+        ``"moment"``).
+    align_parameter : bool, default=True
+        Parameter-domain (disk phase) alignment. ``"first_order"`` always
+        applies it; the toggle is not yet separately honored.
+    reflect : bool, default=False
+        Whether to also remove reflection (chirality). Not yet honored
+        (orientation is preserved).
+    return_transform : bool, default=False
+        Reserved; not yet implemented.
     n_jobs : int, default=None
         The number of jobs to run in parallel. None means 1 unless in a
         joblib.parallel_backend context. -1 means using all processors.
@@ -89,17 +117,137 @@ class DiskHarmonicAnalysis(
 
     """
 
+    # Size measures permitted per registration method (DHA = ellipse-based:
+    # the first-order disk patch is an in-plane ellipse, like EFA).
+    _SCALE_METHODS_BY_REGISTRATION = {
+        "first_order": {None, "semi_major_axis", "ellipse_area"},
+        "moment": {None, "centroid_size"},
+    }
+
     def __init__(
         self,
         n_harmonics=10,
         n_dim=3,
+        registration="auto",
+        scale=True,
+        scale_method=None,
+        align_parameter=True,
+        reflect=False,
+        return_transform=False,
         n_jobs=None,
         verbose=0,
     ):
         self.n_harmonics = n_harmonics
         self.n_dim = n_dim
+        self.registration = registration
+        self.scale = scale
+        self.scale_method = scale_method
+        self.align_parameter = align_parameter
+        self.reflect = reflect
+        self.return_transform = return_transform
         self.n_jobs = n_jobs
         self.verbose = verbose
+
+    def _resolve_method(self):
+        """Resolve ``"auto"`` to a concrete method: ``"first_order"`` for 2D/3D
+        shape data with at least the n=1 modes, ``None`` otherwise.
+        """
+        if self.registration == "auto":
+            if self.n_dim in (2, 3) and self.n_harmonics >= 1:
+                return "first_order"
+            return None
+        return self.registration
+
+    def _validate_registration(self):
+        """Validate registration settings (raises on invalid combinations)."""
+        validate_registration(
+            self._resolve_method(),
+            self.scale_method,
+            self._SCALE_METHODS_BY_REGISTRATION,
+            n_dim=self.n_dim,
+            return_transform=self.return_transform,
+            allow_first_order=True,
+        )
+
+    def _register(self, coef_flat):
+        """Apply the configured registration to one flat coefficient vector."""
+        method = self._resolve_method()
+        if method is None:
+            return coef_flat
+        if method == "moment":
+            return moment_register(
+                coef_flat, self.n_dim, scale=self.scale, reflect=self.reflect
+            )
+        if method == "first_order":
+            return self._first_order_register(coef_flat)
+        # reserved methods are rejected by _validate_registration.
+        raise NotImplementedError(f"registration='{method}' is not implemented yet.")
+
+    def _first_order_register(self, coef_flat):
+        """first_order registration of a flat DHA coefficient vector (2D/3D).
+
+        The first-order disk patch is an in-plane ellipse carried by the
+        ``(n=1, m=±1)`` angular modes (``m=+1`` cosine, ``m=-1`` sine), exactly
+        like EFA's first harmonic. Its ellipse geometry gives the codomain
+        rotation ``Omega`` (A) and disk phase ``phi`` (B); the same transform
+        is applied to every mode. Reuses EFA's validated 2D/3D ellipse math.
+        """
+        n_dim = self.n_dim
+        n_max = self.n_harmonics
+        if n_max < 1:
+            raise ValueError(
+                "registration='first_order' requires n_harmonics >= 1 "
+                "(needs the n=1 modes)."
+            )
+
+        n_coeffs = (n_max + 1) ** 2
+        mat = np.asarray(coef_flat, dtype=float).reshape(n_dim, n_coeffs)
+
+        def _idx(n, m):
+            return n * n + n + m
+
+        cos_col = mat[:, _idx(1, 1)]  # m=+1 -> cos(theta)
+        sin_col = mat[:, _idx(1, -1)]  # m=-1 -> sin(theta)
+
+        omega_inv, theta0, a, b = _first_order_frame(cos_col, sin_col)
+        if omega_inv is None:
+            raise ValueError(
+                "Degenerate first-order ellipse (near-zero semi-major axis); "
+                "cannot register. Use registration='moment' or None."
+            )
+
+        # Scale factor.
+        if self.scale:
+            scale_method = self.scale_method or "ellipse_area"
+            if scale_method == "semi_major_axis":
+                s = a
+            else:  # "ellipse_area"
+                s = np.sqrt(np.pi * a * b)
+        else:
+            s = 1.0
+
+        out = np.zeros_like(mat)
+        for n in range(n_max + 1):
+            out[:, _idx(n, 0)] = (omega_inv @ mat[:, _idx(n, 0)]) / s
+            for mm in range(1, n + 1):
+                c_nm = np.column_stack([mat[:, _idx(n, mm)], mat[:, _idx(n, -mm)]])
+                r_phase = rotation_matrix_2d(mm * theta0)
+                c_norm = (omega_inv @ c_nm @ r_phase) / s
+                out[:, _idx(n, mm)] = c_norm[:, 0]
+                out[:, _idx(n, -mm)] = c_norm[:, 1]
+
+        # Translation: drop the constant mode.
+        out[:, _idx(0, 0)] = 0.0
+
+        # Direction correction: canonicalize the disk traversal direction by
+        # the sign of the registered first-order sine (y-component), mirroring
+        # EFA's direction correction.
+        if out[1, _idx(1, -1)] < 0:
+            for n in range(1, n_max + 1):
+                for mm in range(1, n + 1):
+                    out[:, _idx(n, -mm)] *= -1
+
+        return out.ravel()
 
     def fit(self, X, y=None):
         """Fit the model (no-op for stateless transformer).
@@ -174,7 +322,7 @@ class DiskHarmonicAnalysis(
         B = _disk_harm_basis_matrix(n_max, r, theta)
         sol = sp.linalg.lstsq(B, X)
 
-        return sol[0].T.ravel()
+        return self._register(sol[0].T.ravel())
 
     def transform(self, X, r_theta=None):
         """Compute disk harmonic coefficients.
@@ -202,6 +350,8 @@ class DiskHarmonicAnalysis(
                 "r_theta is required for DiskHarmonicAnalysis.transform(). "
                 "Provide disk parameterization for each sample."
             )
+
+        self._validate_registration()
 
         n_dim = self.n_dim
         if isinstance(X, pd.DataFrame):
@@ -447,6 +597,73 @@ def _axis_prefixes(n_dim: int) -> list[str]:
     if n_dim <= len(base):
         return base[:n_dim]
     return [f"c{d}" for d in range(n_dim)]
+
+
+def _first_order_frame(cos_col, sin_col):
+    """Codomain rotation, raw phase, and semi-axes of the first-order ellipse.
+
+    The first-order ellipse is ``C [cos θ; sin θ]`` with ``C = [cos_col |
+    sin_col]`` (``cos_col`` = ``m=+1`` cosine mode, ``sin_col`` = ``m=-1`` sine
+    mode; ``n_dim`` = 2 or 3). The raw phase ``theta0`` (un-wrapped, so that
+    ``m·theta0`` is correct for every order) orthogonalizes the columns; the
+    major/minor axis vectors then give the codomain frame.
+
+    Returns
+    -------
+    omega_inv : ndarray of shape (n_dim, n_dim) or None
+        Inverse codomain rotation (proper, ``det=+1``), left-applied to each
+        coefficient vector. ``None`` if the ellipse is degenerate.
+    theta0 : float
+        Raw first-order phase. The per-order phase matrix is
+        ``rotation_matrix_2d(m * theta0)``.
+    a, b : float
+        Semi-major and semi-minor axis lengths.
+    """
+    cos_col = np.asarray(cos_col, dtype=float)
+    sin_col = np.asarray(sin_col, dtype=float)
+    n_dim = cos_col.shape[0]
+
+    num = 2.0 * cos_col.dot(sin_col)
+    den = cos_col.dot(cos_col) - sin_col.dot(sin_col)
+    theta0 = 0.5 * np.arctan2(num, den)
+
+    def _axes(theta):
+        ct, st = np.cos(theta), np.sin(theta)
+        m1 = cos_col * ct + sin_col * st  # major-axis vector
+        m2 = -cos_col * st + sin_col * ct  # minor-axis vector
+        return m1, m2
+
+    m1, m2 = _axes(theta0)
+    if np.dot(m1, m1) < np.dot(m2, m2):  # ensure a >= b
+        theta0 += np.pi / 2
+        m1, m2 = _axes(theta0)
+
+    a = float(np.linalg.norm(m1))
+    b = float(np.linalg.norm(m2))
+    if a < _FIRST_ORDER_TOL:
+        return None, theta0, a, b
+
+    e0 = m1 / a
+    if n_dim == 2:
+        e1 = np.array([-e0[1], e0[0]])  # proper-rotation perpendicular
+        omega = np.column_stack([e0, e1])
+    elif n_dim == 3:
+        if b > _FIRST_ORDER_TOL:
+            e1 = m2 / b
+        else:
+            ref = (
+                np.array([1.0, 0.0, 0.0])
+                if abs(e0[0]) < 0.9
+                else np.array([0.0, 1.0, 0.0])
+            )
+            e1 = ref - ref.dot(e0) * e0
+            e1 /= np.linalg.norm(e1)
+        e2 = np.cross(e0, e1)
+        omega = np.column_stack([e0, e1, e2])
+    else:
+        raise ValueError(f"first_order applies to n_dim in (2, 3); got {n_dim}.")
+
+    return omega.T, theta0, a, b
 
 
 def _calc_eigenvalues(n_max: int) -> np.ndarray:
