@@ -24,6 +24,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from ._encoding import detect_text_encoding
 from ._protocols import MorphoDataMixin
 
 ####################################
@@ -59,6 +60,13 @@ class TPSData(MorphoDataMixin):
     comments: str = None
 
     def __post_init__(self):
+        if self.specimen_name is not None and (
+            "\n" in str(self.specimen_name) or "\r" in str(self.specimen_name)
+        ):
+            raise ValueError(
+                "specimen_name must not contain newline characters. "
+                "The TPS format writes it as a single ID= line."
+            )
         if self.image_path is not None and (
             "\n" in self.image_path or "\r" in self.image_path
         ):
@@ -177,7 +185,7 @@ class TPSData(MorphoDataMixin):
 ####################################
 
 
-def read_tps(file_path, as_frame=False):
+def read_tps(file_path, as_frame=False, strict=True):
     """Read landmark data from a TPS file.
 
     Parameters
@@ -186,6 +194,14 @@ def read_tps(file_path, as_frame=False):
         Path to the TPS file.
     as_frame : bool, default=False
         If True, return a :class:`~pandas.DataFrame`.
+    strict : bool, default=True
+        If True, raise :class:`ValueError` on recoverable format
+        inconsistencies (a landmark/point count that disagrees with the
+        declared ``LM=``/``POINTS=`` value, or a non-numeric ``SCALE``).
+        If False, emit a warning and read as much as possible: the actual
+        coordinate rows are used and an unparsable ``SCALE`` becomes ``None``.
+        Non-recoverable problems (a missing ``ID`` or a malformed coordinate
+        row) always raise.
 
     Returns
     -------
@@ -207,7 +223,7 @@ def read_tps(file_path, as_frame=False):
     if path.suffix.lower() != ".tps":
         raise ValueError(f"{path} is not a TPS file.")
 
-    tps_data = _read_tps(path)
+    tps_data = _read_tps(path, strict=strict)
 
     if not as_frame:
         # Return TPSData or list[TPSData] directly
@@ -465,24 +481,24 @@ PTN_COORD = re.compile(
 ######################################
 
 
-def _read_tps(file_path):
-    with open(file_path, "r") as f:
+def _read_tps(file_path, strict=True):
+    with open(file_path, "r", encoding=detect_text_encoding(file_path)) as f:
         read_data = f.read()
         specimens = PTN_HEAD.split(read_data)
         specimens = ["LM=" + specimen for specimen in specimens if len(specimen) > 0]
 
-    tps_data = [_read_tps_single(specimen) for specimen in specimens]
+    tps_data = [_read_tps_single(specimen, strict=strict) for specimen in specimens]
     if len(tps_data) == 1:
         return tps_data[0]
 
     return tps_data
 
 
-def _read_tps_single(specimen_str: str) -> TPSData:
+def _read_tps_single(specimen_str: str, strict=True) -> TPSData:
     m = PTN_LM.search(specimen_str)
     if m is not None:
         key, landmarks = _read_coordinate_values(
-            [row for row in m["LM"].splitlines() if len(row) > 0]
+            [row for row in m["LM"].splitlines() if len(row) > 0], strict=strict
         )
     else:
         raise ValueError("Failed to parse landmark (LM) section in TPS specimen")
@@ -503,6 +519,17 @@ def _read_tps_single(specimen_str: str) -> TPSData:
 
     image_path = meta_dict.get("IMAGE")
     scale = meta_dict.get("SCALE")
+    if scale is not None:
+        try:
+            scale = float(scale)
+        except ValueError:
+            if strict:
+                raise ValueError(f"Invalid SCALE value in TPS specimen: {scale!r}")
+            warnings.warn(
+                f"Invalid SCALE value in TPS specimen: {scale!r}; setting scale=None.",
+                stacklevel=2,
+            )
+            scale = None
     comments = meta_dict.get("COMMENTS")
 
     m = PTN_CURVES.search(specimen_str)
@@ -510,7 +537,8 @@ def _read_tps_single(specimen_str: str) -> TPSData:
         curves = []
         for points in PTN_POINTS.finditer(m["CURVES"]):
             key, val = _read_coordinate_values(
-                [row for row in points["POINTS"].splitlines() if len(row) > 0]
+                [row for row in points["POINTS"].splitlines() if len(row) > 0],
+                strict=strict,
             )
             curves.append(val)
     else:
@@ -528,7 +556,7 @@ def _read_tps_single(specimen_str: str) -> TPSData:
     return tps_data
 
 
-def _read_coordinate_values(coordinate_list):
+def _read_coordinate_values(coordinate_list, strict=True):
     header = coordinate_list[0]
     body = coordinate_list[1:]
 
@@ -537,6 +565,20 @@ def _read_coordinate_values(coordinate_list):
         raise ValueError(f"Invalid coordinate header in TPS: {header!r}")
 
     key = m["key"]
+    # The header value declares the number of coordinate rows that follow
+    # (e.g. "LM=12", "POINTS=5"); validate it against the rows actually read.
+    try:
+        n_declared = int(m["value"].split()[0])
+    except (ValueError, IndexError):
+        if strict:
+            raise ValueError(f"Invalid coordinate count in TPS header: {header!r}")
+        warnings.warn(
+            f"Invalid coordinate count in TPS header: {header!r}; "
+            "using the rows found.",
+            stacklevel=2,
+        )
+        n_declared = None
+
     value_rows = []
     for row in body:
         m_coord = PTN_COORD.match(row)
@@ -545,13 +587,22 @@ def _read_coordinate_values(coordinate_list):
         value_rows.append(
             [float(x) for x in m_coord.groups() if x is not None and len(x) > 0]
         )
+
+    if n_declared is not None and len(value_rows) != n_declared:
+        msg = (
+            f"TPS coordinate count mismatch in {key!r} section: header declares "
+            f"{n_declared}, found {len(value_rows)} rows"
+        )
+        if strict:
+            raise ValueError(msg)
+        warnings.warn(f"{msg}; using the {len(value_rows)} rows found.", stacklevel=2)
     value = np.array(value_rows)
 
     return key, value
 
 
 def _write_tps_single(file_path, tps_data, write_mode="w"):
-    with open(file_path, write_mode) as f:
+    with open(file_path, write_mode, encoding="utf-8") as f:
         f.write("LM=" + str(len(tps_data.landmarks)) + "\n")
         f.write(
             "\n".join([" ".join(map(str, row)) for row in tps_data.landmarks.tolist()])

@@ -129,3 +129,87 @@ def test_read_tps_invalid_metadata_line_raises_value_error(tmp_path):
 
     with pytest.raises(ValueError, match="Invalid metadata line"):
         read_tps(path)
+
+
+def test_specimen_name_newline_raises():
+    with pytest.raises(ValueError, match="specimen_name must not contain newline"):
+        TPSData(specimen_name="bad\nname", landmarks=np.zeros((3, 2)))
+
+
+def test_read_tps_scale_parsed_as_float(tmp_path):
+    path = tmp_path / "scaled.tps"
+    path.write_text("LM=1\n0.0 0.0\nID=sample_1\nSCALE=0.0123\n", encoding="utf-8")
+
+    result = read_tps(path)
+    assert result.scale == pytest.approx(0.0123)
+    assert isinstance(result.scale, float)
+
+
+def test_read_tps_invalid_scale_raises(tmp_path):
+    path = tmp_path / "bad_scale.tps"
+    path.write_text(
+        "LM=1\n0.0 0.0\nID=sample_1\nSCALE=not_a_number\n", encoding="utf-8"
+    )
+
+    with pytest.raises(ValueError, match="Invalid SCALE value"):
+        read_tps(path)
+
+
+def test_read_tps_landmark_count_mismatch_raises(tmp_path):
+    # LM declares 3 landmarks but only 2 coordinate rows follow.
+    path = tmp_path / "count_mismatch.tps"
+    path.write_text("LM=3\n0.0 0.0\n1.0 1.0\nID=sample_1\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="coordinate count mismatch"):
+        read_tps(path)
+
+
+def test_read_tps_latin1_specimen_name(tmp_path):
+    # Files saved by Windows tools may be Latin-1; reading must not depend on
+    # the platform locale and must recover non-ASCII names.
+    path = tmp_path / "latin1.tps"
+    path.write_bytes("LM=1\n0.0 0.0\nID=sp\xe9cimen\n".encode("latin-1"))
+
+    result = read_tps(path)
+    assert result.specimen_name == "sp\xe9cimen"
+
+
+def test_read_tps_lenient_count_mismatch_warns(tmp_path):
+    # strict=False: warn and read the rows actually present.
+    path = tmp_path / "count_mismatch_lenient.tps"
+    path.write_text("LM=3\n0.0 0.0\n1.0 1.0\nID=sample_1\n", encoding="utf-8")
+
+    with pytest.warns(UserWarning, match="coordinate count mismatch"):
+        result = read_tps(path, strict=False)
+    assert result.to_numpy().shape == (2, 2)
+
+
+def test_read_tps_lenient_invalid_scale_warns(tmp_path):
+    # strict=False: warn and fall back to scale=None.
+    path = tmp_path / "bad_scale_lenient.tps"
+    path.write_text(
+        "LM=1\n0.0 0.0\nID=sample_1\nSCALE=not_a_number\n", encoding="utf-8"
+    )
+
+    with pytest.warns(UserWarning, match="Invalid SCALE"):
+        result = read_tps(path, strict=False)
+    assert result.scale is None
+
+
+def test_read_tps_lenient_still_raises_on_missing_id(tmp_path):
+    # A missing ID is not recoverable and must raise even when strict=False.
+    path = tmp_path / "no_id_lenient.tps"
+    path.write_text("LM=1\n0.0 0.0\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="ID"):
+        read_tps(path, strict=False)
+
+
+def test_read_tps_lenient_still_raises_on_bad_row(tmp_path):
+    # A malformed coordinate row cannot be recovered and must raise even
+    # when strict=False.
+    path = tmp_path / "bad_row_lenient.tps"
+    path.write_text("LM=1\nabc def\nID=sample_1\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Invalid coordinate row"):
+        read_tps(path, strict=False)
