@@ -150,7 +150,8 @@ fig.show()
 ## SPHARM Analysis
 
 ```{code-cell} ipython3
-spharm_analysis = SphericalHarmonicAnalysis(n_harmonics=10)
+# registration=None keeps raw coefficients for overlaying the original
+spharm_analysis = SphericalHarmonicAnalysis(n_harmonics=10, registration=None)
 X_transform = spharm_analysis.fit_transform([arr_surf], theta_phi=[xyz2spherical(arr_para)])
 ```
 

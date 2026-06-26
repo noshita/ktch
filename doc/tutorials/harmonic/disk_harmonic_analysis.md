@@ -142,7 +142,8 @@ X = data.vertices
 ## Disk Harmonic Analysis
 
 ```{code-cell} ipython3
-dha = DiskHarmonicAnalysis(n_harmonics=15, n_dim=3)
+# registration=None keeps raw coefficients for overlaying the original
+dha = DiskHarmonicAnalysis(n_harmonics=15, n_dim=3, registration=None)
 ```
 
 ```{code-cell} ipython3
