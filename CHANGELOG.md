@@ -1,5 +1,51 @@
 # Changelog
 
+## [0.10.0](https://github.com/noshita/ktch/compare/v0.9.1...v0.10.0) (2026-06-26)
+
+
+### Features
+
+* **coiling:** ✨ add parameter–arc-length conversions ([22fec14](https://github.com/noshita/ktch/commit/22fec148d51c229e2048a3b1099cb54241c1ebd3))
+* **coiling:** ✨ add Raup's model and growing tube model ([c36f43a](https://github.com/noshita/ktch/commit/c36f43ac4f20cc1296c507487875fb0f2b556b18))
+* **harmonic:** ✨ add shared registration core for moment alignment ([43858d0](https://github.com/noshita/ktch/commit/43858d05a8294d6941d5c3a1f9c4fb82fd0bc6d7))
+* **harmonic:** ✨ add shared registration core for moment alignment ([0445542](https://github.com/noshita/ktch/commit/04455422605b081cf35a45a06778b43a932eff11))
+* **harmonic:** ✨ add similarity registration to DHA ([36888ec](https://github.com/noshita/ktch/commit/36888ec431c74f30144c2af6d47922074878afb4))
+* **harmonic:** ✨ add similarity registration to EFA ([758aa73](https://github.com/noshita/ktch/commit/758aa738e3b86ad27165a04f6cdaa18dbb342fe6))
+* **harmonic:** ✨ add similarity registration to SPHARM ([bad7cb4](https://github.com/noshita/ktch/commit/bad7cb46d95ebabf831568d78c4811ac6bf656e4))
+* **harmonic:** ✨ generalize EFA/SPHARM/DHA to n-D codomain ([78054b2](https://github.com/noshita/ktch/commit/78054b2353b949d9af385802d9b3a4da32612a71))
+* **io:** ✨ validate TPS structure with an opt-out strict mode ([0120a67](https://github.com/noshita/ktch/commit/0120a6755f502762aadcb7e91ffe5684e64eae7f))
+
+
+### Bug Fixes
+
+* **coiling:** 🐛 warn when a model conversion does not converge ([84307d4](https://github.com/noshita/ktch/commit/84307d4ed0b1994471109b4d5e4595e919cf19a5))
+* **io:** 🐛 harden file parsers and validate inputs ([0c0a44d](https://github.com/noshita/ktch/commit/0c0a44d2dc2a73cae4d74ad1ada49a1395f52f4e))
+
+
+### Documentation
+
+* **coiling:** 📚 add API reference and README entry ([9498f06](https://github.com/noshita/ktch/commit/9498f0687c4e4a4d42b2248e28bead4a0e0fa581))
+* **coiling:** 📚 add explanation and tutorials for coiling module ([23b1cf2](https://github.com/noshita/ktch/commit/23b1cf2e21302232684e0ba6f62e2f0403f5b351))
+* **harmonic:** 📚 document n-D codomain support ([3006449](https://github.com/noshita/ktch/commit/30064492b0df9da2cf305e3b40caedd9063577c6))
+* **harmonic:** 📚 set registration=None in DHA/SPHARM tutorials ([7b9f316](https://github.com/noshita/ktch/commit/7b9f316f88d73d9a85e36022b328f9243122ecc5))
+
+
+### Miscellaneous Chores
+
+* 🔧 ignore E402 in plot tests ([d4fc786](https://github.com/noshita/ktch/commit/d4fc78674c02a6ae944929e8659481900d5af9d1))
+* 🔧 update locked dependencies ([6fd5f2b](https://github.com/noshita/ktch/commit/6fd5f2b8177026a8a6101696a1369eae36a56528))
+* release 0.10.0 ([824097e](https://github.com/noshita/ktch/commit/824097e27b900f8ce177ba18c1b0bf489bb2ec49))
+
+
+### Code Refactoring
+
+* **landmark:** ♻️ make unfinished transformers explicit placeholders ([b71d86c](https://github.com/noshita/ktch/commit/b71d86cec2c5452bbafa18c6f43084c0dd9855b8))
+
+
+### Continuous Integration
+
+* 🔧 limit Dependabot uv updates to security only ([fcd6bb2](https://github.com/noshita/ktch/commit/fcd6bb2c724d753f201144e6d10c7e916ec86c74))
+
 ## [0.9.1](https://github.com/noshita/ktch/compare/v0.9.0...v0.9.1) (2026-06-23)
 
 
