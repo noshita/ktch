@@ -929,7 +929,6 @@ class TestNormMethodParameter:
         normalization produces the expected result.
         """
         n_harmonics = 6
-        t_num = 360
 
         # Known 1st harmonic geometry
         a1, b1 = 5.0, 2.0
@@ -1164,12 +1163,9 @@ class TestNormalize3dInvariance:
     def test_startpoint_shift_invariance(self, norm_method):
         """Normalized shapes are approximately invariant under cyclic permutation.
 
-        Starting-point shift changes arc-length parameterization, which can cause
-        the phase normalization to select a different canonical branch (phi jumping
-        by pi/2). This is an inherent limitation shared by 2D and 3D EFA
-        normalization. We verify that the normalized shapes remain geometrically
-        close using Wasserstein distance with a tolerance that accounts for this
-        discrete ambiguity.
+        The loose Wasserstein tolerance bounds two residuals: arc-length
+        reparameterization of a complex curve, and the inherent major-axis
+        direction ambiguity (degree 1 fixes the axis only as a line).
         """
         n_harmonics = 20
         t_num = 360
@@ -1190,6 +1186,58 @@ class TestNormalize3dInvariance:
 
         tol = 0.5 if norm_method is None else 1.0
         assert wasserstein_distance_nd(X_recon_orig, X_recon_shifted) < tol
+
+    @pytest.mark.parametrize("norm_method", [None, "semi_major_axis"])
+    def test_startpoint_invariance_pure_ellipse_3d(self, norm_method):
+        """Pure 3D ellipse: registered coefficients are exactly start-point invariant.
+
+        A pure ellipse is captured by the first harmonic, so arc-length
+        reparameterization cancels.
+        """
+
+        def ellipse(t):
+            return np.c_[
+                5 * np.cos(t) + 0.3, 2 * np.sin(t) - 0.2, 1.3 * np.sin(t) + 0.1
+            ]
+
+        base_t = np.linspace(0, 2 * np.pi, 400, endpoint=False)
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=4, norm=True, norm_method=norm_method
+        )
+        base = efa.fit_transform([ellipse(base_t)])[0].reshape(6, 5)[:, 1:]
+        for phase in [0.5, 1.0, 1.5, 2.5, 3.0]:
+            shifted = efa.fit_transform([ellipse(base_t + phase)])[0].reshape(6, 5)[
+                :, 1:
+            ]
+            assert_array_almost_equal(shifted, base, decimal=9)
+
+    def test_geometry_returns_semi_major_axis(self):
+        """_compute_ellipse_geometry_3d returns a >= b, with a the true major axis."""
+        rng = np.random.default_rng(0)
+        for _ in range(2000):
+            v = rng.standard_normal(6)
+            a, b = _compute_ellipse_geometry_3d(*v)[1:3]
+            assert a >= b - 1e-12
+            C1 = np.array([[v[0], v[1]], [v[2], v[3]], [v[4], v[5]]])
+            major = np.linalg.svd(C1, compute_uv=False)[0]
+            assert a == pytest.approx(major, rel=1e-9, abs=1e-12)
+
+    def test_thin_ellipse_3d_not_degenerate(self):
+        """A thin (high-aspect) 3D ellipse is not rejected as degenerate."""
+
+        def thin(t):
+            return np.c_[5 * np.cos(t), 0.02 * np.sin(t), np.zeros_like(t)]
+
+        base_t = np.linspace(0, 2 * np.pi, 400, endpoint=False)
+        efa = EllipticFourierAnalysis(
+            n_dim=3,
+            n_harmonics=3,
+            norm=True,
+            norm_method="semi_major_axis",
+            return_orientation_scale=True,
+        )
+        out = efa.fit_transform([thin(base_t)])[0]
+        assert out[-1] > 1.0  # major-axis scale, not the ~0.02 minor
 
     def test_round_trip_reconstruction(self):
         """Forward (norm=True) then inverse (norm=True) produces consistent shape.
@@ -1448,7 +1496,6 @@ class TestSemiMajorAxisCanonical:
         that the semi-major axis length equals 1.0, not just An[1].
         """
         n_harmonics = 6
-        rng = np.random.default_rng(42)
 
         for seed in range(10):
             X_coords, _ = _make_3d_outline(
@@ -1497,68 +1544,67 @@ class TestSemiMajorAxisCanonical:
 
 
 class TestAreaNormalizationRegression:
-    """Regression test for area-based normalization.
+    """Regression test for area-based normalization (major-axis canonical form).
 
-    Snapshot captured from the implementation at commit 59ada8f (before
-    norm_method was added). Verifies that the default area-based normalization
-    continues to produce bit-identical results.
+    Snapshot for the first-harmonic canonicalization by the geometric major
+    axis (a >= b). The area scale is unchanged.
     """
 
     # Snapshot: _make_3d_outline(n_harmonics=6, rng=default_rng(42)), norm=True
     _EXPECTED_COEF = np.array(
         [
-            1.8786552291066900e00,
-            4.4749144074020974e-01,
-            -1.6544642156530842e-01,
-            -5.7844176084800636e-02,
-            1.2527281927360465e-01,
-            -8.1717978045931713e-03,
-            2.1879616966356572e-02,
-            0.0000000000000000e00,
-            1.4945917697214952e-16,
-            4.0755449959920205e-02,
-            -5.4420755687897303e-02,
-            1.0763893995449975e-01,
-            -2.0239890553899149e-02,
-            6.8784209336682653e-02,
-            -2.8999777542514682e-01,
-            -1.0218868790537593e-16,
-            -4.5121831200360264e-02,
-            -1.0368945003274743e-01,
-            1.0579117224724620e-01,
-            -8.2438007461943325e-02,
-            -2.2932069186149713e-02,
-            0.0000000000000000e00,
-            7.1132061354573450e-01,
+            1.8786552291066896e+00,
+            7.1132061354573461e-01,
+            -4.5121831200360389e-02,
+            1.4001074457204735e-01,
+            -1.0579117224724624e-01,
+            2.3067476541179792e-02,
+            -2.2932069186149682e-02,
+            0.0000000000000000e+00,
+            3.4969314951698445e-17,
             -2.7804961282323992e-01,
-            -1.4001074457204732e-01,
-            1.9123669095413721e-02,
-            2.3067476541179729e-02,
-            -4.6306646983379073e-02,
-            1.7974788536400992e00,
-            1.5565028611862309e-17,
-            -1.1242898267920341e-01,
-            -2.6487018151342823e-01,
-            -1.2318189318609840e-02,
-            -2.7094528317080840e-02,
-            3.7372943138999221e-03,
-            0.0000000000000000e00,
-            -9.6452683587244712e-17,
-            1.2092677988559994e-02,
-            1.0426053481719223e-01,
+            -1.0368945003274753e-01,
+            -1.9123669095413815e-02,
+            8.2438007461943338e-02,
+            -4.6306646983379114e-02,
+            -2.8999777542514638e-01,
+            -5.9708108496739358e-17,
+            1.6544642156530845e-01,
+            -5.4420755687897289e-02,
+            1.2527281927360465e-01,
+            2.0239890553899145e-02,
+            -2.1879616966356548e-02,
+            0.0000000000000000e+00,
+            4.4749144074020980e-01,
+            -4.0755449959920281e-02,
+            5.7844176084800622e-02,
+            1.0763893995449973e-01,
+            -8.1717978045931818e-03,
+            -6.8784209336682695e-02,
+            1.7974788536400992e+00,
+            4.7567192765557821e-16,
+            1.1242898267920340e-01,
+            1.0426053481719225e-01,
+            -1.2318189318609844e-02,
+            2.7410312241343965e-03,
+            -3.7372943138999542e-03,
+            0.0000000000000000e+00,
+            -4.7634993256085131e-17,
+            -1.2092677988560166e-02,
+            2.6487018151342823e-01,
             2.3579030949027047e-01,
-            -2.7410312241344138e-03,
-            -3.6188679879065648e-02,
+            -2.7094528317080799e-02,
+            3.6188679879065627e-02,
         ]
     )
 
     _EXPECTED_ORIENT_SCALE = np.array(
         [
             1.9860846551534193,
-            2.609286874902539,
-            -2.9186339492344304,
-            -0.1280600290132337,
-            6.939087475110936,
+            2.6092868749025384,
+            1.7937550311502592,
+            1.4427362977816629,
+            6.9390874751109362,
         ]
     )
 
@@ -1835,10 +1881,11 @@ class TestNHarmonicsOne:
         assert coef.shape == (1, 6 * 2 + 5)
 
         alpha, beta, gamma, phi, scale = coef[0, -5:]
-        # beta in [0, pi], scale > 0, phi in ]-pi/4, pi/4[
+        # beta in [0, pi], scale > 0. phi is the major-axis phase, not
+        # constrained to ]-pi/4, pi/4[; it lies in [-pi/2, pi/2).
         assert 0 <= beta <= np.pi
         assert scale > 0
-        assert -np.pi / 4 < phi < np.pi / 4
+        assert -np.pi / 2 - 1e-9 <= phi < np.pi / 2 + 1e-9
 
     def test_invariance_3d_translation(self):
         """3D n_harmonics=1 normalized coefficients are invariant under translation."""
@@ -2184,7 +2231,6 @@ class TestCircleNormalization2d:
         coef = efa.fit_transform([coords])
         assert np.all(np.isfinite(coef))
 
-        n = efa.n_harmonics + 1
         A1 = coef[0, 1]
         assert_array_almost_equal(A1, 1.0, decimal=2)
 
@@ -2889,6 +2935,48 @@ class TestEllipticFourierRegistration:
         ):
             efa.fit_transform([_make_ellipse(t_num=80)])
 
+    def test_return_transform_equals_return_orientation_scale_2d(self):
+        """return_transform aliases return_orientation_scale (identical output)."""
+        X = [_make_ellipse(t_num=120)]
+        rt = EllipticFourierAnalysis(
+            n_harmonics=5, n_dim=2, return_transform=True
+        ).fit_transform(X)
+        ros = EllipticFourierAnalysis(
+            n_harmonics=5, n_dim=2, return_orientation_scale=True
+        ).fit_transform(X)
+        assert_array_almost_equal(rt, ros)
+
+    def test_return_transform_metadata_consistent_2d(self):
+        """return_transform width matches _n_features_out and feature names (2D)."""
+        efa = EllipticFourierAnalysis(n_harmonics=5, n_dim=2, return_transform=True)
+        out = efa.fit_transform([_make_ellipse(t_num=120)])
+        assert out.shape[1] == efa._n_features_out
+        assert out.shape[1] == len(efa.get_feature_names_out())
+        assert out.shape[1] == 4 * (5 + 1) + 2  # base + [psi, scale]
+
+    def test_return_transform_metadata_consistent_3d(self):
+        """return_transform width matches _n_features_out and feature names (3D)."""
+        n_harmonics = 5
+        X_coords, _ = _make_3d_outline(
+            n_harmonics=n_harmonics, rng=np.random.default_rng(3)
+        )
+        efa = EllipticFourierAnalysis(
+            n_dim=3, n_harmonics=n_harmonics, return_transform=True
+        )
+        out = efa.fit_transform([X_coords])
+        assert out.shape[1] == efa._n_features_out
+        assert out.shape[1] == len(efa.get_feature_names_out())
+        assert out.shape[1] == 6 * (n_harmonics + 1) + 5
+
+    def test_return_transform_set_output_pandas(self):
+        """return_transform is consistent under set_output(transform='pandas')."""
+        efa = EllipticFourierAnalysis(
+            n_harmonics=5, n_dim=2, return_transform=True
+        ).set_output(transform="pandas")
+        df = efa.fit_transform([_make_ellipse(t_num=120), _make_ellipse(t_num=120)])
+        assert df.shape == (2, 4 * (5 + 1) + 2)
+        assert list(df.columns) == list(efa.get_feature_names_out())
+
     def test_invalid_scale_method_for_moment(self):
         efa = EllipticFourierAnalysis(
             n_harmonics=4,
@@ -2903,3 +2991,25 @@ class TestEllipticFourierRegistration:
         efa = EllipticFourierAnalysis(n_harmonics=4, n_dim=2, registration="landmark")
         with pytest.raises(NotImplementedError, match="reserved"):
             efa.fit_transform([_make_ellipse(t_num=80)])
+
+    def test_align_parameter_false_not_implemented(self):
+        efa = EllipticFourierAnalysis(
+            n_harmonics=4, n_dim=2, registration="first_order", align_parameter=False
+        )
+        with pytest.raises(NotImplementedError, match="align_parameter"):
+            efa.fit_transform([_make_ellipse(t_num=80)])
+
+    def test_reflect_first_order_not_implemented(self):
+        efa = EllipticFourierAnalysis(
+            n_harmonics=4, n_dim=2, registration="first_order", reflect=True
+        )
+        with pytest.raises(NotImplementedError, match="reflect"):
+            efa.fit_transform([_make_ellipse(t_num=80)])
+
+    def test_reflect_with_moment_is_allowed(self):
+        # reflect=True is honored by moment registration (not gated).
+        efa = EllipticFourierAnalysis(
+            n_harmonics=4, n_dim=2, registration="moment", reflect=True
+        )
+        out = efa.fit_transform([_make_ellipse(t_num=80)])
+        assert out.shape[1] == 4 * (4 + 1)

@@ -53,9 +53,7 @@ class EllipticFourierAnalysis(
     n_dim: int, default=2
         Dimension of the codomain (number of components on the
         curve). Any positive integer is supported for the raw expansion
-        (``norm=False``). ``norm=True`` normalization is implemented only
-        for ``2`` (planar curves) and ``3`` (space curves);
-        for other dimensions use ``norm=False``.
+        (``registration=None``).
         Arc-length parameterization is computed automatically only for
         ``n_dim`` in ``(2, 3)`` (spatial shape coordinates). For ``n_dim=1``
         or ``n_dim>3`` the codomain is treated as non-shape data, so the
@@ -67,12 +65,11 @@ class EllipticFourierAnalysis(
         data with ``"first_order"`` and leaves other dimensions unregistered
         (``None``). ``None`` returns raw coefficients. ``"first_order"`` uses
         the 1st-harmonic ellipse; ``"moment"`` uses the inertia tensor of all
-        coefficients. Registration applies to 2D/3D shape data only — for
-        ``n_dim`` not in ``(2, 3)`` it must be ``None`` (normalization of
-        non-shape n-D fields belongs to a separate interface).
+        coefficients. Registration applies to 2D/3D shape data only.
+        `registration` must be ``None`` for``n_dim`` not in ``(2, 3)``.
     scale : bool, default=True
-        Whether registration removes size (shape space). ``False`` keeps size
-        (form space). Only used when ``registration != None``. (``scale=False``
+        Whether registration removes size. ``False`` keeps size.
+        Only used when ``registration != None``. (``scale=False``
         is currently implemented for ``"moment"`` only.)
     scale_method : str or None, default=None
         Size measure when ``scale=True``; one of ``"semi_major_axis"``,
@@ -84,15 +81,21 @@ class EllipticFourierAnalysis(
         ``registration="first_order"``; ``"centroid_size"`` requires
         ``registration="moment"``.
     align_parameter : bool, default=True
-        Whether to remove the parameter-domain symmetry (phase/direction) in
-        ``"first_order"``. (Currently always applied for 2D/3D.)
+        Whether to align the parameter domain (phase) in ``"first_order"``.
+        Only ``True`` is implemented (it is always applied); ``False`` raises
+        ``NotImplementedError``.
     reflect : bool, default=False
-        Whether to also remove reflection (chirality). ``False`` preserves
-        orientation.
+        Whether to also remove reflection (chirality). Honored by
+        ``"moment"``. For ``"first_order"`` only ``reflect=False`` (orientation
+        preserved) is implemented; ``reflect=True`` raises
+        ``NotImplementedError``.
     return_transform : bool, default=False
-        Append the estimated similarity transform to the output. (The general
-        n-D layout is not yet implemented; use ``return_orientation_scale``
-        for the 2D/3D first-order layout.)
+        Append the registration parameters as extra output columns.
+        Currently only for ``"first_order"`` with ``n_dim`` in ``(2, 3)``;
+        other methods raise ``NotImplementedError``.
+
+        - 2D: Appends ``[psi, scale]`` to the end of the coefficient vector.
+        - 3D: Appends ``[alpha, beta, gamma, phi, scale]`` to the end.
     n_jobs: int, default=None
         The number of jobs to run in parallel. None means 1 unless in a
         joblib.parallel_backend context. -1 means using all processors.
@@ -112,11 +115,8 @@ class EllipticFourierAnalysis(
         - ``"semi_major_axis"``: Scale by the semi-major axis length ``a1``
           of the 1st harmonic ellipse (Kuhl & Giardina 1982).
     return_orientation_scale : bool, default=False
-        Deprecated alias for ``return_transform`` using the legacy layout
+        Deprecated alias for ``return_transform`` producing identical output
         (requires ``registration != None``).
-
-        - 2D: Appends ``[psi, scale]`` to the end of the coefficient vector.
-        - 3D: Appends ``[alpha, beta, gamma, phi, scale]`` to the end.
 
     Notes
     -----
@@ -139,11 +139,11 @@ class EllipticFourierAnalysis(
     EFA is also applied for a closed curve in the three-dimensional space
     (e.g., [Lestrel_1997]_, [Lestrel_et_al_1997]_, and [Godefroy_et_al_2012]_).
 
-    For 3D data (``n_dim=3``), normalization (``norm=True``) follows
+    For 3D data (``n_dim=3``), ``"first_order"`` registration follows
     Godefroy et al. (2012) §3.1: rescaling by the 1st harmonic ellipse area,
     reorientation using ZXZ Euler angles, phase shift, and direction correction.
 
-    When ``return_orientation_scale=True`` with normalized data, extra values
+    When ``return_transform=True`` with registered data, extra values
     are appended to the output:
 
     - 2D: ``[psi, scale]`` where ``psi`` is the orientation angle and
@@ -153,8 +153,12 @@ class EllipticFourierAnalysis(
       orientation, ``phi`` is the phase angle, and ``scale`` is the
       normalization factor.
 
-    The ``scale`` value depends on ``norm_method``: ``sqrt(pi * a1 * b1)``
-    for ``"area"``, or ``a1`` for ``"semi_major_axis"``.
+    The ``scale`` value depends on ``scale_method``: ``sqrt(pi * a1 * b1)``
+    for ``"ellipse_area"``, or ``a1`` for ``"semi_major_axis"``.
+
+    The legacy parameters ``norm`` / ``norm_method`` /
+    ``return_orientation_scale`` remain as deprecated aliases of
+    ``registration`` / ``scale_method`` / ``return_transform``.
 
     References
     ----------
@@ -248,7 +252,7 @@ class EllipticFourierAnalysis(
         Returns
         -------
         tuple
-            ``(method, scale, scale_method, return_extras, legacy_layout)``.
+            ``(method, scale, scale_method, return_extras)``.
         """
         # registration <- norm (norm=False is the only active legacy signal;
         # norm=True equals the default and does not override).
@@ -284,20 +288,20 @@ class EllipticFourierAnalysis(
         else:
             scale_method = self.scale_method
 
-        # return columns <- return_orientation_scale
-        if self.return_orientation_scale:
-            if self.return_transform:
-                raise ValueError(
-                    "Cannot set both `return_orientation_scale` (deprecated) "
-                    "and `return_transform`. Use `return_transform` only."
-                )
-            return_extras = True
-            legacy_layout = True
-        else:
-            return_extras = self.return_transform
-            legacy_layout = False
+        # return columns <- return_transform / return_orientation_scale.
+        # Both flags request the same method-specific appended layout
+        # (2D `[psi, scale]`; 3D `[alpha, beta, gamma, phi, scale]`);
+        # `return_orientation_scale` is a deprecated alias of `return_transform`
+        # producing identical output. The registration transform is 2D/3D only,
+        # so there is no separate n-D / matrix "general" layout.
+        if self.return_orientation_scale and self.return_transform:
+            raise ValueError(
+                "Cannot set both `return_orientation_scale` (deprecated) "
+                "and `return_transform`. Use `return_transform` only."
+            )
+        return_extras = self.return_transform or self.return_orientation_scale
 
-        return method, scale, scale_method, return_extras, legacy_layout
+        return method, scale, scale_method, return_extras
 
     def _validate_registration(self, method, scale, scale_method, return_extras):
         """Validate effective registration settings; raise on bad combos."""
@@ -316,7 +320,10 @@ class EllipticFourierAnalysis(
             )
         if method is None:
             if return_extras:
-                raise ValueError("return_transform requires registration != None.")
+                raise ValueError(
+                    "return_transform/return_orientation_scale requires "
+                    "registration != None."
+                )
             return
         if self.n_dim not in (2, 3):
             raise ValueError(
@@ -337,6 +344,19 @@ class EllipticFourierAnalysis(
                 "return_transform/return_orientation_scale is currently "
                 "implemented only for registration='first_order' with "
                 "n_dim in (2, 3)."
+            )
+        if method == "first_order" and not self.align_parameter:
+            raise NotImplementedError(
+                "align_parameter=False is not yet implemented; 'first_order' "
+                "always aligns the parameter domain (phase). Use "
+                "align_parameter=True."
+            )
+        if method == "first_order" and self.reflect:
+            raise NotImplementedError(
+                "reflect=True is not yet implemented for "
+                "registration='first_order' in EFA; orientation is preserved. "
+                "Use registration='moment' for reflection removal, or "
+                "reflect=False."
             )
 
     def fit(self, X, y=None):
@@ -420,8 +440,8 @@ class EllipticFourierAnalysis(
         if n_dim < 1:
             raise ValueError(f"n_dim must be a positive integer, got {n_dim}")
 
-        # Resolve + validate registration early (fail fast before dispatch).
-        method, scale, scale_method, return_extras, _ = self._resolve_registration()
+        # Resolve + validate registration early.
+        method, scale, scale_method, return_extras = self._resolve_registration()
         self._validate_registration(method, scale, scale_method, return_extras)
 
         if t is None:
@@ -565,7 +585,7 @@ class EllipticFourierAnalysis(
             np.append(0.0, _sse(diffs[:, d], dt, n_harmonics)) for d in range(n_dim)
         ]
 
-        method, scale, scale_method, return_extras, _ = self._resolve_registration()
+        method, scale, scale_method, return_extras = self._resolve_registration()
         self._validate_registration(method, scale, scale_method, return_extras)
 
         def _raw_rows():
@@ -633,8 +653,7 @@ class EllipticFourierAnalysis(
             extras = [alpha, beta, gamma, phi, s]
         else:  # unreachable: _validate_registration rejects non-2D/3D first.
             raise ValueError(
-                "registration applies to 2D/3D shape data only; "
-                f"got n_dim={n_dim}."
+                f"registration applies to 2D/3D shape data only; got n_dim={n_dim}."
             )
 
         if return_extras:
@@ -757,7 +776,7 @@ class EllipticFourierAnalysis(
         # Offsets sit at index 0 of the cos rows. Registered coefficients are
         # translation-free (centered), so the stored offset is dropped.
         offsets = axes[::2, 0].copy()
-        method, _, _, _, _ = self._resolve_registration()
+        method, _, _, _ = self._resolve_registration()
         if method is not None:
             offsets[:] = 0.0
 
@@ -950,21 +969,18 @@ class EllipticFourierAnalysis(
             Transformed feature names.
 
         """
-        method, _, _, return_extras, legacy_layout = self._resolve_registration()
+        method, _, _, return_extras = self._resolve_registration()
         include_orientation = (
-            return_extras
-            and legacy_layout
-            and method == "first_order"
-            and self.n_dim in (2, 3)
+            return_extras and method == "first_order" and self.n_dim in (2, 3)
         )
         return np.asarray(self._build_feature_names(include_orientation), dtype=str)
 
     @property
     def _n_features_out(self):
         """Number of transformed output features."""
-        method, _, _, return_extras, legacy_layout = self._resolve_registration()
+        method, _, _, return_extras = self._resolve_registration()
         base = (self.n_harmonics + 1) * (2 * self.n_dim)
-        if return_extras and legacy_layout and method == "first_order":
+        if return_extras and method == "first_order" and self.n_dim in (2, 3):
             if self.n_dim == 3:
                 return base + 5
             if self.n_dim == 2:
@@ -1127,8 +1143,10 @@ def _compute_ellipse_geometry_3d(
 ) -> tuple[float, float, float, float, float, float]:
     """Compute geometric parameters of a 3D ellipse from Fourier coefficients.
 
-    Returns the unique solution satisfying:
-    phi in ]-pi/4, pi/4[, a >= b > 0, beta in [0, pi].
+    Returns the canonical solution with the geometric major axis as the
+    reference: a >= b > 0 (``a`` is the semi-major axis), beta in [0, pi].
+    The phase ``phi`` is the major-axis phase and is not constrained to
+    ]-pi/4, pi/4[ (constraining it would re-swap a/b).
 
     Parameters
     ----------
@@ -1138,7 +1156,7 @@ def _compute_ellipse_geometry_3d(
     Returns
     -------
     phi : float
-        Phase angle in ]-pi/4, pi/4[.
+        Phase angle of the major axis.
     a : float
         Semi-major axis length (a > 0).
     b : float
@@ -1173,14 +1191,10 @@ def _compute_ellipse_geometry_3d(
         a2, b2 = b2, a2
         phi_0 = phi_0 + np.pi / 2 if phi_0 < 0 else phi_0 - np.pi / 2
 
-    # Normalize phi to ]-pi/4, pi/4[
+    # Use the major-axis (a >= b) phase directly. Do NOT renormalize phi into
+    # ]-pi/4, pi/4[: that re-swaps a/b and ties the orientation to the phase
+    # branch, flipping the registered shape by pi/2 with the start point.
     phi = phi_0
-    if phi > np.pi / 4:
-        phi -= np.pi / 2
-        a2, b2 = b2, a2
-    elif phi <= -np.pi / 4:
-        phi += np.pi / 2
-        a2, b2 = b2, a2
 
     a = np.sqrt(max(a2, 0.0))
     b = np.sqrt(max(b2, 0.0))
