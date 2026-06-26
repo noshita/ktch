@@ -84,3 +84,34 @@ class TestReadOff:
 
         np.testing.assert_array_equal(v1, v2)
         np.testing.assert_array_equal(f1, f2)
+
+    def test_single_triangle(self, tmp_path):
+        """A mesh with a single face must not collapse to a 1-D array."""
+        p = tmp_path / "single.off"
+        p.write_text("OFF\n3 1 0\n0 0 0\n1 0 0\n0 1 0\n3 0 1 2\n")
+
+        vertices, faces = _read_off(p)
+
+        assert vertices.shape == (3, 3)
+        assert faces.shape == (1, 3)
+        np.testing.assert_array_equal(faces[0], [0, 1, 2])
+
+    def test_skips_comments_and_blank_lines(self, tmp_path):
+        """Comment (#) and blank lines around the header are ignored."""
+        p = tmp_path / "commented.off"
+        p.write_text(
+            "# a comment\n\nOFF\n# counts follow\n3 1 0\n"
+            "0 0 0\n1 0 0\n0 1 0\n3 0 1 2\n"
+        )
+
+        vertices, faces = _read_off(p)
+
+        assert vertices.shape == (3, 3)
+        assert faces.shape == (1, 3)
+
+    def test_no_faces_raises(self, tmp_path):
+        p = tmp_path / "nofaces.off"
+        p.write_text("OFF\n3 0 0\n0 0 0\n1 0 0\n0 1 0\n")
+
+        with pytest.raises(ValueError, match="no faces"):
+            _read_off(p)

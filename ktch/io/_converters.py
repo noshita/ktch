@@ -44,6 +44,8 @@ def nef_to_efa_coeffs(nef_data, dc_offset=None):
     """
     if not isinstance(nef_data, list):
         nef_data = [nef_data]
+    if not nef_data:
+        raise ValueError("nef_data is empty; nothing to convert.")
 
     n_samples = len(nef_data)
     n_harmonics = nef_data[0].coeffs.shape[0]
@@ -57,6 +59,12 @@ def nef_to_efa_coeffs(nef_data, dc_offset=None):
 
     result = np.empty((n_samples, 4 * (n_harmonics + 1)))
     for i, nef in enumerate(nef_data):
+        if nef.coeffs.shape[0] != n_harmonics:
+            raise ValueError(
+                "All NefData must have the same number of harmonics; "
+                f"sample 0 has {n_harmonics}, sample {i} has "
+                f"{nef.coeffs.shape[0]}."
+            )
         # nef.coeffs shape: (n_harmonics, 4), columns [a, b, c, d]
         # EFA flat layout: [a_0..a_n, b_0..b_n, c_0..c_n, d_0..d_n]
         for ax in range(4):
@@ -99,7 +107,7 @@ def efa_coeffs_to_nef(coeffs, specimen_names=None, n_dim=2):
     from ._nef import NefData
 
     coeffs = np.atleast_2d(coeffs)
-    n_samples = coeffs.shape[1]
+    n_samples = coeffs.shape[0]
 
     n_axes = 4  # a, b, c, d for 2D
     # Determine n_harmonics: strip orientation/scale if present
@@ -119,13 +127,11 @@ def efa_coeffs_to_nef(coeffs, specimen_names=None, n_dim=2):
             f"for n_dim=2. Expected 4*(n+1) or 4*(n+1)+2."
         )
 
-    n_harmonics = n_harmonics_plus_1 - 1
-
     if specimen_names is None:
-        specimen_names = [f"Specimen_{i}" for i in range(coeffs.shape[0])]
+        specimen_names = [f"Specimen_{i}" for i in range(n_samples)]
 
     nef_list = []
-    for i in range(coeffs.shape[0]):
+    for i in range(n_samples):
         # Reshape flat [a_0..a_n, b_0..b_n, c_0..c_n, d_0..d_n]
         # to (4, n+1), drop DC (column 0), transpose to (n, 4)
         coef_matrix = coeffs[i].reshape(n_axes, n_harmonics_plus_1)
@@ -226,6 +232,8 @@ def spharmpdm_to_sha_coeffs(spharmpdm_data):
     """
     if not isinstance(spharmpdm_data, list):
         spharmpdm_data = [spharmpdm_data]
+    if not spharmpdm_data:
+        raise ValueError("spharmpdm_data is empty; nothing to convert.")
 
     n_samples = len(spharmpdm_data)
     l_max = spharmpdm_data[0].l_max
@@ -233,6 +241,11 @@ def spharmpdm_to_sha_coeffs(spharmpdm_data):
 
     result = np.empty((n_samples, 3 * n_coeffs_per_axis))
     for i, data in enumerate(spharmpdm_data):
+        if data.l_max != l_max:
+            raise ValueError(
+                "All SpharmPdmData must have the same l_max; "
+                f"sample 0 has {l_max}, sample {i} has {data.l_max}."
+            )
         # SpharmPdmData.coeffs: complex list (SPHARM-PDM convention)
         # Convert to real SH coefficients
         stacked = np.vstack(data.coeffs)  # ((l_max+1)^2, 3), complex

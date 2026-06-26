@@ -200,3 +200,10 @@ class TestErrors:
     def test_invalid_coeffs_shape(self):
         with pytest.raises(ValueError):
             write_nef("dummy.nef", np.zeros((3,)))
+
+
+def test_specimen_name_newline_raises(tmp_path):
+    with pytest.raises(ValueError, match="specimen_name must not contain newline"):
+        NefData(specimen_name="bad\nname", coeffs=np.zeros((3, 4)))
+    with pytest.raises(ValueError, match="specimen_name must not contain newline"):
+        write_nef(tmp_path / "x.nef", np.zeros((1, 3, 4)), sample_names=["bad\nname"])

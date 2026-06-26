@@ -20,7 +20,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
 from ._converters import _cvt_spharm_coef_spharmpdm_to_list
@@ -134,7 +133,7 @@ def read_spharmpdm_coef(path: str | Path) -> SpharmPdmData:
         raise ValueError(f"Path is not a file: {path}")
 
     try:
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             coef_txt = f.read()
     except IOError as e:
         raise IOError(f"Error reading SPHARM-PDM file: {e}")

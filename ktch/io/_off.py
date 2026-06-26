@@ -21,6 +21,19 @@ from os import PathLike
 import numpy as np
 
 
+def _next_significant_line(f) -> str | None:
+    """Return the next non-blank, non-comment line, or ``None`` at EOF.
+
+    OFF files may carry ``#`` comment lines and blank lines between the
+    header and the counts; skip them so parsing does not depend on layout.
+    """
+    for line in f:
+        stripped = line.split("#", 1)[0].strip()
+        if stripped:
+            return stripped
+    return None
+
+
 def _read_off(filepath: str | PathLike) -> tuple[np.ndarray, np.ndarray]:
     """Read an ASCII OFF file with triangular faces.
 
@@ -42,22 +55,40 @@ def _read_off(filepath: str | PathLike) -> tuple[np.ndarray, np.ndarray]:
         If the file header is not ``OFF`` or the face data contains
         non-triangular faces.
     """
-    with open(filepath) as f:
-        header = f.readline().strip()
+    with open(filepath, encoding="utf-8") as f:
+        header = _next_significant_line(f)
         if header != "OFF":
             raise ValueError(
                 f"Expected 'OFF' header, got {header!r}. "
                 "COFF and NOFF variants are not supported."
             )
 
-        n_vertices, n_faces, _ = map(int, f.readline().split())
+        count_line = _next_significant_line(f)
+        if count_line is None:
+            raise ValueError("Missing vertex/face counts in OFF file.")
+        try:
+            n_vertices, n_faces = (int(tok) for tok in count_line.split()[:2])
+        except ValueError:
+            raise ValueError(f"Invalid OFF count line: {count_line!r}")
 
-        vertices = np.loadtxt(f, max_rows=n_vertices, dtype=np.float64)
-        raw_faces = np.loadtxt(f, max_rows=n_faces, dtype=np.int64)
+        if n_vertices <= 0:
+            raise ValueError(f"OFF file declares no vertices (got {n_vertices}).")
+        if n_faces <= 0:
+            raise ValueError(
+                f"OFF file declares no faces (got {n_faces}); "
+                "a triangular surface mesh is required."
+            )
+
+        vertices = np.atleast_2d(np.loadtxt(f, max_rows=n_vertices, dtype=np.float64))
+        raw_faces = np.atleast_2d(np.loadtxt(f, max_rows=n_faces, dtype=np.int64))
 
     # First column is the vertex count per face; must be 3 (triangles).
     if raw_faces.ndim != 2 or raw_faces.shape[1] != 4:
-        raise ValueError("Expected triangular faces (4 columns: count + 3 indices).")
+        raise ValueError(
+            "Only triangular faces are supported "
+            f"(expected 4 columns: count + 3 vertex indices, got shape "
+            f"{raw_faces.shape})."
+        )
 
     if not np.all(raw_faces[:, 0] == 3):
         raise ValueError(

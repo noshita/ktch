@@ -226,3 +226,14 @@ def test_area_pixels_mixed_complex():
         assert area_in_file == 17
     finally:
         os.unlink(temp_file)
+
+
+def test_specimen_name_whitespace_raises():
+    with pytest.raises(ValueError, match="specimen_name must be a non-empty token"):
+        ChainCodeData(
+            specimen_name="bad name",
+            x=0,
+            y=0,
+            area_per_pixel=1.0,
+            chain_code=[0, 2, 4, 6],
+        )

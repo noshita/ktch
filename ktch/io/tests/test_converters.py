@@ -69,6 +69,16 @@ class TestNefToEfaCoeffs:
 
         assert result.shape == (2, 4 * 3)
 
+    def test_empty_list_raises(self):
+        with pytest.raises(ValueError, match="empty"):
+            nef_to_efa_coeffs([])
+
+    def test_harmonics_mismatch_raises(self):
+        nef1 = _make_nef(n_harmonics=2, seed=1)
+        nef2 = _make_nef(n_harmonics=3, seed=2)
+        with pytest.raises(ValueError, match="same number of harmonics"):
+            nef_to_efa_coeffs([nef1, nef2])
+
 
 # --- efa_coeffs_to_nef ---
 
@@ -96,6 +106,15 @@ class TestEfaCoeffsToNef:
     def test_3d_raises(self):
         with pytest.raises(ValueError, match="Only 2D"):
             efa_coeffs_to_nef(np.zeros((1, 24)), n_dim=3)
+
+    def test_batch_count(self):
+        nef1 = _make_nef(n_harmonics=3, seed=1)
+        nef2 = _make_nef(n_harmonics=3, seed=2)
+        efa_flat = nef_to_efa_coeffs([nef1, nef2])
+        nef_list = efa_coeffs_to_nef(efa_flat)
+
+        assert len(nef_list) == 2
+        np.testing.assert_allclose(nef_list[1].coeffs, nef2.coeffs, atol=1e-12)
 
     def test_from_efa_coeffs_classmethod(self):
         nef_orig = _make_nef(n_harmonics=3)
@@ -214,6 +233,24 @@ class TestSpharmpdmToShaCoeffs:
         l_max = spharmpdm_data.l_max
         assert result.shape == (2, 3 * (l_max + 1) ** 2)
         np.testing.assert_array_equal(result[0], result[1])
+
+    def test_empty_list_raises(self):
+        with pytest.raises(ValueError, match="empty"):
+            spharmpdm_to_sha_coeffs([])
+
+    def test_lmax_mismatch_raises(self):
+        d0 = SpharmPdmData(
+            specimen_name="l0", coeffs=[np.zeros((1, 3), dtype=np.complex128)]
+        )
+        d1 = SpharmPdmData(
+            specimen_name="l1",
+            coeffs=[
+                np.zeros((1, 3), dtype=np.complex128),
+                np.zeros((3, 3), dtype=np.complex128),
+            ],
+        )
+        with pytest.raises(ValueError, match="same l_max"):
+            spharmpdm_to_sha_coeffs([d0, d1])
 
 
 class TestShaCoeffsToSpharmpdm:

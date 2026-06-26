@@ -21,7 +21,17 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from ._encoding import detect_text_encoding
 from ._protocols import MorphoDataMixin
+
+
+def _check_nef_specimen_name(name):
+    """Reject names that would break the line-based NEF record structure."""
+    if "\n" in str(name) or "\r" in str(name):
+        raise ValueError(
+            "specimen_name must not contain newline characters. "
+            "The NEF format writes each record name as a single line."
+        )
 
 
 @dataclass(repr=False)
@@ -60,6 +70,7 @@ class NefData(MorphoDataMixin):
         return self.specimen_name
 
     def __post_init__(self):
+        _check_nef_specimen_name(self.specimen_name)
         if not isinstance(self.coeffs, np.ndarray):
             self.coeffs = np.asarray(self.coeffs, dtype=float)
         if self.coeffs.ndim != 2 or self.coeffs.shape[1] != 4:
@@ -166,7 +177,7 @@ def read_nef(file_path, as_frame=False):
     if path.suffix.lower() != ".nef":
         raise ValueError(f"{path} is not a .nef file.")
 
-    with open(path, "r") as f:
+    with open(path, "r", encoding=detect_text_encoding(path)) as f:
         lines = [line.rstrip("\n") for line in f]
 
     const_flags = (1, 1, 1, 0)
@@ -300,7 +311,7 @@ def write_nef(
 
     n_harmonics = coeffs[0].shape[0] if len(coeffs) > 0 else 0
 
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         f.write(
             f"#CONST {const_flags[0]} {const_flags[1]} "
             f"{const_flags[2]} {const_flags[3]}\n"
@@ -313,6 +324,7 @@ def write_nef(
                 raise ValueError(
                     f"coeffs[{i}] must have shape (n_harmonics, 4), got {c.shape}"
                 )
+            _check_nef_specimen_name(sample_names[i])
             f.write(f"{sample_names[i]}\n")
             for row in c:
                 f.write(

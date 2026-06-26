@@ -21,6 +21,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from ._encoding import detect_text_encoding
 from ._protocols import MorphoDataMixin
 
 _DIRECTIONS = np.array(
@@ -116,6 +117,11 @@ class ChainCodeData(MorphoDataMixin):
         return f"n_points={len(self.chain_code)}"
 
     def __post_init__(self):
+        if not self.specimen_name or any(c.isspace() for c in str(self.specimen_name)):
+            raise ValueError(
+                "specimen_name must be a non-empty token without whitespace. "
+                "The CHC format writes it as the first whitespace-delimited field."
+            )
         if not isinstance(self.chain_code, np.ndarray):
             self.chain_code = np.array(self.chain_code)
 
@@ -414,7 +420,7 @@ def _read_chc(file_path):
     """
     chc_data_list = []
 
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding=detect_text_encoding(file_path)) as f:
         tokens = []
         for line in f:
             line = line.strip()
@@ -484,7 +490,7 @@ def _write_chc(file_path, chc_data_list):
     chc_data_list : list of ChainCodeData
         Chain code data.
     """
-    with open(file_path, "w") as f:
+    with open(file_path, "w", encoding="utf-8") as f:
         for chc_data in chc_data_list:
             f.write(
                 f"{chc_data.specimen_name} {chc_data.x} {chc_data.y} "
