@@ -26,6 +26,8 @@ from sklearn.base import BaseEstimator, OneToOneFeatureMixin, TransformerMixin
 from sklearn.utils.parallel import Parallel, delayed
 from sklearn.utils.validation import check_is_fitted, validate_data
 
+from ._kernels import tps_bending_energy_matrix
+
 logger = logging.getLogger(__name__)
 
 # Floor value for tangent vector norms to avoid division by zero.
@@ -34,8 +36,6 @@ _NORM_FLOOR = 1e-10
 # Threshold for squared segment length below which a curve segment
 # is considered degenerate (effectively zero-length).
 _DEGENERATE_SEGMENT_TOL = 1e-30
-
-from ._kernels import tps_bending_energy_matrix
 
 
 class GeneralizedProcrustesAnalysis(
@@ -632,8 +632,16 @@ class GeneralizedProcrustesAnalysis(
 
 
 class LandmarkImputer(TransformerMixin, BaseEstimator):
+    """Impute missing landmarks.
+
+    Placeholder; not implemented yet.
+    """
+
     def __init__(self, missing_values=np.nan):
-        pass
+        self.missing_values = missing_values
+
+    def transform(self, X):
+        raise NotImplementedError("LandmarkImputer is not implemented yet.")
 
 
 ###########################################################
