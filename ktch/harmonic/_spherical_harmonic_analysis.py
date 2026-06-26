@@ -42,6 +42,11 @@ _FIRST_ORDER_TOL = 1e-12
 # Tolerance below which a principal-axis skewness is treated as zero.
 _SKEW_TOL = 1e-9
 
+# Highest degree for which the closed-form Wigner small-d is float64-safe.
+# The factorial series overflows at l = 50 (verified), producing NaN; guard
+# against silent corruption above this.
+_WIGNER_D_LMAX = 49
+
 
 class SphericalHarmonicAnalysis(
     ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator
@@ -63,24 +68,30 @@ class SphericalHarmonicAnalysis(
         leaves other dimensions unregistered (``None``). ``None`` returns raw
         coefficients. ``"first_order"`` uses the l=1 ellipsoid (first-order
         ellipsoid canonicalization, Brechbühler et al. 1995) to align both the
-        codomain orientation and the parameter sphere (SO(3)); it requires
-        ``n_dim=3``. ``"moment"`` aligns the codomain to the inertia-tensor
-        principal axes and scales by centroid size.
+        codomain orientation and the parameter sphere (SO(3)).
+        ``"moment"`` aligns the codomain to the inertia-tensor principal axes
+        and scales by centroid size.
     scale : bool, default=True
-        Whether registration removes size (shape space) or keeps it (form
-        space). Only used when ``registration != None``.
-    scale_method : {None, "semi_major_axis", "ellipsoid_volume", "centroid_size"}, default=None
+        Whether registration removes size or keeps it.
+        Only used when ``registration != None``.
+    scale_method : {None, "semi_major_axis", "ellipsoid_volume", "centroid_size"}, \
+            default=None
         Size measure when ``scale=True``. ``None`` resolves to the method
         default (``"first_order"``: ``"semi_major_axis"``; ``"moment"``:
         ``"centroid_size"``).
     align_parameter : bool, default=True
         Parameter-domain (SO(3)) alignment. ``"first_order"`` always applies
-        it; the toggle is not yet separately honored.
+        it; ``align_parameter=False`` is not yet implemented and raises
+        ``NotImplementedError``.
     reflect : bool, default=False
-        Whether to also remove reflection (chirality). Not yet honored for
-        the codomain (orientation is preserved).
+        Whether to also remove reflection (chirality). ``False`` enforces a
+        proper codomain rotation (``det=+1``); ``True`` allows an improper
+        rotation, canonicalizing chirality. Used with ``"moment"`` and
+        ``"first_order"``.
     return_transform : bool, default=False
-        Reserved; not yet implemented.
+        Append the registration parameters as extra output columns. Reserved
+        for a future release (planned: the first-order ellipsoid orientation
+        angles and scale); setting ``True`` raises ``NotImplementedError``.
     n_jobs: int, default=None
         The number of jobs to run in parallel. None means 1 unless in a
         joblib.parallel_backend context. -1 means using all processors.
@@ -175,6 +186,7 @@ class SphericalHarmonicAnalysis(
             n_dim=self.n_dim,
             return_transform=self.return_transform,
             allow_first_order=True,
+            align_parameter=self.align_parameter,
         )
         if method == "first_order" and self.n_dim != 3:
             raise ValueError(
@@ -200,7 +212,7 @@ class SphericalHarmonicAnalysis(
         """first_order registration for SPHARM (n_dim=3): A + B, coef-only.
 
         Implements the first-order-ellipsoid canonicalization theory
-        (Brechbühler et al. 1995, §4.1): the degree-1 part of the expansion is
+        (Brechbühler et al. 1995): the degree-1 part of the expansion is
         an ellipsoid (the affine image of the sphere). Writing its l=1
         coordinate matrix (columns x, y, z) as ``M1 = U Σ Vᵀ``:
 
@@ -219,9 +231,7 @@ class SphericalHarmonicAnalysis(
         ellipsoid's intrinsic Klein-four symmetry (180-deg rotations about each
         principal axis), which degree 1 alone cannot resolve; it is broken with
         a higher-order, rotation- and reparameterization-invariant shape
-        moment (see :func:`_axis_third_moments`). Operates purely on
-        coefficients (no re-fit), so it composes and is reusable for rotation
-        optimization.
+        moment (see :func:`_axis_third_moment_signs`).
         """
         l_max = self.n_harmonics
         if l_max < 1:
@@ -241,35 +251,24 @@ class SphericalHarmonicAnalysis(
             )
         w_mat = wt.T
 
-        # Sign convention: break the ellipsoid's intrinsic Klein-four symmetry
-        # (degree 1 fixes axes only up to 180-deg flips) using higher-order
-        # shape information, as Brechbühler et al. (1995) suggest. We make the
-        # shape's third moment along each codomain axis positive. The third
-        # moment is a geometric integral over the sphere, hence invariant to
-        # BOTH codomain rotation and sphere reparameterization (unlike a sum of
-        # cubes over modes). Flip the coupled (U, V) columns together.
-        m3 = _axis_third_moments(mat, u_mat, l_max)
+        # Break the ellipsoid's Klein-four sign ambiguity (degree 1 fixes axes
+        # only up to 180-deg flips) with the higher-order third moment.
+        # Flip the coupled (U, V) columns.
+        signs = _axis_third_moment_signs(mat, u_mat, l_max)
         for i in range(3):
-            if abs(m3[i]) > _SKEW_TOL:
-                if m3[i] < 0:
-                    u_mat[:, i] = -u_mat[:, i]
-                    w_mat[:, i] = -w_mat[:, i]
-            else:
-                col = u_mat[:, i]
-                k = int(np.argmax(np.abs(col)))
-                if col[k] < 0:
-                    u_mat[:, i] = -u_mat[:, i]
-                    w_mat[:, i] = -w_mat[:, i]
+            if signs[i] < 0:
+                u_mat[:, i] = -u_mat[:, i]
+                w_mat[:, i] = -w_mat[:, i]
         # Proper codomain rotation unless reflection is allowed.
         if not self.reflect and np.linalg.det(u_mat) < 0:
             u_mat[:, -1] = -u_mat[:, -1]
             w_mat[:, -1] = -w_mat[:, -1]
 
-        # (B) Parameter SO(3) alignment in the coefficient domain: rotate the
+        # B. Parameter SO(3) alignment in the coefficient domain: rotate the
         # sphere by R = w_mat^T via Wigner-D (per axis).
         rotated = rotate_real_sph_coef(mat.T, w_mat.T)  # (n_coeffs, 3)
 
-        # (A) Codomain rotation + scale + translation removal.
+        # A. Codomain rotation + scale + translation removal.
         if self.scale:
             scale_method = self.scale_method or "semi_major_axis"
             if scale_method == "ellipsoid_volume":
@@ -580,27 +579,29 @@ def _axis_prefixes(n_dim: int) -> list[str]:
     return [f"c{d}" for d in range(n_dim)]
 
 
-def _axis_third_moments(mat, axes, l_max, n_theta=30, n_phi=60):
-    """Shape third moments along given codomain axes (rotation-invariant sign).
+def _axis_third_moment_signs(mat, axes, l_max, n_theta=30, n_phi=60):
+    """Canonical sign (+1 keep / -1 flip) for each codomain axis.
 
-    Reconstructs the surface on a uniform sphere grid and integrates
-    ``(p · axis)**3`` with the ``sin(theta)`` area weight. The result is a
-    geometric integral over the sphere, hence invariant to both codomain
-    rotation and sphere reparameterization; its sign canonicalizes each axis.
+    Breaks the first-order ellipsoid's Klein-four sign ambiguity via the third
+    moment of the reconstructed surface along each axis (``(p · axis)**3``
+    integrated on a sphere grid with the ``sin(theta)`` weight; invariant to
+    codomain rotation and reparameterization). The sign making the moment
+    positive canonicalizes the axis; below ``_SKEW_TOL`` it falls back to the
+    axis's largest component. Ill-conditioned for near-symmetric shapes.
 
     Parameters
     ----------
     mat : ndarray of shape (n_dim, (l_max+1)**2)
         Flat SPHARM coefficients reshaped per axis.
     axes : ndarray of shape (n_dim, k)
-        Codomain axes (columns) to evaluate the third moment along.
+        Codomain axes (columns) to canonicalize.
     l_max : int
         Maximum degree.
 
     Returns
     -------
     ndarray of shape (k,)
-        Third moment along each axis.
+        Per-axis sign in {+1, -1}; ``-1`` means flip the axis to canonicalize.
     """
     # Center the shape (drop the l=0 constant mode) so the moment is
     # translation-invariant.
@@ -614,17 +615,36 @@ def _axis_third_moments(mat, axes, l_max, n_theta=30, n_phi=60):
     p = basis @ mat_centered.T  # (n_grid, n_dim)
     weights = np.sin(tg).ravel()
     proj = p @ axes  # (n_grid, k)
-    return np.sum(weights[:, None] * proj**3, axis=0)
+    m3 = np.sum(weights[:, None] * proj**3, axis=0)
+
+    axes = np.asarray(axes, dtype=float)
+    signs = np.ones(axes.shape[1])
+    for i in range(axes.shape[1]):
+        if abs(m3[i]) > _SKEW_TOL:
+            signs[i] = 1.0 if m3[i] > 0 else -1.0
+        else:
+            col = axes[:, i]
+            k = int(np.argmax(np.abs(col)))
+            signs[i] = 1.0 if col[k] >= 0 else -1.0
+    return signs
 
 
 def _wigner_d_small(l: int, beta: float) -> npt.NDArray[np.float64]:
     """Wigner small-d matrix ``d^l_{m'm}(beta)`` (rows m', cols m, -l..l).
 
-    Standard real Wigner small-d (closed-form factorial series), matching
-    Ritchie & Kemp (1999) Eq. (10) and Shen et al. (2009) Eq. (14); verified
-    against the textbook ``d^1`` to machine precision. Adequate for moderate
-    degrees (``l <= ~30``); rows/columns are ordered ``m = -l, ..., l``.
+    Standard real Wigner small-d (closed-form factorial series)
+    (Ritchie & Kemp 1999, Shen et al. 2009). Numerically stable for
+    ``l <= ~30`` (unitarity error < 1e-12); the factorial series overflows
+    float64 at ``l = 50`` (NaN), so ``l > 49`` raises ``NotImplementedError``.
+    Rows/columns are ordered ``m = -l, ..., l``.
     """
+    if l > _WIGNER_D_LMAX:
+        raise NotImplementedError(
+            f"_wigner_d_small: l={l} exceeds the float64-safe range "
+            f"(l <= {_WIGNER_D_LMAX}); the closed-form factorial series "
+            "overflows. A recurrence/log-domain implementation is needed for "
+            "higher degrees."
+        )
     dim = 2 * l + 1
     d = np.zeros((dim, dim))
     cb, sb = np.cos(beta / 2.0), np.sin(beta / 2.0)
@@ -675,8 +695,8 @@ def rotate_real_sph_coef(
     """Rotate real SPHARM coefficients by a 3D rotation, in the coefficient domain.
 
     Applies the Wigner-D rotational property of spherical harmonics (Ritchie &
-    Kemp 1999, Eqs. 9/13; Shen et al. 2009, Eq. 14): per degree ``l`` the
-    coefficients transform as ``c'_m = sum_n D^l_{m n}(R) c_n``. This is the
+    Kemp 1999, Shen et al. 2009): per degree ``l`` the coefficients transform
+    as ``c'_m = sum_n D^l_{m n}(R) c_n``. This is the
     method the literature uses for SPHARM rotation/registration (rotating
     coefficients, NOT re-fitting a re-parameterized surface). It is reusable
     for rotation optimization (e.g. axis-constrained rotational matching,

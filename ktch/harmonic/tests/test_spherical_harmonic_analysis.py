@@ -5,6 +5,7 @@ from numpy.testing import assert_allclose, assert_array_almost_equal
 
 from ktch.harmonic import SphericalHarmonicAnalysis, spharm, xyz2spherical
 from ktch.harmonic._spherical_harmonic_analysis import (
+    _axis_third_moment_signs,
     _complex_to_real_sph_coef,
     _real_sph_harm_basis_matrix,
     _real_to_complex_sph_coef,
@@ -92,6 +93,16 @@ class TestRotateRealSphCoef:
         R = sp.spatial.transform.Rotation.from_rotvec([0.1, 0.2, 0.3]).as_matrix()
         got = rotate_real_sph_coef(coef[:, 0], R)
         assert got.shape == (coef.shape[0],)
+
+    def test_composition(self):
+        # Group homomorphism: rotating by R1 then R2 equals rotating by R2 @ R1.
+        # Guards against convention drift in the Wigner-D / real-complex layers.
+        _, _, _, coef = self._setup(7)
+        R1 = sp.spatial.transform.Rotation.from_rotvec([0.5, -0.2, 0.8]).as_matrix()
+        R2 = sp.spatial.transform.Rotation.from_rotvec([0.1, 0.9, -0.4]).as_matrix()
+        composed = rotate_real_sph_coef(rotate_real_sph_coef(coef, R1), R2)
+        direct = rotate_real_sph_coef(coef, R2 @ R1)
+        assert_allclose(composed, direct, atol=1e-9)
 
 
 def test_xyz2spherical_axes():
@@ -194,8 +205,7 @@ def test_theta_phi_required():
 def test_underdetermined_system_warns():
     """Warn when n_coords < (l_max+1)**2."""
     l_max = 3
-    n_coeffs = (l_max + 1) ** 2  # 16
-    n_coords = 5  # < 16
+    n_coords = 5  # < (l_max+1)**2 = 16
 
     coords = np.random.default_rng(0).standard_normal((n_coords, 3))
     theta_phi = np.column_stack(
@@ -703,6 +713,8 @@ class TestSPHARMNDim:
 
 
 class TestSPHARMRegistration:
+    """Tests for registration modes of SphericalHarmonicAnalysis."""
+
     def test_default_is_auto(self):
         assert SphericalHarmonicAnalysis().registration == "auto"
 
@@ -744,7 +756,7 @@ class TestSPHARMRegistration:
         assert_allclose(out.reshape(3, -1)[:, 0], 0.0, atol=1e-10)
 
     def test_first_order_ellipsoid_canonical_form(self):
-        # Theory (Brechbühler 1995 §4.1): after first_order registration the
+        # Theory (Brechbühler 1995): after first_order registration the
         # degree-1 ellipsoid is axis-aligned in object space (diagonal), with
         # descending positive semi-axes; with semi_major_axis scaling the
         # leading entry is 1.
@@ -760,6 +772,21 @@ class TestSPHARMRegistration:
         assert_allclose(m1_xyz - np.diag(diag), 0.0, atol=1e-9)  # diagonal
         assert diag[0] == pytest.approx(1.0, abs=1e-9)  # semi_major scaled
         assert diag[0] >= diag[1] >= diag[2] > 0  # descending, positive
+
+    def test_first_order_positive_skewness(self):
+        # Klein-four disambiguation makes the per-axis third moment positive;
+        # the first two axes keep positive skewness (the third is then fixed by
+        # det=+1, either sign).
+        l_max = 3
+        n_coeffs = (l_max + 1) ** 2
+        X, theta_phi, _ = _synthetic_sphere(l_max, 500, n_dim=3, seed=3)
+        sha = SphericalHarmonicAnalysis(
+            n_harmonics=l_max, n_dim=3, registration="first_order", n_jobs=1
+        )
+        out = sha.fit_transform([X], theta_phi=[theta_phi])[0].reshape(3, n_coeffs)
+        signs = _axis_third_moment_signs(out, np.eye(3), l_max)
+        assert signs[0] > 0  # positive skewness along x (no flip needed)
+        assert signs[1] > 0  # positive skewness along y
 
     def test_first_order_codomain_invariance(self):
         l_max = 3
@@ -811,6 +838,30 @@ class TestSPHARMRegistration:
         sha = SphericalHarmonicAnalysis(n_harmonics=2, registration="rotational_match")
         with pytest.raises(NotImplementedError, match="reserved"):
             sha.transform([np.zeros((10, 3))], theta_phi=[np.zeros((10, 2))])
+
+    def test_return_transform_not_implemented(self):
+        sha = SphericalHarmonicAnalysis(n_harmonics=2, return_transform=True)
+        with pytest.raises(NotImplementedError, match="return_transform"):
+            sha.transform([np.zeros((10, 3))], theta_phi=[np.zeros((10, 2))])
+
+    def test_align_parameter_false_not_implemented(self):
+        sha = SphericalHarmonicAnalysis(n_harmonics=2, align_parameter=False)
+        with pytest.raises(NotImplementedError, match="align_parameter"):
+            sha.transform([np.zeros((10, 3))], theta_phi=[np.zeros((10, 2))])
+
+    def test_reflect_first_order_allowed(self):
+        # reflect=True IS implemented for SPHARM first_order; it must not be gated.
+        l_max = 3
+        X, theta_phi, _ = _synthetic_sphere(l_max, 400, n_dim=3, seed=2)
+        sha = SphericalHarmonicAnalysis(
+            n_harmonics=l_max,
+            n_dim=3,
+            registration="first_order",
+            reflect=True,
+            n_jobs=1,
+        )
+        out = sha.fit_transform([X], theta_phi=[theta_phi])
+        assert out.shape == (1, 3 * (l_max + 1) ** 2)
 
     def test_invalid_scale_method_for_moment(self):
         sha = SphericalHarmonicAnalysis(
