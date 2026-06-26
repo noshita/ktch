@@ -61,19 +61,28 @@ class DiskHarmonicAnalysis(
         orientation, disk phase, and scale. ``"moment"`` aligns the codomain to
         the inertia-tensor principal axes and scales by centroid size.
     scale : bool, default=True
-        Whether registration removes size (shape space) or keeps it (form
-        space). Only used when ``registration != None``.
-    scale_method : {None, "centroid_size"}, default=None
-        Size measure when ``scale=True`` (``None`` -> ``"centroid_size"`` for
-        ``"moment"``).
+        Whether registration removes size or keeps it.
+        Only used when ``registration != None``.
+    scale_method : {None, "semi_major_axis", "ellipse_area", "centroid_size"}, \
+            default=None
+        Size measure when ``scale=True``. ``None`` resolves to the method
+        default: ``"ellipse_area"`` for ``"first_order"`` (all dimensions),
+        ``"centroid_size"`` for ``"moment"``.
+        ``"semi_major_axis"`` / ``"ellipse_area"`` require
+        ``registration="first_order"``; ``"centroid_size"`` requires
+        ``registration="moment"``.
     align_parameter : bool, default=True
         Parameter-domain (disk phase) alignment. ``"first_order"`` always
-        applies it; the toggle is not yet separately honored.
+        applies it; ``align_parameter=False`` is not yet implemented and raises
+        ``NotImplementedError``.
     reflect : bool, default=False
-        Whether to also remove reflection (chirality). Not yet honored
-        (orientation is preserved).
+        Whether to also remove reflection (chirality). Honored by ``"moment"``.
+        For ``"first_order"`` only ``reflect=False`` (orientation preserved) is
+        implemented; ``reflect=True`` raises ``NotImplementedError``.
     return_transform : bool, default=False
-        Reserved; not yet implemented.
+        Append the registration parameters as extra output columns. Reserved
+        for a future release (planned: the in-plane ellipse angle ``theta_0``
+        and scale); setting ``True`` raises ``NotImplementedError``.
     n_jobs : int, default=None
         The number of jobs to run in parallel. None means 1 unless in a
         joblib.parallel_backend context. -1 means using all processors.
@@ -160,14 +169,23 @@ class DiskHarmonicAnalysis(
 
     def _validate_registration(self):
         """Validate registration settings (raises on invalid combinations)."""
+        method = self._resolve_method()
         validate_registration(
-            self._resolve_method(),
+            method,
             self.scale_method,
             self._SCALE_METHODS_BY_REGISTRATION,
             n_dim=self.n_dim,
             return_transform=self.return_transform,
             allow_first_order=True,
+            align_parameter=self.align_parameter,
         )
+        if method == "first_order" and self.reflect:
+            raise NotImplementedError(
+                "reflect=True is not yet implemented for "
+                "registration='first_order' in DHA; orientation is preserved. "
+                "Use registration='moment' for reflection removal, or "
+                "reflect=False."
+            )
 
     def _register(self, coef_flat):
         """Apply the configured registration to one flat coefficient vector."""
@@ -187,10 +205,9 @@ class DiskHarmonicAnalysis(
         """first_order registration of a flat DHA coefficient vector (2D/3D).
 
         The first-order disk patch is an in-plane ellipse carried by the
-        ``(n=1, m=±1)`` angular modes (``m=+1`` cosine, ``m=-1`` sine), exactly
-        like EFA's first harmonic. Its ellipse geometry gives the codomain
-        rotation ``Omega`` (A) and disk phase ``phi`` (B); the same transform
-        is applied to every mode. Reuses EFA's validated 2D/3D ellipse math.
+        ``(n=1, m=±1)`` angular modes (``m=+1`` cosine, ``m=-1`` sine).
+        Its ellipse geometry gives the codomain rotation ``Omega`` (A) and
+        disk phase ``phi`` (B); the same transform is applied to every mode.
         """
         n_dim = self.n_dim
         n_max = self.n_harmonics
@@ -240,8 +257,7 @@ class DiskHarmonicAnalysis(
         out[:, _idx(0, 0)] = 0.0
 
         # Direction correction: canonicalize the disk traversal direction by
-        # the sign of the registered first-order sine (y-component), mirroring
-        # EFA's direction correction.
+        # the sign of the registered first-order sine (y-component)
         if out[1, _idx(1, -1)] < 0:
             for n in range(1, n_max + 1):
                 for mm in range(1, n + 1):
@@ -738,7 +754,6 @@ def _disk_harm_basis_matrix(
     n_arr = np.array([n for n in range(n_max + 1) for m in range(-n, n + 1)])
     m_arr = np.array([m for n in range(n_max + 1) for m in range(-n, n + 1)])
     m_abs_arr = np.abs(m_arr)
-    n_coeffs = len(n_arr)
 
     # Eigenvalues and normalization for each (n, m) pair — shape (K,)
     lam = l_nm_table[n_arr, m_abs_arr]

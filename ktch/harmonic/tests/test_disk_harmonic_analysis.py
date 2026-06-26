@@ -362,8 +362,7 @@ class TestDHAValidation:
 
     def test_underdetermined_warns(self):
         n_max = 3
-        n_coeffs = (n_max + 1) ** 2  # 16
-        n_coords = 5  # < 16
+        n_coords = 5  # < (n_max+1)**2 = 16
         rng = np.random.default_rng(0)
         coords = rng.standard_normal((n_coords, 3))
         r_theta = np.column_stack(
@@ -723,6 +722,8 @@ class TestDHANDim:
 
 
 class TestDHARegistration:
+    """Tests for registration modes of DiskHarmonicAnalysis."""
+
     def test_default_is_auto(self):
         assert DiskHarmonicAnalysis().registration == "auto"
 
@@ -796,6 +797,40 @@ class TestDHARegistration:
         c2 = dha.fit_transform([vertices], r_theta=[r_theta2])
         assert_allclose(c1, c2, atol=1e-6)
 
+    def test_first_order_codomain_scale_translation_invariance_2d(self):
+        n_max = 3
+        vertices, r_theta, _ = _generate_synthetic_surface(n_max, 600, n_dim=2, seed=14)
+        dha = DiskHarmonicAnalysis(
+            n_harmonics=n_max, n_dim=2, registration="first_order", n_jobs=1
+        )
+        c1 = dha.fit_transform([vertices], r_theta=[r_theta])
+
+        ang = 0.7
+        R = np.array([[np.cos(ang), -np.sin(ang)], [np.sin(ang), np.cos(ang)]])
+        v2 = 1.6 * (vertices @ R.T) + np.array([2.0, -1.0])
+        c2 = dha.fit_transform([v2], r_theta=[r_theta])
+        assert_allclose(c1, c2, atol=1e-6)
+
+    @pytest.mark.xfail(
+        reason="Inherent first-order limitation: the major-axis direction is "
+        "not fixed by the degree-1 ellipse, so a disk rotation can flip it for "
+        "some shapes.",
+        strict=False,
+    )
+    def test_first_order_disk_rotation_invariance_2d(self):
+        n_max = 3
+        vertices, r_theta, _ = _generate_synthetic_surface(n_max, 600, n_dim=2, seed=17)
+        dha = DiskHarmonicAnalysis(
+            n_harmonics=n_max, n_dim=2, registration="first_order", n_jobs=1
+        )
+        c1 = dha.fit_transform([vertices], r_theta=[r_theta])
+
+        alpha = 0.9
+        r_theta2 = r_theta.copy()
+        r_theta2[:, 1] = r_theta[:, 1] + alpha
+        c2 = dha.fit_transform([vertices], r_theta=[r_theta2])
+        assert_allclose(c1, c2, atol=1e-6)
+
     def test_first_order_requires_2d_3d(self):
         vertices, r_theta, _ = _generate_synthetic_surface(2, 200, n_dim=1, seed=1)
         dha = DiskHarmonicAnalysis(
@@ -809,4 +844,19 @@ class TestDHARegistration:
             n_harmonics=2, registration="moment", scale_method="ellipse_area"
         )
         with pytest.raises(ValueError, match="not valid for"):
+            dha.transform([np.zeros((10, 3))], r_theta=[np.zeros((10, 2))])
+
+    def test_return_transform_not_implemented(self):
+        dha = DiskHarmonicAnalysis(n_harmonics=2, return_transform=True)
+        with pytest.raises(NotImplementedError, match="return_transform"):
+            dha.transform([np.zeros((10, 3))], r_theta=[np.zeros((10, 2))])
+
+    def test_align_parameter_false_not_implemented(self):
+        dha = DiskHarmonicAnalysis(n_harmonics=2, align_parameter=False)
+        with pytest.raises(NotImplementedError, match="align_parameter"):
+            dha.transform([np.zeros((10, 3))], r_theta=[np.zeros((10, 2))])
+
+    def test_reflect_first_order_not_implemented(self):
+        dha = DiskHarmonicAnalysis(n_harmonics=2, reflect=True)
+        with pytest.raises(NotImplementedError, match="reflect"):
             dha.transform([np.zeros((10, 3))], r_theta=[np.zeros((10, 2))])
