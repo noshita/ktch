@@ -31,13 +31,15 @@ def test_chain_code_to_coordinates():
         assert isinstance(result, ChainCodeData)
 
         coords = result.to_numpy()
-        expected_coords = np.array([
-            [0, 0],  # Starting point
-            [1, 0],  # After going right
-            [1, -1],  # After going up
-            [0, -1],  # After going left
-            [0, 0],  # After going down (back to start)
-        ])
+        expected_coords = np.array(
+            [
+                [0, 0],  # Starting point
+                [1, 0],  # After going right
+                [1, -1],  # After going up
+                [0, -1],  # After going left
+                [0, 0],  # After going down (back to start)
+            ]
+        )
 
         assert coords.shape == (5, 2)
         assert np.allclose(coords, expected_coords)
@@ -67,13 +69,15 @@ def test_scaled_coordinates():
         result = read_chc(temp_file)
         coords = result.to_numpy()
 
-        expected_coords = np.array([
-            [10, 20],  # Starting point
-            [12, 20],  # After going right (scaled by 2)
-            [12, 18],  # After going up (scaled by 2)
-            [10, 18],  # After going left (scaled by 2)
-            [10, 20],  # After going down (scaled by 2)
-        ])
+        expected_coords = np.array(
+            [
+                [10, 20],  # Starting point
+                [12, 20],  # After going right (scaled by 2)
+                [12, 18],  # After going up (scaled by 2)
+                [10, 18],  # After going left (scaled by 2)
+                [10, 20],  # After going down (scaled by 2)
+            ]
+        )
 
         assert coords.shape == (5, 2)
         assert np.allclose(coords, expected_coords)

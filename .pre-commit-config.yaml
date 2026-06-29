@@ -1,0 +1,18 @@
+# Local hooks run ruff from the project's uv environment.
+# The lint and format version has a single source of truth in uv.lock.
+# Install with `uv run pre-commit install`.
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --no-sync ruff check --fix --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --no-sync ruff format --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true

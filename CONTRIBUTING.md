@@ -36,10 +36,20 @@ The CI matrix runs on Ubuntu, macOS, and Windows with Python 3.11, 3.12, and 3.1
 ### Code style
 
 ktch uses [ruff](https://docs.astral.sh/ruff/) for linting and formatting.
+The ruff version is pinned in `uv.lock` (the `lint` dependency group).
+
+Run it directly:
 
 ```bash
 uv run ruff check ktch/
 uv run ruff format ktch/
+```
+
+Or install the pre-commit hook so it runs automatically on changed files at
+commit:
+
+```bash
+uv run pre-commit install
 ```
 
 ### Building documentation

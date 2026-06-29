@@ -106,10 +106,12 @@ class DiskHarmonicAnalysis(
     .. math::
         \tilde{D}_n^0(r, \theta) &= N_{n,0}\, J_0(\lambda_{n,0}\, r)
         \\
-        \tilde{D}_n^m(r, \theta) &= \sqrt{2}\, N_{n,m}\, J_m(\lambda_{n,m}\, r)\, \cos(m\,\theta)
+        \tilde{D}_n^m(r, \theta) &= \sqrt{2}\, N_{n,m}\,
+        J_m(\lambda_{n,m}\, r)\, \cos(m\,\theta)
         \quad (m > 0)
         \\
-        \tilde{D}_n^m(r, \theta) &= \sqrt{2}\, N_{n,|m|}\, J_{|m|}(\lambda_{n,|m|}\, r)\, \sin(|m|\,\theta)
+        \tilde{D}_n^m(r, \theta) &= \sqrt{2}\, N_{n,|m|}\,
+        J_{|m|}(\lambda_{n,|m|}\, r)\, \sin(|m|\,\theta)
         \quad (m < 0)
 
     with normalization constants of Fourier–Bessel basis functions:
@@ -120,9 +122,19 @@ class DiskHarmonicAnalysis(
     References
     ----------
     .. [Wolf_1979] Wolf, K.B., 1979. Normal Mode Expansion and Bessel Series 221–251.
-    .. [Verrall_Kakarala_1998] Verrall, S.C., Kakarala, R., 1998. Disk-harmonic coefficients for invariant pattern recognition. J. Opt. Soc. Am. A 15, 389.
-    .. [Boyd_etal_2011] Boyd, J.P., Yu, F., 2011. Comparing seven spectral methods for interpolation and for solving the Poisson equation in a disk: Zernike polynomials, Logan–Shepp ridge polynomials, Chebyshev–Fourier Series, cylindrical Robert functions, Bessel–Fourier expansions, square-to-disk conformal mapping and radial basis functions. J. Comput. Phys. 230, 1408–1438.
-    .. [Shaqfa_etal_2025] Shaqfa, M., Choi, G.P.T., Anciaux, G., Beyer, K., 2025. Disk harmonics for analysing curved and flat self-affine rough surfaces and the topological reconstruction of open surfaces. J. Comput. Phys. 522, 113578.
+    .. [Verrall_Kakarala_1998] Verrall, S.C., Kakarala, R., 1998. Disk-harmonic
+       coefficients for invariant pattern recognition. J. Opt. Soc. Am. A 15,
+       389.
+    .. [Boyd_etal_2011] Boyd, J.P., Yu, F., 2011. Comparing seven spectral methods
+       for interpolation and for solving the Poisson equation in a disk: Zernike
+       polynomials, Logan–Shepp ridge polynomials, Chebyshev–Fourier Series,
+       cylindrical Robert functions, Bessel–Fourier expansions, square-to-disk
+       conformal mapping and radial basis functions. J. Comput. Phys. 230,
+       1408–1438.
+    .. [Shaqfa_etal_2025] Shaqfa, M., Choi, G.P.T., Anciaux, G., Beyer, K., 2025.
+       Disk harmonics for analysing curved and flat self-affine rough surfaces
+       and the topological reconstruction of open surfaces. J. Comput. Phys.
+       522, 113578.
 
     """
 
@@ -732,7 +744,8 @@ def _disk_harm_basis_matrix(
     * ``n=0, m=0``: :math:`1/\sqrt{\pi}`
     * ``n>0, m=0``: :math:`N_{n,0}\, J_0(\lambda_{n,0}\, r)`
     * ``m>0``: :math:`\sqrt{2}\, N_{n,m}\, J_m(\lambda_{n,m}\, r)\, \cos(m\,\theta)`
-    * ``m<0``: :math:`\sqrt{2}\, N_{n,|m|}\, J_{|m|}(\lambda_{n,|m|}\, r)\, \sin(|m|\,\theta)`
+    * ``m<0``:
+      :math:`\sqrt{2}\, N_{n,|m|}\, J_{|m|}(\lambda_{n,|m|}\, r)\, \sin(|m|\,\theta)`
 
     Parameters
     ----------

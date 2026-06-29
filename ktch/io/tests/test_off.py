@@ -100,8 +100,7 @@ class TestReadOff:
         """Comment (#) and blank lines around the header are ignored."""
         p = tmp_path / "commented.off"
         p.write_text(
-            "# a comment\n\nOFF\n# counts follow\n3 1 0\n"
-            "0 0 0\n1 0 0\n0 1 0\n3 0 1 2\n"
+            "# a comment\n\nOFF\n# counts follow\n3 1 0\n0 0 0\n1 0 0\n0 1 0\n3 0 1 2\n"
         )
 
         vertices, faces = _read_off(p)

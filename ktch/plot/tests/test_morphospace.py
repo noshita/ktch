@@ -149,22 +149,28 @@ class TestMorphospacePlotInsetAlignment:
         pca, df = pca_data
         fig, ax = plt.subplots()
         morphospace_plot(
-            data=df, x="PC1", y="PC2",
-            reducer=pca, descriptor=mock_descriptor_2d,
-            n_shapes=2, ax=ax,
+            data=df,
+            x="PC1",
+            y="PC2",
+            reducer=pca,
+            descriptor=mock_descriptor_2d,
+            n_shapes=2,
+            ax=ax,
         )
         insets = self._get_inset_axes(ax)
         assert len(insets) == 4  # n_shapes * n_shapes
 
-    def test_insets_track_parent_under_tight_layout(
-        self, pca_data, mock_descriptor_2d
-    ):
+    def test_insets_track_parent_under_tight_layout(self, pca_data, mock_descriptor_2d):
         pca, df = pca_data
         fig, axes = plt.subplots(1, 2, figsize=(8, 4))
         morphospace_plot(
-            data=df, x="PC1", y="PC2",
-            reducer=pca, descriptor=mock_descriptor_2d,
-            n_shapes=2, ax=axes[0],
+            data=df,
+            x="PC1",
+            y="PC2",
+            reducer=pca,
+            descriptor=mock_descriptor_2d,
+            n_shapes=2,
+            ax=axes[0],
         )
         insets = self._get_inset_axes(axes[0])
         assert len(insets) == 4
@@ -188,15 +194,17 @@ class TestMorphospacePlotInsetAlignment:
                 f"Inset bbox unchanged under tight_layout: {b} == {a}"
             )
 
-    def test_insets_track_parent_under_set_position(
-        self, pca_data, mock_descriptor_2d
-    ):
+    def test_insets_track_parent_under_set_position(self, pca_data, mock_descriptor_2d):
         pca, df = pca_data
         fig, ax = plt.subplots()
         morphospace_plot(
-            data=df, x="PC1", y="PC2",
-            reducer=pca, descriptor=mock_descriptor_2d,
-            n_shapes=2, ax=ax,
+            data=df,
+            x="PC1",
+            y="PC2",
+            reducer=pca,
+            descriptor=mock_descriptor_2d,
+            n_shapes=2,
+            ax=ax,
         )
         insets = self._get_inset_axes(ax)
 
@@ -212,15 +220,18 @@ class TestMorphospacePlotInsetAlignment:
                 f"Inset bbox did not follow ax.set_position: {b} == {a}"
             )
 
-    def test_insets_3d_projection_supported(
-        self, pca_data, mock_descriptor_3d_surface
-    ):
+    def test_insets_3d_projection_supported(self, pca_data, mock_descriptor_3d_surface):
         pca, df = pca_data
         fig, ax = plt.subplots()
         morphospace_plot(
-            data=df, x="PC1", y="PC2",
-            reducer=pca, descriptor=mock_descriptor_3d_surface,
-            shape_type="surface_3d", n_shapes=2, ax=ax,
+            data=df,
+            x="PC1",
+            y="PC2",
+            reducer=pca,
+            descriptor=mock_descriptor_3d_surface,
+            shape_type="surface_3d",
+            n_shapes=2,
+            ax=ax,
         )
         insets = self._get_inset_axes(ax)
         # Each inset should have a 3D Axes instance.
@@ -244,9 +255,13 @@ class TestMorphospacePlotZOrder:
         pca, df = pca_data
         fig, ax = plt.subplots()
         morphospace_plot(
-            data=df, x="PC1", y="PC2",
-            reducer=pca, descriptor=mock_descriptor_2d,
-            n_shapes=2, ax=ax,
+            data=df,
+            x="PC1",
+            y="PC2",
+            reducer=pca,
+            descriptor=mock_descriptor_2d,
+            n_shapes=2,
+            ax=ax,
         )
         scatter_zorders = [c.get_zorder() for c in ax.collections]
         inset_zorders = [a.get_zorder() for a in ax.child_axes]
@@ -264,9 +279,13 @@ class TestMorphospacePlotZOrder:
         zorder_before = ax.get_zorder()
         alpha_before = ax.patch.get_alpha()
         morphospace_plot(
-            data=df, x="PC1", y="PC2",
-            reducer=pca, descriptor=mock_descriptor_2d,
-            n_shapes=2, ax=ax,
+            data=df,
+            x="PC1",
+            y="PC2",
+            reducer=pca,
+            descriptor=mock_descriptor_2d,
+            n_shapes=2,
+            ax=ax,
         )
         assert ax.get_zorder() == zorder_before
         assert ax.patch.get_alpha() == alpha_before

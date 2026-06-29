@@ -41,17 +41,28 @@ def _exec_rendered(content):
 def _render_datasets_only(dataset_registry, dataset_defaults):
     """Convenience wrapper: render with datasets only, no examples."""
     return render_registry(
-        dataset_registry, dataset_defaults,
-        bundled_examples=[], example_registry={}, example_defaults={},
+        dataset_registry,
+        dataset_defaults,
+        bundled_examples=[],
+        example_registry={},
+        example_defaults={},
     )
 
 
-def _render_full(dataset_registry, dataset_defaults,
-                 bundled_examples, example_registry, example_defaults):
+def _render_full(
+    dataset_registry,
+    dataset_defaults,
+    bundled_examples,
+    example_registry,
+    example_defaults,
+):
     """Full render wrapper."""
     return render_registry(
-        dataset_registry, dataset_defaults,
-        bundled_examples, example_registry, example_defaults,
+        dataset_registry,
+        dataset_defaults,
+        bundled_examples,
+        example_registry,
+        example_defaults,
     )
 
 
@@ -324,9 +335,7 @@ class TestReadRegistryToml:
             '[dataset.my_dataset]\ndefault = "1"\nversions = ["1"]\n',
         ],
     )
-    def test_unknown_top_level_keys_raise(
-        self, tmp_path, monkeypatch, toml_content
-    ):
+    def test_unknown_top_level_keys_raise(self, tmp_path, monkeypatch, toml_content):
         """Legacy or mistyped top-level tables should raise."""
         _write_toml(tmp_path, toml_content, monkeypatch)
         with pytest.raises(RegistryError, match="unknown top-level key"):
@@ -366,7 +375,7 @@ class TestReadRegistryToml:
         """Dataset with no versions should be skipped with a warning."""
         _write_toml(
             tmp_path,
-            '[datasets.my_dataset]\nversions = []\n',
+            "[datasets.my_dataset]\nversions = []\n",
             monkeypatch,
         )
         config = read_registry_toml()
@@ -398,7 +407,7 @@ class TestReadRegistryToml:
         """Remote examples should be parsed from TOML."""
         _write_toml(
             tmp_path,
-            '[examples.my_mesh]\n'
+            "[examples.my_mesh]\n"
             'filename = "my_mesh.vtp"\n'
             'default = "1"\n'
             'versions = ["1"]\n',
@@ -413,9 +422,7 @@ class TestReadRegistryToml:
         """Example without filename should raise."""
         _write_toml(
             tmp_path,
-            '[examples.my_mesh]\n'
-            'default = "1"\n'
-            'versions = ["1"]\n',
+            '[examples.my_mesh]\ndefault = "1"\nversions = ["1"]\n',
             monkeypatch,
         )
         with pytest.raises(RegistryError, match="missing 'filename'"):
@@ -479,10 +486,7 @@ class TestRegistrySync:
 
         config = read_registry_toml()
 
-        toml_filenames = {
-            info["filename"]
-            for info in config["examples"].values()
-        }
+        toml_filenames = {info["filename"] for info in config["examples"].values()}
         assert toml_filenames == set(example_registry.keys()), (
             "Example filenames in registry.toml and _registry.py differ. "
             "Run: uv run python scripts/update_registry.py"

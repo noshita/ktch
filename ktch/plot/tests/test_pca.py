@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import numpy as np
 import pytest
 
@@ -238,7 +237,9 @@ class TestShapeVariationPlotOverrides:
         )
         assert isinstance(fig, mpl.figure.Figure)
 
-    def test_descriptor_inverse_transform_override(self, fitted_pca, mock_descriptor_2d):
+    def test_descriptor_inverse_transform_override(
+        self, fitted_pca, mock_descriptor_2d
+    ):
         fig = shape_variation_plot(
             fitted_pca,
             descriptor_inverse_transform=mock_descriptor_2d.inverse_transform,

@@ -50,8 +50,7 @@ def _validate_name(name, kind="dataset"):
     """Validate a dataset or example name."""
     if not _NAME_RE.match(name):
         raise RegistryError(
-            f"invalid {kind} name {name!r}: "
-            "must match [a-zA-Z][a-zA-Z0-9_]*"
+            f"invalid {kind} name {name!r}: must match [a-zA-Z][a-zA-Z0-9_]*"
         )
 
 
@@ -143,9 +142,7 @@ def read_registry_toml():
     for ex_name, ex_config in ex_section.items():
         filename = ex_config.get("filename")
         if not filename:
-            raise RegistryError(
-                f"example {ex_name!r} is missing 'filename' field"
-            )
+            raise RegistryError(f"example {ex_name!r} is missing 'filename' field")
         versions, default = _parse_versioned_entry(ex_name, ex_config, "example")
         if versions is None:
             continue
@@ -192,17 +189,11 @@ def fetch_manifest(prefix, name, version):
             return json.loads(resp.read())
     except HTTPError as exc:
         if exc.code == 404:
-            raise RegistryError(
-                f"manifest.json not found at {url}"
-            ) from exc
+            raise RegistryError(f"manifest.json not found at {url}") from exc
         else:
-            raise RegistryError(
-                f"HTTP {exc.code} fetching {url}"
-            ) from exc
+            raise RegistryError(f"HTTP {exc.code} fetching {url}") from exc
     except URLError as exc:
-        raise RegistryError(
-            f"network error fetching {url}: {exc.reason}"
-        ) from exc
+        raise RegistryError(f"network error fetching {url}: {exc.reason}") from exc
 
 
 def validate_manifest(manifest):
@@ -225,9 +216,7 @@ def validate_manifest(manifest):
                 f"expected string hash, got {type(hash_value).__name__}"
             )
         if not _SHA256_RE.match(hash_value):
-            raise RegistryError(
-                f"invalid SHA256 hash for '{filename}': '{hash_value}'"
-            )
+            raise RegistryError(f"invalid SHA256 hash for '{filename}': '{hash_value}'")
 
 
 ###########################################################
@@ -273,15 +262,16 @@ def _render_example_registry(lines, registry):
         lines.append(f"    {json.dumps(filename)}: {{")
         for version in sorted(versions.keys(), key=int):
             hash_value = versions[version]
-            lines.append(
-                f"        {json.dumps(version)}: {json.dumps(hash_value)},"
-            )
+            lines.append(f"        {json.dumps(version)}: {json.dumps(hash_value)},")
         lines.append("    },")
 
 
 def render_registry(
-    dataset_registry, dataset_defaults,
-    bundled_examples, example_registry, example_defaults,
+    dataset_registry,
+    dataset_defaults,
+    bundled_examples,
+    example_registry,
+    example_defaults,
 ):
     """Render the full content of _registry.py.
 
@@ -348,9 +338,7 @@ def render_registry(
     lines.append("}")
     lines.append("")
     lines.append("# Remote examples: {filename: {version: sha256_hash}}")
-    lines.append(
-        "# URL pattern: {BASE_URL}/examples/{stem}/v{version}/{filename}"
-    )
+    lines.append("# URL pattern: {BASE_URL}/examples/{stem}/v{version}/{filename}")
     lines.append("example_registry = {")
     _render_example_registry(lines, example_registry)
     lines.append("}")
@@ -390,8 +378,7 @@ def _show_diff(old_content, new_content):
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Update ktch dataset and example data registry from R2 "
-            "manifest.json files."
+            "Update ktch dataset and example data registry from R2 manifest.json files."
         )
     )
     parser.add_argument(
@@ -410,8 +397,10 @@ def main():
         bundled_examples = config["bundled_examples"]
         examples = config["examples"]
         example_defaults = config["example_defaults"]
-        print(f"  Found {len(datasets)} dataset(s), {len(examples)} remote example(s), "
-              f"{len(bundled_examples)} bundled example(s)")
+        print(
+            f"  Found {len(datasets)} dataset(s), {len(examples)} remote example(s), "
+            f"{len(bundled_examples)} bundled example(s)"
+        )
 
         # Fetch and validate manifests for datasets
         dataset_registry = {}
@@ -450,8 +439,11 @@ def main():
 
         # Render new content
         new_content = render_registry(
-            dataset_registry, dataset_defaults,
-            bundled_examples, example_registry, example_defaults,
+            dataset_registry,
+            dataset_defaults,
+            bundled_examples,
+            example_registry,
+            example_defaults,
         )
     except RegistryError as exc:
         print(f"Error: {exc}", file=sys.stderr)

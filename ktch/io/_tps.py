@@ -93,10 +93,7 @@ class TPSData(MorphoDataMixin):
         return self.specimen_name
 
     def _repr_detail(self):
-        return (
-            f"n_landmarks={self.landmarks.shape[0]}, "
-            f"n_dim={self.landmarks.shape[1]}"
-        )
+        return f"n_landmarks={self.landmarks.shape[0]}, n_dim={self.landmarks.shape[1]}"
 
     @property
     def landmarks(self) -> np.ndarray:
@@ -240,9 +237,7 @@ def read_tps(file_path, as_frame=False, strict=True):
             raise ValueError("Some specimens have semilandmarks and others do not.")
         use_curves = all(has_curves)
         if not use_curves:
-            return pd.concat(
-                [tps_datum.to_dataframe() for tps_datum in tps_data]
-            )
+            return pd.concat([tps_datum.to_dataframe() for tps_datum in tps_data])
         else:
             landmarks = []
             semilandmarks = []

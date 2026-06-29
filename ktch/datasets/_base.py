@@ -712,9 +712,7 @@ def _resolve_dataset_version(dataset_name, version=None):
         try:
             return get_default_version(dataset_name)
         except KeyError:
-            raise ValueError(
-                f"Unknown dataset: '{dataset_name}'"
-            ) from None
+            raise ValueError(f"Unknown dataset: '{dataset_name}'") from None
 
     if dataset_name not in dataset_registry:
         raise ValueError(f"Unknown dataset: '{dataset_name}'")

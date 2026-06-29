@@ -184,7 +184,8 @@ class ChainCodeData(MorphoDataMixin):
         -------
         coords : np.ndarray
             2D coordinates with shape (n, 2) where n is the number of points.
-            The first column is the x-coordinate and the second column is the y-coordinate.
+            The first column is the x-coordinate and the second column is
+            the y-coordinate.
         """
         steps = _DIRECTIONS[self.chain_code]
         coords = np.vstack([np.zeros((1, 2)), np.cumsum(steps, axis=0)])

@@ -53,14 +53,17 @@ notebook = [
   # Pin <7 until the upstream/-j interaction is resolved.
   "ipykernel<7",
 ]
+lint = ["ruff>=0.15.20"]
 dev = [
   { include-group = "notebook" },
+  { include-group = "lint" },
   "jupyter>=1.1",
   "jupyterlab>=4.3",
   "licensecheck>=2025.1",
   "llvmlite>=0.44",
   "networkx>=3.6",
   "numba>=0.61",
+  "pre-commit>=4.6.0",
   "pytest>=8.3",
   "pytest-benchmark>=5.1.0",
   "pytest-cov>=6.0",
@@ -142,6 +145,7 @@ exclude = [
   "doc/_build",
   "doc/notebooks",
   "doc/generated",
+  "doc/_templates",
 ]
 line-length = 88
 
@@ -178,6 +182,13 @@ select = ["E", "F", "W", "I", "D", "NPY201"]
 # Plot tests set the non-interactive Agg backend before importing pyplot,
 # so module-level imports intentionally follow code (E402).
 "ktch/plot/tests/*.py" = ["E402"]
+# Tests document behavior through their names; class docstrings add little
+# value, and test docstrings or fixtures may exceed the line length.
+"**/tests/**" = ["D101", "E501"]
+# Sphinx conf.py manipulates sys.path before importing, so imports follow code.
+"doc/conf.py" = ["E402"]
+# The dataset registry stores sha256 hashes that exceed the line length.
+"ktch/datasets/_registry.py" = ["E501"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"

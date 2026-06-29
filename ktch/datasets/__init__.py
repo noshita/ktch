@@ -31,7 +31,7 @@ __all__ = [
 
 _DEPRECATED_NAMES = {
     "convert_coords_df_to_list": "ktch.io.convert_coords_df_to_list",
-    "convert_coords_df_to_df_sklearn_transform": "ktch.io.convert_coords_df_to_df_sklearn_transform",
+    "convert_coords_df_to_df_sklearn_transform": "ktch.io.convert_coords_df_to_df_sklearn_transform",  # noqa: E501
 }
 
 
@@ -39,8 +39,7 @@ def __getattr__(name):
     if name in _DEPRECATED_NAMES:
         new_path = _DEPRECATED_NAMES[name]
         warnings.warn(
-            f"ktch.datasets.{name} is deprecated. "
-            f"Use {new_path} instead.",
+            f"ktch.datasets.{name} is deprecated. Use {new_path} instead.",
             DeprecationWarning,
             stacklevel=2,
         )

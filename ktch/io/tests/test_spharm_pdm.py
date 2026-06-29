@@ -77,7 +77,10 @@ def test_spharmpdm_data_array_protocol():
 
 
 def test_spharmpdm_data_to_dataframe():
-    coeffs = [np.array([[1.0, 2.0, 3.0]]), np.array([[4, 5, 6], [7, 8, 9], [10, 11, 12]])]
+    coeffs = [
+        np.array([[1.0, 2.0, 3.0]]),
+        np.array([[4, 5, 6], [7, 8, 9], [10, 11, 12]]),
+    ]
     data = SpharmPdmData(specimen_name="S", coeffs=coeffs)
     df = data.to_dataframe()
 

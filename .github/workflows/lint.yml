@@ -1,0 +1,26 @@
+name: Lint
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "**/pyproject.toml"
+      # Only ruff is needed; the lint group keeps this far lighter than a full sync.
+      - name: Sync lint tools
+        run: uv sync --only-group lint
+      # pre-commit is just the orchestrator, so run it with uvx;
+      # the ruff it dispatches to comes from uv.lock above.
+      - name: Run ruff via pre-commit
+        run: uvx pre-commit run --all-files --show-diff-on-failure

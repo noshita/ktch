@@ -156,7 +156,7 @@ def read_spharmpdm_coef(path: str | Path) -> SpharmPdmData:
     actual_count = len(coef) - 1
     if actual_count != expected_total:
         raise ValueError(
-            f"Coefficient count mismatch: expected {expected_total} (3 * {n_coef_per_coord}), found {actual_count}"
+            f"Coefficient count mismatch: expected {expected_total} (3 * {n_coef_per_coord}), found {actual_count}"  # noqa: E501
         )
     # Convert to numpy array and validate dimensions
     try:

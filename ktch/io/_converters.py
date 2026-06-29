@@ -176,8 +176,8 @@ def _complex_to_real_sph_coef(coef_complex):
                 coef_real[idx] = np.sqrt(2) * (-1) ** m * np.real(coef_complex[idx])
             else:
                 idx_pos = l**2 + l + (-m)
-                coef_real[idx] = -np.sqrt(2) * (-1) ** abs(m) * np.imag(
-                    coef_complex[idx_pos]
+                coef_real[idx] = (
+                    -np.sqrt(2) * (-1) ** abs(m) * np.imag(coef_complex[idx_pos])
                 )
 
     return coef_real
@@ -200,9 +200,7 @@ def _real_to_complex_sph_coef(coef_real):
             idx_pos = l**2 + l + m
             idx_neg = l**2 + l - m
             c_pos = (
-                (-1) ** m
-                * (coef_real[idx_pos] - 1j * coef_real[idx_neg])
-                / np.sqrt(2)
+                (-1) ** m * (coef_real[idx_pos] - 1j * coef_real[idx_neg]) / np.sqrt(2)
             )
             coef_complex[idx_pos] = c_pos
             coef_complex[idx_neg] = (-1) ** m * np.conj(c_pos)
@@ -362,7 +360,7 @@ def _cvt_spharm_coef_spharmpdm_to_list(
     lmax = int(np.sqrt(coef_spharmpdm.shape[0]) - 1)
     if coef_spharmpdm.shape != ((lmax + 1) ** 2, 3):
         raise ValueError(
-            f"Invalid coefficient array shape: expected {((lmax + 1) ** 2, 3)}, got {coef_spharmpdm.shape}"
+            f"Invalid coefficient array shape: expected {((lmax + 1) ** 2, 3)}, got {coef_spharmpdm.shape}"  # noqa: E501
         )
 
     # Convert to list format

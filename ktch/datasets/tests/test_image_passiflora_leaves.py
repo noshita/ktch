@@ -106,9 +106,7 @@ class TestRegistry:
         assert version in dataset_registry[ds_name]
 
         # Hash is retrievable
-        hash_value = get_dataset_hash(
-            ds_name, version, "image_passiflora_leaves.zip"
-        )
+        hash_value = get_dataset_hash(ds_name, version, "image_passiflora_leaves.zip")
         assert len(hash_value) == 64
 
         # URL is correctly formed

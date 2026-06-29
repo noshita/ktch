@@ -185,9 +185,7 @@ class TestSurfaceLeafBendingRegistry:
         assert ds_name in dataset_registry
         assert version in dataset_registry[ds_name]
 
-        hash_value = get_dataset_hash(
-            ds_name, version, "surface_leaf_bending.zip"
-        )
+        hash_value = get_dataset_hash(ds_name, version, "surface_leaf_bending.zip")
         assert len(hash_value) == 64
 
         url = get_dataset_url(ds_name, version, "surface_leaf_bending.zip")

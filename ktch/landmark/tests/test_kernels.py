@@ -261,18 +261,14 @@ def test_tps_bending_energy_matrix_shape_3d():
 
 def test_tps_bending_energy_matrix_symmetric():
     """Test that bending energy matrix is symmetric."""
-    X = np.array(
-        [[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0.5]], dtype=float
-    )
+    X = np.array([[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0.5]], dtype=float)
     Lk_inv = tps_bending_energy_matrix(X)
     assert_allclose(Lk_inv, Lk_inv.T, atol=1e-10)
 
 
 def test_tps_bending_energy_matrix_equivalence():
     """Test that H^T L_k^{-1} H equals trace(W^T K W) for bending energy."""
-    source = np.array(
-        [[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0.5]], dtype=float
-    )
+    source = np.array([[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0.5]], dtype=float)
     target = source.copy()
     target[2] += np.array([0.1, -0.1])
 
@@ -282,7 +278,6 @@ def test_tps_bending_energy_matrix_equivalence():
     # Method 2: sum over dims of H_d^T L_k^{-1} H_d
     Lk_inv = tps_bending_energy_matrix(source)
     W, c, A = tps_coefficients(source, target)
-    K = tps_kernel_matrix(source)
     # H = K @ W (the target heights projected through kernel)
     # But actually BE = Tr(W^T K W) = sum_d (K @ W[:,d])^T L_k^{-1} ... no.
     # The equivalence is: Tr(W^T K W) = sum_d H_d^T L_k^{-1} H_d

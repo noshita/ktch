@@ -546,7 +546,6 @@ def test_bending_energy_sliding_reduces_energy():
     """Test that sliding reduces bending energy."""
     from ktch.landmark._kernels import tps_bending_energy
 
-    rng = np.random.default_rng(42)
     base = np.array(
         [
             [0.0, 0.0],
@@ -768,7 +767,6 @@ def test_sliding_with_reprojection_reduces_energy():
     """Test that sliding with re-projection still reduces bending energy."""
     from ktch.landmark._kernels import tps_bending_energy
 
-    rng = np.random.default_rng(42)
     base = np.array(
         [
             [0.0, 0.0],
@@ -1040,5 +1038,3 @@ def test_gpa_transform_rejects_wrong_n_features():
     X_wrong = rng.standard_normal((5, X.shape[1] + 2))
     with pytest.raises(ValueError):
         gpa.transform(X_wrong)
-
-

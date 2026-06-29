@@ -56,9 +56,7 @@ def make_landmarks_from_reference(
         Generated landmark dataset.
     """
     if allow_collinearity:
-        raise NotImplementedError(
-            "allow_collinearity is not yet implemented."
-        )
+        raise NotImplementedError("allow_collinearity is not yet implemented.")
 
     ref = np.asarray(reference)
 
