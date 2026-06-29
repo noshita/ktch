@@ -83,7 +83,7 @@ pc_scores = pca.fit_transform(coeffs)
 
 ## Documentation
 
-See [doc.ktch.dev](https://doc.ktch.dev) for full documentation:
+See [doc.ktch.dev](https://doc.ktch.dev/stable/) for full documentation:
 
 - Tutorials: Step-by-step guides for GPA, EFA, spherical harmonics, and more
 - How-to guides: Task-oriented recipes for data loading, visualization, and pipeline integration
