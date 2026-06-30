@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.10.1](https://github.com/noshita/ktch/compare/v0.10.0...v0.10.1) (2026-06-30)
+
+
+### Features
+
+* **coiling:** ✨ add panel input normalization for estimators ([3446703](https://github.com/noshita/ktch/commit/34467038e2aee86e2afce5dcc25082e41f5b3dd0))
+
+
+### Documentation
+
+* 📚 point documentation link to stable ([3679ed4](https://github.com/noshita/ktch/commit/3679ed474515ca9b469eb156d129c7f4fe8ce6f0))
+
+
+### Continuous Integration
+
+* 👷 enforce ruff via pre-commit and a CI lint gate ([98026f9](https://github.com/noshita/ktch/commit/98026f963f9628ea3531c88a53d240dc739738cf))
+
 ## [0.10.0](https://github.com/noshita/ktch/compare/v0.9.1...v0.10.0) (2026-06-26)
 
 
