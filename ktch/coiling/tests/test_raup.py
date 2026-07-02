@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.utils.validation import check_is_fitted
 
 from ktch.coiling import RaupModel, l_r, raup, theta_r
 
@@ -107,9 +108,70 @@ def test_raup_model_fit_returns_self():
     assert model.fit(None) is model
 
 
-def test_raup_model_transform_not_implemented():
-    with pytest.raises(NotImplementedError):
-        RaupModel().transform([np.zeros((10, 2))])
+def test_raup_model_is_fitted():
+    model = RaupModel()
+    assert model.__sklearn_is_fitted__() is True
+    check_is_fitted(model)
+
+
+def test_raup_model_ml2d_round_trip():
+    # Synthesize the lateral (d, f) series from a raup()-generated shell at
+    # theta = pi*i, phi = 0, offset the height by an arbitrary measurement datum
+    # (real digitizing does not start at the virtual apex), then recover the
+    # parameters (generation <-> estimation consistency, origin-robust).
+    w_true, t_true, d_true, r0 = 1.5, 2.6, 0.6, 1.0
+    n = 30
+    i = np.arange(n, dtype=float)
+    surf = raup(
+        w_true,
+        t_true,
+        d_true,
+        r0=r0,
+        theta_range=np.pi * i,
+        phi_range=np.array([0.0]),
+    )
+    p = surf[:, 0, :]
+    d = np.hypot(p[:, 0], p[:, 1])
+    f = p[:, 2] - 7.3  # arbitrary height datum (not the virtual apex)
+    X = [np.column_stack([d, f])]
+    # c, b chosen so d_r = c / (c + b) = d_true.
+    out = RaupModel().transform(X, c=np.array([d_true]), b=np.array([1.0 - d_true]))
+    assert out.shape == (1, 5)
+    np.testing.assert_allclose(out[0, :3], [w_true, t_true, d_true], rtol=1e-5)
+    np.testing.assert_array_equal(out[0, 3:], [0.0, 0.0])
+
+
+def test_raup_model_transform_requires_c_b():
+    n = 10
+    i = np.arange(n, dtype=float)
+    X = [np.column_stack([1.5 ** (i / 2), i])]
+    with pytest.raises(ValueError, match="requires c and b"):
+        RaupModel().transform(X)
+
+
+def test_raup_model_transform_rejects_invalid_c_b():
+    n = 10
+    i = np.arange(n, dtype=float)
+    X = [np.column_stack([1.5 ** (i / 2), i])]
+    with pytest.raises(ValueError, match="b must be > 0"):
+        RaupModel().transform(X, c=np.array([0.6]), b=np.array([0.0]))
+
+
+def test_raup_model_transform_validates_channels():
+    with pytest.raises(ValueError, match="n_channels"):
+        RaupModel().transform([np.zeros((10, 3))])
+
+
+def test_raup_model_transform_rejects_aperture():
+    with pytest.raises(NotImplementedError, match="aperture"):
+        RaupModel().transform([np.zeros((10, 2))], aperture=object())
+
+
+def test_raup_model_fit_transform_routes_aperture():
+    # fit_transform forwards aperture (else the message would be the generic
+    # "not implemented", not the aperture rejection).
+    with pytest.raises(NotImplementedError, match="aperture"):
+        RaupModel().fit_transform([np.zeros((10, 2))], aperture=object())
 
 
 # --- arc-length conversion (l_r, theta_r) -----------------------------------

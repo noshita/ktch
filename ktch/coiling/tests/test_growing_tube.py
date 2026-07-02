@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 from scipy.integrate import cumulative_trapezoid
+from sklearn.utils.validation import check_is_fitted
 
 from ktch.coiling import GrowingTubeModel, growing_tube, l_g, s_g
 
@@ -98,9 +99,69 @@ def test_growing_tube_model_accepts_locus_only():
     np.testing.assert_allclose(X5, X3)
 
 
-def test_growing_tube_model_transform_not_implemented():
-    with pytest.raises(NotImplementedError):
+def test_growing_tube_model_is_fitted():
+    model = GrowingTubeModel()
+    assert model.__sklearn_is_fitted__() is True
+    check_is_fitted(model)
+
+
+def test_growing_tube_model_nls3d_round_trip():
+    # Synthesize the centroid locus + thickness from known params, then recover.
+    e_true, c_true, t_true = 0.05, 0.4, 0.06
+    s = np.linspace(0, 20, 200)
+    phi = np.linspace(0, 2 * np.pi, 60, endpoint=False)
+    surf = growing_tube(
+        e_true, c_true, t_true, s_range=s, phi_range=phi, method="closed"
+    )
+    centroids = surf.mean(axis=1)  # circle centroid == trajectory point
+    r = np.exp(e_true * s)  # r0 = 1 default
+    X = [np.column_stack([centroids, r])]
+    out = GrowingTubeModel().transform(X)
+    assert out.shape == (1, 5)
+    np.testing.assert_allclose(
+        out[0, :3], [e_true, c_true, t_true], rtol=2e-2, atol=1e-3
+    )
+    np.testing.assert_array_equal(out[0, 3:], [0.0, 0.0])
+
+
+def test_growing_tube_model_nls3d_uses_domain_coords_arc_length():
+    # Supplying the exact arc length via domain_coords removes the tentative
+    # chord-length error, so recovery is tighter than the chord-length default.
+    e_true, c_true, t_true = 0.05, 0.4, 0.06
+    s = np.linspace(0, 20, 200)
+    phi = np.linspace(0, 2 * np.pi, 60, endpoint=False)
+    surf = growing_tube(
+        e_true, c_true, t_true, s_range=s, phi_range=phi, method="closed"
+    )
+    centroids = surf.mean(axis=1)
+    r = np.exp(e_true * s)
+    l_exact = np.expm1(e_true * s) / e_true  # r0 = 1
+    X = [np.column_stack([centroids, r])]
+    out = GrowingTubeModel().transform(X, domain_coords=[l_exact.reshape(-1, 1)])
+    np.testing.assert_allclose(
+        out[0, :3], [e_true, c_true, t_true], rtol=1e-3, atol=1e-4
+    )
+
+
+def test_growing_tube_model_transform_validates_channels():
+    # 3 columns (locus only, no thickness) fails the required 4-channel contract.
+    with pytest.raises(ValueError, match="n_channels"):
         GrowingTubeModel().transform([np.zeros((10, 3))])
+
+
+def test_growing_tube_model_transform_rejects_aperture():
+    with pytest.raises(NotImplementedError, match="aperture"):
+        GrowingTubeModel().transform([np.zeros((10, 4))], aperture=object())
+
+
+def test_growing_tube_model_fit_transform_routes_domain_coords():
+    # A length-mismatched domain_coords surfaces only if fit_transform forwards
+    # it to transform's _check_panel.
+    with pytest.raises(ValueError, match="same length"):
+        GrowingTubeModel().fit_transform(
+            [np.zeros((10, 4)), np.zeros((8, 4))],
+            domain_coords=[np.zeros(10)],
+        )
 
 
 # --- heteromorph (varying parameters) ---------------------------------------

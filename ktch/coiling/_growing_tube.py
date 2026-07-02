@@ -17,11 +17,14 @@
 import numpy as np
 import numpy.typing as npt
 from scipy.integrate import solve_ivp
+from scipy.optimize import least_squares
+from scipy.spatial.transform import Rotation
 from sklearn.base import (
     BaseEstimator,
     ClassNamePrefixFeaturesOutMixin,
     TransformerMixin,
 )
+from sklearn.utils.parallel import Parallel, delayed
 
 from ._generating_curve import (
     _assemble_surface,
@@ -29,6 +32,7 @@ from ._generating_curve import (
     _surfaces_to_frame,
     whorl_s_range,
 )
+from ._panel import _check_panel
 
 _VALID_METHODS = ("ode", "closed")
 
@@ -393,6 +397,76 @@ def s_g(l_g, e_g, r0=1.0):
     return float(out) if out.ndim == 0 else out
 
 
+def _init_frame(p: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    """Initial Frenet frame (rows tangent/normal/binormal) from the first points."""
+    t = p[1] - p[0]
+    t = t / np.linalg.norm(t)
+    a = p[2] - 2.0 * p[1] + p[0]
+    a = a - (a @ t) * t
+    na = np.linalg.norm(a)
+    if na < 1e-9:
+        ref = (
+            np.array([1.0, 0.0, 0.0]) if abs(t[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
+        )
+        n = ref - (ref @ t) * t
+        n = n / np.linalg.norm(n)
+    else:
+        n = a / na
+    return np.vstack([t, n, np.cross(t, n)])
+
+
+def _tentative_arc_length(p: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    """Tentative arc length: cumulative chord length of the centroid locus."""
+    seg = np.linalg.norm(np.diff(p, axis=0), axis=1)
+    return np.concatenate([[0.0], np.cumsum(seg)])
+
+
+def _estimate_growing_tube_nls3d(X_i, arc_length):
+    """Estimate ``(e_g, c_g, t_g)`` from one specimen's 3D measurements.
+
+    A closed-form radius-vs-arc-length regression gives ``e_g`` and ``r_0``
+    (``r = r_0 + e_g * l`` is exact); a nonlinear least-squares fit
+    ``(c_g, t_g)`` and the rigid pose from the centroid locus.
+
+    Parameters
+    ----------
+    X_i : ndarray of shape (n_points, 4)
+        Cross-section centroids and tube thickness ``(x, y, z, r)``.
+    arc_length : array-like of shape (n_points,)
+        Arc length ``l`` per point (required).
+
+    Returns
+    -------
+    ndarray of shape (5,)
+        ``(e_g, c_g, t_g, 0, 0)``; orientation columns are not estimated.
+    """
+    data = np.asarray(X_i, dtype=float)
+    p = data[:, :3]
+    r = data[:, 3]
+
+    arr = np.asarray(arc_length, dtype=float)
+    l = arr.reshape(arr.shape[0], -1)[:, 0]
+
+    r0_hat, e_g = np.linalg.lstsq(np.column_stack([np.ones_like(l), l]), r, rcond=None)[
+        0
+    ]
+    s = np.log1p(e_g * l / r0_hat) / e_g if abs(e_g) > 1e-12 else l / r0_hat
+
+    rv0 = Rotation.from_matrix(_init_frame(p).T).as_rotvec()
+
+    def residuals(params):
+        c_g, t_g = params[0], params[1]
+        p0 = params[2:5]
+        frame0 = Rotation.from_rotvec(params[5:8]).as_matrix().T
+        traj, _, _ = _growing_tube_trajectory(
+            e_g, c_g, t_g, r0_hat, s, p0, frame0, method="closed"
+        )
+        return (traj - p).ravel()
+
+    sol = least_squares(residuals, np.concatenate([[0.3, 0.0], p[0], rv0]))
+    return np.array([e_g, float(sol.x[0]), float(sol.x[1]), 0.0, 0.0])
+
+
 class GrowingTubeModel(
     ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator
 ):
@@ -400,8 +474,7 @@ class GrowingTubeModel(
 
     The growing tube model [Okamoto_1988]_. ``inverse_transform`` is the
     generative map ``Phi: (e_g, c_g, t_g, delta_g, gamma_g) -> form``.
-    ``transform`` (parameter estimation from observed shells) is reserved for a
-    later release.
+    ``transform`` estimates ``(e_g, c_g, t_g)``.
 
     Parameters
     ----------
@@ -410,9 +483,9 @@ class GrowingTubeModel(
     method : {"ode", "closed"}, default = "ode"
         Forward solver passed to :func:`growing_tube`.
     estimator : str, default = "nls_3d"
-        Fitting method used by ``transform`` (not yet implemented).
+        Estimation method used by ``transform``; only ``"nls_3d"`` is implemented.
     n_jobs : int, optional
-        Reserved for parallelism.
+        Number of jobs for the per-specimen estimation in ``transform``.
     verbose : int, default = 0
         Verbosity level.
 
@@ -440,10 +513,59 @@ class GrowingTubeModel(
         """No-op (stateless). Returns self."""
         return self
 
-    def transform(self, X, thickness=None):
-        """Estimate ``(e_g, c_g, t_g)`` from observed shells (not implemented)."""
-        raise NotImplementedError(
-            "GrowingTubeModel.transform (parameter estimation) is not implemented yet"
+    def __sklearn_is_fitted__(self) -> bool:
+        """Return True since this is a stateless transformer."""
+        return True
+
+    def transform(self, X, domain_coords=None, aperture=None):
+        """Estimate ``(e_g, c_g, t_g)`` from measured shells..
+
+        Parameters
+        ----------
+        X : list of array-like, ndarray, or DataFrame
+            Per-specimen panel of ``(n_points_i, 4)`` centroid-and-thickness
+            sequences ``(x, y, z, r)``. See
+            :func:`ktch.coiling._panel._check_panel` for the accepted encodings.
+        domain_coords : list of array-like, optional
+            Per-point arc length ``l`` (for example from an external
+            arc-length refinement). When omitted, a tentative cumulative chord
+            length is used.
+        aperture : None
+            Aperture shape; only the circular default is supported.
+
+        Returns
+        -------
+        X_transformed : ndarray of shape (n_samples, 5)
+            Estimated ``(e_g, c_g, t_g, 0, 0)``; the orientation columns
+            ``delta_g, gamma_g`` are not estimated and returned as zero.
+        """
+        if aperture is not None:
+            raise NotImplementedError("general aperture shapes are not supported yet")
+        panel = _check_panel(
+            X, channel_names=["x", "y", "z", "r"], domain_coords=domain_coords
+        )
+        if panel.n_samples == 0:
+            return np.empty((0, 5))
+        dc = panel.domain_coords
+        estimates = Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
+            delayed(_estimate_growing_tube_nls3d)(
+                panel.values[i],
+                dc[i]
+                if dc is not None
+                else _tentative_arc_length(panel.values[i][:, :3]),
+            )
+            for i in range(panel.n_samples)
+        )
+        return np.stack(estimates)
+
+    def fit_transform(self, X, y=None, domain_coords=None, aperture=None):
+        """Fit and transform in one step.
+
+        Overridden to support metadata routing of ``domain_coords``,
+        ``aperture``.
+        """
+        return self.fit(X, y).transform(
+            X, domain_coords=domain_coords, aperture=aperture
         )
 
     def inverse_transform(

@@ -16,13 +16,16 @@
 
 import numpy as np
 import numpy.typing as npt
+from scipy.optimize import least_squares
 from sklearn.base import (
     BaseEstimator,
     ClassNamePrefixFeaturesOutMixin,
     TransformerMixin,
 )
+from sklearn.utils.parallel import Parallel, delayed
 
 from ._generating_curve import _pad_orientation, _surfaces_to_frame, whorl_theta_range
+from ._panel import _check_panel
 
 
 def _validate_raup_params(w_r: float, t_r: float, d_r: float, r0: float) -> None:
@@ -282,23 +285,96 @@ def theta_r(l_r, w_r, t_r, d_r, r0=1.0):
     return float(out) if out.ndim == 0 else out
 
 
+def _estimate_raup_ml2d(lateral_series, c, b):
+    """Estimate ``(w_r, t_r, d_r)`` from digitizing points of a specimen.
+
+    ``d_r = c / (c + b)`` comes from the umbilical side measurements.
+    ``(w_r, t_r, r0)`` and a height datum ``f0`` are fit by least squares
+    (the MLE under Gaussian error) to the lateral ``(d_i, f_i)`` series through
+    the Raup's model: :func:`_raup_surface` at ``theta = pi * i`` and
+    ``phi = 0`` (the lateral edge).
+
+    Parameters
+    ----------
+    lateral_series : ndarray of shape (n_points, 2)
+        Lateral side measurements of digitizing points ``(d, f)``.
+    c, b : float
+        Umbilical side measurements.
+
+    Returns
+    -------
+    ndarray of shape (5,)
+        ``(w_r, t_r, d_r, 0, 0)``; orientation columns are not estimated.
+    """
+    lateral = np.asarray(lateral_series, dtype=float)
+    d = lateral[:, 0]
+    f = lateral[:, 1]
+    n = len(d)
+    theta = np.pi * np.arange(n, dtype=float)  # lateral digitizing: theta_i = pi i
+    phi0 = np.array([0.0])  # aperture edge
+
+    d_r = c / (c + b)
+
+    # Initialization: w_r from the radial ratios, t_r from the f-vs-d slope, r0
+    # from the scale d0 = 2 r0 / (1 - d_r), f0 from the height datum.
+    w0 = (d[-1] / d[0]) ** (2.0 / (n - 1)) if n > 1 and d[0] > 0 else 1.5
+    w0 = max(w0, 1.0 + 1e-6)
+    d_span = d[-1] - d[0]
+    t0 = (f[-1] - f[0]) / d_span if abs(d_span) > 1e-12 else 1.0
+    r0_0 = max(d[0] * (1.0 - d_r) / 2.0, 1e-9) if d[0] > 0 else 1.0
+    f0_0 = f[0] - t0 * d[0]
+
+    def residuals(params):
+        w_r, t_r, r0, f0 = params
+        pts = _raup_surface(w_r, t_r, d_r, 0.0, 0.0, r0, theta, phi0)[:, 0, :]
+        d_hat = np.hypot(pts[:, 0], pts[:, 1])
+        return np.concatenate([d_hat - d, (pts[:, 2] + f0) - f])
+
+    sol = least_squares(
+        residuals,
+        x0=[w0, t0, r0_0, f0_0],
+        bounds=(
+            [1.0 + 1e-9, -np.inf, 1e-12, -np.inf],
+            [np.inf, np.inf, np.inf, np.inf],
+        ),
+    )
+    return np.array([float(sol.x[0]), float(sol.x[1]), d_r, 0.0, 0.0])
+
+
+def _validate_cb(c, b, n_samples):
+    """Validate the per-specimen umbilical measurements ``c``, ``b``."""
+    if c is None or b is None:
+        raise ValueError(
+            "RaupModel.transform requires c and b (umbilical measurements) to "
+            "estimate d_r = c / (c + b)."
+        )
+    c = np.asarray(c, dtype=float)
+    b = np.asarray(b, dtype=float)
+    if c.shape != (n_samples,) or b.shape != (n_samples,):
+        raise ValueError(
+            f"c and b must each have shape ({n_samples},); got {c.shape} and {b.shape}."
+        )
+    if np.any(c < 0) or np.any(b <= 0):
+        raise ValueError("c must be >= 0 and b must be > 0 (so d_r in [0, 1)).")
+    return c, b
+
+
 class RaupModel(ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator):
     """Raup's model.
 
     Raup’s logarithmic shell coiling model [Raup_1965]_ [Raup_1966]_.
     ``inverse_transform`` is the generative map
-    ``Phi: (w_r, t_r, d_r, delta_r, gamma_r) -> form``.
-    ``transform`` (parameter estimation from measurement data) is not implemented
-    yet.
+    ``Phi: (w_r, t_r, d_r, delta_r, gamma_r) -> form``. ``transform`` estimates
+    ``(w_r, t_r, d_r)`` from lateral and umbilical measurements (``ml_2d``).
 
     Parameters
     ----------
     r0 : float, default = 1.0
         Initial tube radius (scale) used for generation.
     estimator : str, default = "ml_2d"
-        Fitting method used by ``transform`` (not yet implemented).
+        Estimation method used by ``transform``; only ``"ml_2d"`` is implemented.
     n_jobs : int, optional
-        Reserved for parallelism.
+        Number of jobs for the per-specimen estimation in ``transform``.
     verbose : int, default = 0
         Verbosity level.
 
@@ -326,11 +402,52 @@ class RaupModel(ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator
         """No-op (stateless). Returns self."""
         return self
 
-    def transform(self, X, d=None, f=None, h=None, b=None, c=None):
-        """Estimate Raup parameters from observed shells (not implemented)."""
-        raise NotImplementedError(
-            "RaupModel.transform (parameter estimation) is not implemented yet"
+    def __sklearn_is_fitted__(self) -> bool:
+        """Return True since this is a stateless transformer."""
+        return True
+
+    def transform(self, X, c=None, b=None, aperture=None):
+        """Estimate Raup parameters from measured shells.
+
+        Maximum-likelihood ``ml_2d`` estimation: fit the lateral
+        ``(d, f)`` series and combine with ``d_r = c / (c + b)``.
+
+        Parameters
+        ----------
+        X : list of array-like, ndarray, or DataFrame
+            Per-specimen panel of ``(n_points_i, 2)`` lateral digitizing points
+            ``(d, f)``. See :func:`ktch.coiling._panel._check_panel` for the
+            accepted encodings.
+        c, b : array-like of shape (n_samples,)
+            Per-specimen umbilical measurements (axis-to-inner-margin distance
+            and aperture width) giving ``d_r = c / (c + b)``. Required.
+        aperture : None
+            Aperture shape; only the circular default is supported.
+
+        Returns
+        -------
+        X_transformed : ndarray of shape (n_samples, 5)
+            Estimated ``(w_r, t_r, d_r, 0, 0)``; the orientation columns
+            ``delta_r, gamma_r`` are not estimated and returned as zero.
+        """
+        if aperture is not None:
+            raise NotImplementedError("general aperture shapes are not supported yet")
+        panel = _check_panel(X, channel_names=["d", "f"])
+        c, b = _validate_cb(c, b, panel.n_samples)
+        if panel.n_samples == 0:
+            return np.empty((0, 5))
+        estimates = Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
+            delayed(_estimate_raup_ml2d)(panel.values[i], c[i], b[i])
+            for i in range(panel.n_samples)
         )
+        return np.stack(estimates)
+
+    def fit_transform(self, X, y=None, c=None, b=None, aperture=None):
+        """Fit and transform in one step.
+
+        Overridden to support metadata routing of ``c``, ``b``, ``aperture``.
+        """
+        return self.fit(X, y).transform(X, c=c, b=b, aperture=aperture)
 
     def inverse_transform(
         self,
