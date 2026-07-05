@@ -16,14 +16,15 @@
 
 from __future__ import annotations
 
+import math
 import warnings
+from functools import lru_cache
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import scipy as sp
 from scipy.spatial.transform import Rotation
-from scipy.special import factorial
 from sklearn.base import (
     BaseEstimator,
     ClassNamePrefixFeaturesOutMixin,
@@ -50,6 +51,12 @@ _SKEW_TOL = 1e-9
 # The factorial series overflows at l = 50 (verified), producing NaN; guard
 # against silent corruption above this.
 _WIGNER_D_LMAX = 49
+
+# Precomputed factorials (float64) for the Wigner small-d series.
+# Used indices reach 2 * l (<= 2 * _WIGNER_D_LMAX).
+_WIGNER_FACT = np.array(
+    [math.factorial(k) for k in range(2 * _WIGNER_D_LMAX + 1)], dtype=np.float64
+)
 
 
 class SphericalHarmonicAnalysis(
@@ -706,6 +713,24 @@ def _axis_prefixes(n_dim: int) -> list[str]:
     return [f"c{d}" for d in range(n_dim)]
 
 
+@lru_cache(maxsize=None)
+def _third_moment_grid_basis(l_max, n_theta, n_phi):
+    """Cached real-SH design matrix and ``sin(theta)`` weights on the moment grid.
+
+    The grid, basis, and weights depend only on ``(l_max, n_theta, n_phi)``,
+    never on a specimen, so :func:`_axis_third_moment_signs` shares one build
+    across all samples. Returned arrays are read-only to protect the shared cache.
+    """
+    theta_g = np.linspace(0.0, np.pi, n_theta)
+    phi_g = np.linspace(0.0, 2.0 * np.pi, n_phi, endpoint=False)
+    tg, pg = np.meshgrid(theta_g, phi_g, indexing="ij")
+    basis = _real_sph_harm_basis_matrix(l_max, tg.ravel(), pg.ravel())
+    weights = np.sin(tg).ravel()
+    basis.flags.writeable = False
+    weights.flags.writeable = False
+    return basis, weights
+
+
 def _axis_third_moment_signs(mat, axes, l_max, n_theta=30, n_phi=60):
     """Canonical sign (+1 keep / -1 flip) for each codomain axis.
 
@@ -735,12 +760,8 @@ def _axis_third_moment_signs(mat, axes, l_max, n_theta=30, n_phi=60):
     mat_centered = np.asarray(mat, dtype=float).copy()
     mat_centered[:, 0] = 0.0
 
-    theta_g = np.linspace(0.0, np.pi, n_theta)
-    phi_g = np.linspace(0.0, 2.0 * np.pi, n_phi, endpoint=False)
-    tg, pg = np.meshgrid(theta_g, phi_g, indexing="ij")
-    basis = _real_sph_harm_basis_matrix(l_max, tg.ravel(), pg.ravel())
+    basis, weights = _third_moment_grid_basis(l_max, n_theta, n_phi)
     p = basis @ mat_centered.T  # (n_grid, n_dim)
-    weights = np.sin(tg).ravel()
     proj = p @ axes  # (n_grid, k)
     m3 = np.sum(weights[:, None] * proj**3, axis=0)
 
@@ -772,27 +793,18 @@ def _wigner_d_small(l: int, beta: float) -> npt.NDArray[np.float64]:
             "overflows. A recurrence/log-domain implementation is needed for "
             "higher degrees."
         )
+    fact = _WIGNER_FACT
     dim = 2 * l + 1
     d = np.zeros((dim, dim))
-    cb, sb = np.cos(beta / 2.0), np.sin(beta / 2.0)
+    cb, sb = math.cos(beta / 2.0), math.sin(beta / 2.0)
     orders = range(-l, l + 1)
     for i, mp in enumerate(orders):
         for j, m in enumerate(orders):
-            pref = np.sqrt(
-                factorial(l + mp)
-                * factorial(l - mp)
-                * factorial(l + m)
-                * factorial(l - m)
-            )
+            pref = math.sqrt(fact[l + mp] * fact[l - mp] * fact[l + m] * fact[l - m])
             s_min, s_max = max(0, m - mp), min(l + m, l - mp)
             total = 0.0
             for s in range(s_min, s_max + 1):
-                den = (
-                    factorial(l + m - s)
-                    * factorial(s)
-                    * factorial(mp - m + s)
-                    * factorial(l - mp - s)
-                )
+                den = fact[l + m - s] * fact[s] * fact[mp - m + s] * fact[l - mp - s]
                 total += (
                     (-1.0) ** (mp - m + s)
                     / den

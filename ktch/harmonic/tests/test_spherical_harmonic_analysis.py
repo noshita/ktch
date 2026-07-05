@@ -10,10 +10,13 @@ from ktch.harmonic import (
     xyz2spherical,
 )
 from ktch.harmonic._spherical_harmonic_analysis import (
+    _WIGNER_D_LMAX,
     _axis_third_moment_signs,
     _complex_to_real_sph_coef,
     _real_sph_harm_basis_matrix,
     _real_to_complex_sph_coef,
+    _third_moment_grid_basis,
+    _wigner_d_small,
     cvt_spharm_coef_to_list,
     rotate_real_sph_coef,
 )
@@ -108,6 +111,46 @@ class TestRotateRealSphCoef:
         composed = rotate_real_sph_coef(rotate_real_sph_coef(coef, R1), R2)
         direct = rotate_real_sph_coef(coef, R2 @ R1)
         assert_allclose(composed, direct, atol=1e-9)
+
+
+class TestWignerDSmall:
+    """Wigner small-d invariants (guards the factorial-table form)."""
+
+    @pytest.mark.parametrize("l", [0, 1, 3, 8, 20])
+    @pytest.mark.parametrize("beta", [0.0, 0.7, np.pi / 3, np.pi])
+    def test_orthogonal(self, l, beta):
+        # Real small-d is orthogonal (d^T d = I) only if the series is correct.
+        d = _wigner_d_small(l, beta)
+        assert_allclose(d.T @ d, np.eye(2 * l + 1), atol=1e-9)
+
+    def test_above_lmax_raises(self):
+        with pytest.raises(NotImplementedError, match="exceeds the float64-safe"):
+            _wigner_d_small(_WIGNER_D_LMAX + 1, 0.5)
+
+
+class TestThirdMomentGridBasis:
+    """Cached third-moment grid basis shared across samples."""
+
+    def test_matches_fresh_build(self):
+        l_max, n_theta, n_phi = 6, 30, 60
+        basis, weights = _third_moment_grid_basis(l_max, n_theta, n_phi)
+        theta_g = np.linspace(0.0, np.pi, n_theta)
+        phi_g = np.linspace(0.0, 2.0 * np.pi, n_phi, endpoint=False)
+        tg, pg = np.meshgrid(theta_g, phi_g, indexing="ij")
+        expected = _real_sph_harm_basis_matrix(l_max, tg.ravel(), pg.ravel())
+        assert_allclose(basis, expected)
+        assert_allclose(weights, np.sin(tg).ravel())
+
+    def test_read_only(self):
+        basis, weights = _third_moment_grid_basis(5, 30, 60)
+        assert not basis.flags.writeable
+        assert not weights.flags.writeable
+
+    def test_memoized_identity(self):
+        a = _third_moment_grid_basis(4, 30, 60)
+        b = _third_moment_grid_basis(4, 30, 60)
+        assert a[0] is b[0]
+        assert a[1] is b[1]
 
 
 def test_xyz2spherical_axes():
