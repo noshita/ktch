@@ -31,7 +31,11 @@ from sklearn.base import (
 )
 from sklearn.utils.parallel import Parallel, delayed
 
-from ._registration import moment_register, validate_registration
+from ._registration import (
+    _BaseHarmonicRegistration,
+    moment_register,
+    validate_registration,
+)
 
 # Tolerance for detecting pole singularity in xyz2spherical.
 _POLE_TOL = 1e-12
@@ -197,90 +201,27 @@ class SphericalHarmonicAnalysis(
 
     def _register(self, coef_flat):
         """Apply the configured registration to one flat coefficient vector."""
-        method = self._resolve_method()
-        if method is None:
-            return coef_flat
-        if method == "moment":
-            return moment_register(
-                coef_flat, self.n_dim, scale=self.scale, reflect=self.reflect
-            )
-        if method == "first_order":
-            return self._first_order_register(coef_flat)
-        raise NotImplementedError(f"registration='{method}' is not implemented yet.")
+        return _register_spharm_coef(
+            coef_flat,
+            self.n_dim,
+            self._resolve_method(),
+            scale=self.scale,
+            scale_method=self.scale_method,
+            reflect=self.reflect,
+        )
 
     def _first_order_register(self, coef_flat):
         """first_order registration for SPHARM (n_dim=3): A + B, coef-only.
 
-        Implements the first-order-ellipsoid canonicalization theory
-        (Brechbühler et al. 1995): the degree-1 part of the expansion is
-        an ellipsoid (the affine image of the sphere). Writing its l=1
-        coordinate matrix (columns x, y, z) as ``M1 = U Σ Vᵀ``:
-
-        - object/codomain rotation (A): align the ellipsoid's principal axes to
-          the coordinate axes by applying ``Uᵀ`` to every coefficient vector;
-        - parameter-sphere rotation (B): apply the corresponding SO(3) rotation
-          ``V`` to all degrees via the Wigner-D representation
-          (:func:`rotate_real_sph_coef`);
-        - axis ordering by descending semi-axis (largest -> x), via the SVD;
-        - translation removed by dropping the constant (l=0) mode;
-        - size by the longest semi-axis (``semi_major_axis``) or the ellipsoid
-          volume.
-
-        After this the registered first-order ellipsoid is diagonal (canonical)
-        with descending positive semi-axes. The remaining sign freedom is the
-        ellipsoid's intrinsic Klein-four symmetry (180-deg rotations about each
-        principal axis), which degree 1 alone cannot resolve; it is broken with
-        a higher-order, rotation- and reparameterization-invariant shape
-        moment (see :func:`_axis_third_moment_signs`).
+        See :class:`SphericalHarmonicRegistration` for the algorithm.
         """
-        l_max = self.n_harmonics
-        if l_max < 1:
-            raise ValueError("registration='first_order' requires n_harmonics >= 1.")
-        n_coeffs = (l_max + 1) ** 2
-        mat = np.asarray(coef_flat, dtype=float).reshape(3, n_coeffs)
-
-        # l=1 ellipsoid: columns m=-1,0,1 -> permute to (x, y, z).
-        # Real l=1 SH: S_1^{-1} ~ y, S_1^0 ~ z, S_1^1 ~ x.
-        m1_xyz = mat[:, [1, 2, 3]][:, [2, 0, 1]]  # columns x, y, z
-
-        u_mat, sig, wt = np.linalg.svd(m1_xyz)  # m1_xyz = u_mat @ diag(sig) @ wt
-        if sig[0] < _FIRST_ORDER_TOL:
-            raise ValueError(
-                "Degenerate first-order ellipsoid (near-zero semi-major axis); "
-                "cannot register. Use registration='moment' or None."
-            )
-        w_mat = wt.T
-
-        # Break the ellipsoid's Klein-four sign ambiguity (degree 1 fixes axes
-        # only up to 180-deg flips) with the higher-order third moment.
-        # Flip the coupled (U, V) columns.
-        signs = _axis_third_moment_signs(mat, u_mat, l_max)
-        for i in range(3):
-            if signs[i] < 0:
-                u_mat[:, i] = -u_mat[:, i]
-                w_mat[:, i] = -w_mat[:, i]
-        # Proper codomain rotation unless reflection is allowed.
-        if not self.reflect and np.linalg.det(u_mat) < 0:
-            u_mat[:, -1] = -u_mat[:, -1]
-            w_mat[:, -1] = -w_mat[:, -1]
-
-        # B. Parameter SO(3) alignment in the coefficient domain: rotate the
-        # sphere by R = w_mat^T via Wigner-D (per axis).
-        rotated = rotate_real_sph_coef(mat.T, w_mat.T)  # (n_coeffs, 3)
-
-        # A. Codomain rotation + scale + translation removal.
-        if self.scale:
-            scale_method = self.scale_method or "semi_major_axis"
-            if scale_method == "ellipsoid_volume":
-                s = (4.0 / 3.0) * np.pi * sig[0] * sig[1] * sig[2]
-            else:  # "semi_major_axis"
-                s = sig[0]
-        else:
-            s = 1.0
-
-        out = (u_mat.T @ rotated.T) / s
-        out[:, 0] = 0.0  # drop the constant (l=0) mode
-        return out.ravel()
+        return _first_order_register_coef(
+            coef_flat,
+            self.n_dim,
+            scale=self.scale,
+            scale_method=self.scale_method,
+            reflect=self.reflect,
+        )
 
     def fit(self, X, y=None):
         """Fit the model (no-op for stateless transformer).
@@ -560,11 +501,197 @@ class SphericalHarmonicAnalysis(
         return X_coords
 
 
+class SphericalHarmonicRegistration(_BaseHarmonicRegistration):
+    r"""Registration of precomputed real SPHARM coefficient vectors.
+
+    Registers coefficient arrays produced elsewhere (e.g. by
+    :meth:`SphericalHarmonicAnalysis.transform`, or by external tools such as
+    SlicerSALT / SPHARM-PDM) without recomputing. Input and output share the
+    axis-major flat layout of :meth:`SphericalHarmonicAnalysis.transform`
+    (``[cx_0_0, cx_1_-1, ..., cy_..., cz_...]``); ``l_max`` is inferred from the
+    input width.
+
+    Registration removes the codomain nuisances (group A: translation,
+    rotation, scale) and, for ``first_order``, the parameter-sphere symmetry
+    (group B). It is a per-sample canonicalization, so ``fit`` is a no-op for
+    the implemented methods and :meth:`transform` maps each coefficient vector
+    independently.
+
+    Parameters
+    ----------
+    n_dim : int, default=3
+        Codomain dimension. ``first_order`` requires ``3`` (the l=1 ellipsoid
+        spans a full 3D frame).
+    method : {"auto", None, "first_order", "moment"}, default="auto"
+        Registration method. ``"auto"`` resolves to ``"first_order"`` for
+        ``n_dim=3`` and inferred ``l_max >= 1``, and ``None`` otherwise.
+        ``None`` passes coefficients through unchanged. ``"first_order"`` uses
+        the l=1 ellipsoid (first-order ellipsoid canonicalization,
+        Brechbühler et al. 1995) to align both the codomain orientation and the
+        parameter sphere (SO(3)). ``"moment"`` aligns the codomain to the
+        second-moment principal axes and scales by centroid size. ``"landmark"``
+        and ``"rotational_match"`` are reserved (raise ``NotImplementedError``).
+    scale : bool, default=True
+        Whether registration removes size (shape space) or keeps it (form
+        space). Ignored when the resolved method is ``None``.
+    scale_method : {None, "semi_major_axis", "ellipsoid_volume"}, default=None
+        Size measure when ``scale=True``. ``None`` resolves to the method
+        default (``"first_order"``: ``"semi_major_axis"``).
+    align_parameter : bool, default=True
+        Parameter-domain (group B, SO(3) / phase) alignment. ``"first_order"``
+        always applies it; ``align_parameter=False`` is reserved and raises
+        ``NotImplementedError``.
+    reflect : bool, default=False
+        Whether to also remove reflection (chirality). ``False`` enforces a
+        proper codomain rotation (``det=+1``).
+    return_transform : bool, default=False
+        Append the estimated transform (planned: first-order ellipsoid
+        orientation angles and scale) as extra output columns. Reserved;
+        ``True`` raises ``NotImplementedError``.
+    n_jobs : int, default=None
+        Number of parallel jobs over samples.
+    verbose : int, default=0
+        Verbosity level.
+
+    Notes
+    -----
+    ``first_order`` writes the l=1 ellipsoid as ``M1 = U Σ Vᵀ``, applies ``Uᵀ``
+    to the codomain (group A) and the SO(3) rotation ``V`` to every degree via
+    Wigner-D (group B), drops the l=0 mode (translation), and scales by the
+    semi-major axis or ellipsoid volume. The ellipsoid's Klein-four sign
+    ambiguity is broken by a rotation- and reparameterization-invariant third
+    moment, which is ill-conditioned for near-symmetric shapes.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from ktch.harmonic import (
+    ...     SphericalHarmonicAnalysis,
+    ...     SphericalHarmonicRegistration,
+    ... )
+    >>> coeffs = np.random.default_rng(0).standard_normal((4, 3 * (3 + 1) ** 2))
+    >>> reg = SphericalHarmonicRegistration(method="first_order", scale=False)
+    >>> registered = reg.fit_transform(coeffs)
+    >>> registered.shape
+    (4, 48)
+    """
+
+    # Size measures permitted per registration method.
+    _SCALE_METHODS_BY_REGISTRATION = {
+        "first_order": {None, "semi_major_axis", "ellipsoid_volume"},
+        "moment": {None, "centroid_size"},
+    }
+
+    def _resolve_method(self):
+        """Resolve ``"auto"`` to ``"first_order"`` (3D surface with l>=1) or
+        ``None``.
+        """
+        if self.method == "auto":
+            if self.n_dim == 3 and self._l_max >= 1:
+                return "first_order"
+            return None
+        return self.method
+
+    def _validate(self):
+        method = self._resolved_method
+        validate_registration(
+            method,
+            self.scale_method,
+            self._SCALE_METHODS_BY_REGISTRATION,
+            n_dim=self.n_dim,
+            return_transform=self.return_transform,
+            allow_first_order=True,
+            align_parameter=self.align_parameter,
+        )
+        if method == "first_order" and self.n_dim != 3:
+            raise ValueError(
+                "registration='first_order' for SPHARM requires n_dim=3 (the "
+                "l=1 ellipsoid spans a full 3D frame). Use registration="
+                "'moment' or None for n_dim=2."
+            )
+
+    def _register_single(self, coef_flat):
+        return _register_spharm_coef(
+            coef_flat,
+            self.n_dim,
+            self._resolved_method,
+            scale=self.scale,
+            scale_method=self.scale_method,
+            reflect=self.reflect,
+        )
+
+
 ###########################################################
 #
 #   utility functions
 #
 ###########################################################
+
+
+def _first_order_register_coef(coef_flat, n_dim, *, scale, scale_method, reflect):
+    """first_order registration of one flat real SPHARM coefficient vector."""
+    coef_flat = np.asarray(coef_flat, dtype=float)
+    n_coeffs = coef_flat.size // n_dim
+    l_max = int(round(n_coeffs**0.5)) - 1
+    if l_max < 1:
+        raise ValueError("registration='first_order' requires n_harmonics >= 1.")
+    mat = coef_flat.reshape(n_dim, n_coeffs)
+
+    # l=1 ellipsoid: columns m=-1,0,1 -> permute to (x, y, z).
+    # Real l=1 SH: S_1^{-1} ~ y, S_1^0 ~ z, S_1^1 ~ x.
+    m1_xyz = mat[:, [1, 2, 3]][:, [2, 0, 1]]  # columns x, y, z
+
+    u_mat, sig, wt = np.linalg.svd(m1_xyz)  # m1_xyz = u_mat @ diag(sig) @ wt
+    if sig[0] < _FIRST_ORDER_TOL:
+        raise ValueError(
+            "Degenerate first-order ellipsoid (near-zero semi-major axis); "
+            "cannot register. Use registration='moment' or None."
+        )
+    w_mat = wt.T
+
+    # Break the ellipsoid's Klein-four sign ambiguity (degree 1 fixes axes only
+    # up to 180-deg flips) with the higher-order third moment. Flip the coupled
+    # (U, V) columns.
+    signs = _axis_third_moment_signs(mat, u_mat, l_max)
+    for i in range(3):
+        if signs[i] < 0:
+            u_mat[:, i] = -u_mat[:, i]
+            w_mat[:, i] = -w_mat[:, i]
+    # Proper codomain rotation unless reflection is allowed.
+    if not reflect and np.linalg.det(u_mat) < 0:
+        u_mat[:, -1] = -u_mat[:, -1]
+        w_mat[:, -1] = -w_mat[:, -1]
+
+    # B. Parameter SO(3) alignment in the coefficient domain: rotate the sphere
+    # by R = w_mat^T via Wigner-D (per axis).
+    rotated = rotate_real_sph_coef(mat.T, w_mat.T)  # (n_coeffs, 3)
+
+    # A. Codomain rotation + scale + translation removal.
+    if scale:
+        sm = scale_method or "semi_major_axis"
+        if sm == "ellipsoid_volume":
+            s = (4.0 / 3.0) * np.pi * sig[0] * sig[1] * sig[2]
+        else:  # "semi_major_axis"
+            s = sig[0]
+    else:
+        s = 1.0
+
+    out = (u_mat.T @ rotated.T) / s
+    out[:, 0] = 0.0  # drop the constant (l=0) mode
+    return out.ravel()
+
+
+def _register_spharm_coef(coef_flat, n_dim, method, *, scale, scale_method, reflect):
+    """Register one flat real SPHARM coefficient vector."""
+    if method is None:
+        return np.asarray(coef_flat, dtype=float)
+    if method == "moment":
+        return moment_register(coef_flat, n_dim, scale=scale, reflect=reflect)
+    if method == "first_order":
+        return _first_order_register_coef(
+            coef_flat, n_dim, scale=scale, scale_method=scale_method, reflect=reflect
+        )
+    raise NotImplementedError(f"registration='{method}' is not implemented yet.")
 
 
 def _axis_prefixes(n_dim: int) -> list[str]:

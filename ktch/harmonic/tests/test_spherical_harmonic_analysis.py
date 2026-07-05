@@ -3,7 +3,12 @@ import pytest
 import scipy as sp
 from numpy.testing import assert_allclose, assert_array_almost_equal
 
-from ktch.harmonic import SphericalHarmonicAnalysis, spharm, xyz2spherical
+from ktch.harmonic import (
+    SphericalHarmonicAnalysis,
+    SphericalHarmonicRegistration,
+    spharm,
+    xyz2spherical,
+)
 from ktch.harmonic._spherical_harmonic_analysis import (
     _axis_third_moment_signs,
     _complex_to_real_sph_coef,
@@ -870,3 +875,171 @@ class TestSPHARMRegistration:
         # ellipsoid_volume is a first_order measure, not valid for moment
         with pytest.raises(ValueError, match="not valid for"):
             sha.transform([np.zeros((10, 3))], theta_phi=[np.zeros((10, 2))])
+
+
+class TestSphericalHarmonicRegistration:
+    """Public coefficient-only registration transformer."""
+
+    def _raw_coeffs(self, l_max, n_dim=3, seed=0, n_samples=3):
+        """Batch of raw (unregistered) SPHARM coefficient vectors."""
+        rows = []
+        for s in range(n_samples):
+            X, theta_phi, _ = _synthetic_sphere(l_max, 500, n_dim=n_dim, seed=seed + s)
+            sha = SphericalHarmonicAnalysis(
+                n_harmonics=l_max, n_dim=n_dim, registration=None, n_jobs=1
+            )
+            rows.append(sha.transform([X], theta_phi=[theta_phi])[0])
+        return np.stack(rows)
+
+    def test_first_order_parity_with_analysis(self):
+        # Registering raw coefficients must reproduce the analysis estimator's
+        # internal first_order registration bit-for-bit (shared implementation).
+        l_max = 3
+        X, theta_phi, _ = _synthetic_sphere(l_max, 500, n_dim=3, seed=1)
+        raw = SphericalHarmonicAnalysis(
+            n_harmonics=l_max, registration=None, n_jobs=1
+        ).transform([X], theta_phi=[theta_phi])
+        registered = SphericalHarmonicAnalysis(
+            n_harmonics=l_max, registration="first_order", scale=False, n_jobs=1
+        ).transform([X], theta_phi=[theta_phi])
+        out = SphericalHarmonicRegistration(
+            method="first_order", scale=False
+        ).fit_transform(raw)
+        assert_allclose(out, registered, atol=1e-12)
+
+    def test_moment_parity_with_analysis(self):
+        l_max = 3
+        X, theta_phi, _ = _synthetic_sphere(l_max, 500, n_dim=3, seed=2)
+        raw = SphericalHarmonicAnalysis(
+            n_harmonics=l_max, registration=None, n_jobs=1
+        ).transform([X], theta_phi=[theta_phi])
+        registered = SphericalHarmonicAnalysis(
+            n_harmonics=l_max, registration="moment", n_jobs=1
+        ).transform([X], theta_phi=[theta_phi])
+        out = SphericalHarmonicRegistration(method="moment").fit_transform(raw)
+        assert_allclose(out, registered, atol=1e-12)
+
+    def test_none_is_passthrough(self):
+        raw = self._raw_coeffs(3, seed=10, n_samples=2)
+        out = SphericalHarmonicRegistration(method=None).fit_transform(raw)
+        assert_allclose(out, raw, atol=0)
+
+    def test_auto_resolves_first_order_for_3d(self):
+        raw = self._raw_coeffs(3, seed=11, n_samples=2)
+        auto = SphericalHarmonicRegistration(method="auto", scale=False).fit_transform(
+            raw
+        )
+        first = SphericalHarmonicRegistration(
+            method="first_order", scale=False
+        ).fit_transform(raw)
+        assert_allclose(auto, first, atol=1e-12)
+
+    def test_lmax_inferred_from_width(self):
+        for l_max in (1, 2, 4):
+            raw = self._raw_coeffs(l_max, seed=20, n_samples=1)
+            reg = SphericalHarmonicRegistration(method="first_order", scale=False).fit(
+                raw
+            )
+            assert reg._l_max == l_max
+            assert reg.n_features_in_ == 3 * (l_max + 1) ** 2
+
+    def test_translation_removed(self):
+        raw = self._raw_coeffs(3, seed=21, n_samples=2)
+        out = SphericalHarmonicRegistration(
+            method="first_order", scale=False
+        ).fit_transform(raw)
+        mat = out.reshape(out.shape[0], 3, -1)
+        assert_allclose(mat[:, :, 0], 0.0, atol=1e-12)  # l=0 (constant) mode
+
+    def test_scale_false_preserves_amplitude_spectrum(self):
+        # scale=False keeps size; the per-degree amplitude ||c_l|| is invariant
+        # under the orthogonal group-A / group-B rotations registration applies.
+        raw = self._raw_coeffs(3, seed=22, n_samples=1)
+        out = SphericalHarmonicRegistration(
+            method="first_order", scale=False
+        ).fit_transform(raw)
+
+        def spectrum(v):
+            m = v.reshape(3, -1)
+            return np.array(
+                [np.linalg.norm(m[:, l * l : (l + 1) ** 2]) for l in range(1, 4)]
+            )
+
+        assert_allclose(spectrum(out[0]), spectrum(raw[0]), rtol=1e-8)
+
+    def test_feature_names_preserved(self):
+        raw = self._raw_coeffs(2, seed=23, n_samples=1)
+        reg = SphericalHarmonicRegistration(method="first_order", scale=False).fit(raw)
+        assert len(reg.get_feature_names_out()) == 3 * (2 + 1) ** 2
+
+    def test_pipeline_with_pca(self):
+        from sklearn.decomposition import PCA
+        from sklearn.pipeline import make_pipeline
+
+        raw = self._raw_coeffs(3, seed=24, n_samples=6)
+        pipe = make_pipeline(
+            SphericalHarmonicRegistration(method="first_order", scale=False),
+            PCA(n_components=2),
+        )
+        assert pipe.fit_transform(raw).shape == (6, 2)
+
+    def test_transform_before_fit_raises(self):
+        from sklearn.exceptions import NotFittedError
+
+        raw = self._raw_coeffs(2, seed=25, n_samples=1)
+        with pytest.raises(NotFittedError):
+            SphericalHarmonicRegistration(method="first_order").transform(raw)
+
+    @pytest.mark.parametrize("method", ["landmark", "rotational_match"])
+    def test_reserved_methods_raise(self, method):
+        raw = self._raw_coeffs(2, seed=26, n_samples=1)
+        with pytest.raises(NotImplementedError, match="reserved"):
+            SphericalHarmonicRegistration(method=method).fit(raw)
+
+    def test_return_transform_reserved(self):
+        raw = self._raw_coeffs(2, seed=27, n_samples=1)
+        with pytest.raises(NotImplementedError, match="return_transform"):
+            SphericalHarmonicRegistration(
+                method="first_order", return_transform=True
+            ).fit(raw)
+
+    def test_align_parameter_false_reserved(self):
+        raw = self._raw_coeffs(2, seed=28, n_samples=1)
+        with pytest.raises(NotImplementedError, match="align_parameter"):
+            SphericalHarmonicRegistration(
+                method="first_order", align_parameter=False
+            ).fit(raw)
+
+    def test_first_order_requires_ndim3(self):
+        # Valid n_dim=2 width so l_max inference passes before the n_dim check.
+        raw = np.zeros((2, 2 * (3 + 1) ** 2))
+        with pytest.raises(ValueError, match="requires n_dim=3"):
+            SphericalHarmonicRegistration(method="first_order", n_dim=2).fit(raw)
+
+    def test_invalid_scale_method(self):
+        raw = self._raw_coeffs(2, seed=29, n_samples=1)
+        with pytest.raises(ValueError, match="not valid for"):
+            SphericalHarmonicRegistration(
+                method="first_order", scale_method="centroid_size"
+            ).fit(raw)
+
+    def test_invalid_method(self):
+        raw = self._raw_coeffs(2, seed=30, n_samples=1)
+        with pytest.raises(ValueError, match="registration must be one of"):
+            SphericalHarmonicRegistration(method="bogus").fit(raw)
+
+    def test_bad_width_raises(self):
+        with pytest.raises(ValueError, match="not divisible by n_dim"):
+            SphericalHarmonicRegistration(method=None).fit(np.zeros((2, 47)))
+        with pytest.raises(ValueError, match="perfect square"):
+            SphericalHarmonicRegistration(method="first_order").fit(np.zeros((2, 15)))
+
+    def test_degenerate_ellipsoid_raises(self):
+        l_max = 3
+        v = np.random.default_rng(0).standard_normal(3 * (l_max + 1) ** 2)
+        mat = v.reshape(3, -1)
+        mat[:, 1:4] = 0.0  # zero the l=1 ellipsoid
+        with pytest.raises(ValueError, match="[Dd]egenerate"):
+            SphericalHarmonicRegistration(method="first_order").fit_transform(
+                mat.ravel()[None, :]
+            )

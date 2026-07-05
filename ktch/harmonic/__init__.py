@@ -21,6 +21,7 @@ from ._disk_harmonic_analysis import DiskHarmonicAnalysis, disk_harm, xy2polar
 from ._elliptic_fourier_analysis import EllipticFourierAnalysis, rotation_matrix_2d
 from ._spherical_harmonic_analysis import (
     SphericalHarmonicAnalysis,
+    SphericalHarmonicRegistration,
     spharm,
     xyz2spherical,
 )
@@ -32,6 +33,7 @@ __all__ = [
     "EllipticFourierAnalysis",
     "rotation_matrix_2d",
     "SphericalHarmonicAnalysis",
+    "SphericalHarmonicRegistration",
     "spharm",
     "xyz2spherical",
 ]

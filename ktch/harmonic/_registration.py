@@ -22,6 +22,9 @@ from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
+from sklearn.base import BaseEstimator, OneToOneFeatureMixin, TransformerMixin
+from sklearn.utils.parallel import Parallel, delayed
+from sklearn.utils.validation import check_is_fitted, validate_data
 
 # Tolerance for detecting a near-zero shape size.
 _SIZE_TOL = 1e-12
@@ -240,3 +243,166 @@ def moment_register(
         rotated = rotated / size
 
     return rotated.ravel()
+
+
+###########################################################
+#
+#   registration transformers
+#
+###########################################################
+
+
+class _BaseRegistration(TransformerMixin, BaseEstimator):
+    """Base for registration transformers.
+
+    Representation-neutral: it holds the shared parameter vocabulary and the
+    scikit-learn ``fit``/``transform`` skeleton that batches a per-sample
+    ``_register_single`` hook. Subclasses supply how the input is interpreted
+    (``_setup``), how settings are validated (``_validate``), how ``method`` is
+    resolved (``_resolve_method``), and the per-sample kernel
+    (``_register_single``).
+
+    Registration is a per-sample canonicalization: it removes nuisance
+    similarity transforms of the codomain (group A: translation, rotation,
+    scale) and the parameter-domain symmetry (group B). It preserves the number
+    of samples and their order, so it fits the ``transform`` contract. ``fit``
+    is a no-op for the stateless methods.
+
+    Parameters
+    ----------
+    n_dim : int, default=3
+        Codomain dimension of the shape data.
+    method : {"auto", None, "first_order", "moment"}, default="auto"
+        Registration method. ``None`` passes the input through unchanged.
+    scale : bool, default=True
+        Whether registration removes size (shape space) or keeps it (form
+        space). Only used when the resolved method is not ``None``.
+    scale_method : str or None, default=None
+        Size measure when ``scale=True``; ``None`` resolves to the method
+        default. Valid values depend on the concrete registration.
+    align_parameter : bool, default=True
+        Parameter-domain (group B) alignment. ``first_order`` always applies
+        it; ``align_parameter=False`` is not yet implemented.
+    reflect : bool, default=False
+        Whether to also remove reflection (chirality). ``False`` enforces a
+        proper rotation.
+    return_transform : bool, default=False
+        Append the estimated transform as extra output columns. Reserved for a
+        future release; ``True`` raises ``NotImplementedError``.
+    n_jobs : int, default=None
+        Number of parallel jobs over samples.
+    verbose : int, default=0
+        Verbosity level.
+    """
+
+    def __init__(
+        self,
+        n_dim=3,
+        method="auto",
+        scale=True,
+        scale_method=None,
+        align_parameter=True,
+        reflect=False,
+        return_transform=False,
+        n_jobs=None,
+        verbose=0,
+    ):
+        self.n_dim = n_dim
+        self.method = method
+        self.scale = scale
+        self.scale_method = scale_method
+        self.align_parameter = align_parameter
+        self.reflect = reflect
+        self.return_transform = return_transform
+        self.n_jobs = n_jobs
+        self.verbose = verbose
+
+    # -- subclass hooks ---------------------------------------------------
+    def _setup(self, X):
+        """Derive fitted state from validated input (subclass hook)."""
+
+    def _validate(self):
+        """Validate registration settings; raise on invalid combinations."""
+
+    def _resolve_method(self):
+        """Resolve ``method`` to a concrete registration method."""
+        return self.method
+
+    def _register_single(self, coef_flat):
+        """Register one flat sample vector (subclass kernel)."""
+        raise NotImplementedError
+
+    # -- scikit-learn API -------------------------------------------------
+    def fit(self, X, y=None):
+        """Validate settings and record the input shape.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Flat shape descriptors to register.
+        y : ignored
+
+        Returns
+        -------
+        self : object
+        """
+        X = validate_data(self, X, dtype="float64")
+        self._setup(X)
+        self._validate()
+        return self
+
+    def transform(self, X):
+        """Register each sample.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Flat shape descriptors, same width as seen in ``fit``.
+
+        Returns
+        -------
+        X_registered : ndarray of shape (n_samples, n_features)
+            Registered descriptors in the same layout as the input.
+        """
+        check_is_fitted(self)
+        X = validate_data(self, X, dtype="float64", reset=False)
+        registered = Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
+            delayed(self._register_single)(row) for row in X
+        )
+        return np.stack(registered)
+
+
+class _BaseHarmonicRegistration(OneToOneFeatureMixin, _BaseRegistration):
+    """Base for harmonic-coefficient registration (coef -> coef).
+
+    Interprets the flat input as axis-major real harmonic coefficients and
+    infers ``l_max`` from the input width. The output preserves the coefficient
+    layout, so feature names pass through one-to-one
+    (:class:`~sklearn.base.OneToOneFeatureMixin`) even though values mix across
+    columns.
+    """
+
+    def _setup(self, X):
+        self._l_max = self._infer_l_max(self.n_features_in_)
+        self._resolved_method = self._resolve_method()
+
+    def _infer_l_max(self, n_features):
+        """Infer ``l_max`` from the flat coefficient width.
+
+        The width is ``n_dim * (l_max + 1) ** 2``.
+        """
+        if self.n_dim < 1:
+            raise ValueError(f"n_dim must be a positive integer, got {self.n_dim}")
+        if n_features % self.n_dim != 0:
+            raise ValueError(
+                f"Input width ({n_features}) is not divisible by n_dim "
+                f"({self.n_dim}); cannot interpret it as harmonic coefficients."
+            )
+        n_per_axis = n_features // self.n_dim
+        l_max = int(round(n_per_axis**0.5)) - 1
+        if (l_max + 1) ** 2 != n_per_axis:
+            raise ValueError(
+                f"Input width per axis ({n_per_axis}) is not a perfect square "
+                "(l_max + 1) ** 2; cannot infer l_max."
+            )
+        return l_max
