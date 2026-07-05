@@ -20,6 +20,7 @@
    harmonic.DiskHarmonicAnalysis
    harmonic.EllipticFourierAnalysis
    harmonic.SphericalHarmonicAnalysis
+   harmonic.SphericalHarmonicRegistration
 ```
 
 ## Functions

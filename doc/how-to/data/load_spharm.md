@@ -54,6 +54,26 @@ print(f"surface grid shape: {X_coords.shape}")  # (1, n_theta, n_phi, 3)
 To use a different angular resolution, pass `theta_range` and
 `phi_range` to `inverse_transform`.
 
+## Register precomputed coefficients
+
+SPHARM-PDM coefficients might include each specimen's position,
+orientation, and size. Before shape comparison, register them with
+{class}`~ktch.harmonic.SphericalHarmonicRegistration`, which removes that
+information (if still present) from the coefficients without recomputing
+them from the surface. `method="first_order"` uses the degree-1 ellipsoid
+to align orientation and the parameter sphere; `scale=False` keeps size.
+
+```{code-cell} ipython3
+from ktch.harmonic import SphericalHarmonicRegistration
+
+reg = SphericalHarmonicRegistration(method="first_order", scale=False)
+registered = reg.fit_transform(coeffs)
+print(f"registered coefficients shape: {registered.shape}")
+```
+
+Because it maps coefficients to coefficients, it composes in a
+scikit-learn `Pipeline`.
+
 ## Plot the 3D shape
 
 ```{code-cell} ipython3

@@ -100,6 +100,19 @@ coefficients = sha.fit_transform(parameterized_surfaces)
 
 The codomain dimension is set by `n_dim` (default 3): use `n_dim=1` for a scalar field on the sphere, or any $D$ for an $\mathbb{R}^D$-valued field.
 
+### Registration
+
+SPHARM coefficients include position, orientation, and size, which will be removed for shape comparison. `SphericalHarmonicAnalysis` removes them through its `registration` parameter (e.g., `"first_order"` uses the degree-1 ellipsoid to canonicalize orientation, the parameter sphere, and scale). The same registration is available as a standalone transformer, `SphericalHarmonicRegistration`, for coefficients computed elsewhere (for example, SPHARM-PDM `.coef` files read with `read_spharmpdm_coef`):
+
+```python
+from ktch.harmonic import SphericalHarmonicRegistration
+
+reg = SphericalHarmonicRegistration(method="first_order", scale=False)
+registered = reg.fit_transform(coefficients)
+```
+
+It maps coefficients to coefficients, so it composes in a scikit-learn `Pipeline` before PCA on a morphospace. For near-symmetric shapes, the axis and sign tie-break is ill-conditioned, so different implementations may pick different canonical frames of the same shape.
+
 ### Applications
 
 Spherical harmonic analysis is used for:
