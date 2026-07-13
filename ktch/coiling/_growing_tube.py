@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
+
 import numpy as np
 import numpy.typing as npt
 from scipy.integrate import solve_ivp
@@ -32,9 +34,17 @@ from ._generating_curve import (
     _surfaces_to_frame,
     whorl_s_range,
 )
-from ._panel import _check_panel
+from ._panel import _check_panel, _check_surface_panel
 
 _VALID_METHODS = ("ode", "closed")
+_VALID_ESTIMATORS = ("nls_3d", "surface")
+
+# Surface fit warns when its residual RMS exceeds this fraction of the mean
+# tube radius (a good fit reaches ~0; a bad local minimum is O(shape scale)).
+_SURFACE_FIT_RTOL = 1e-3
+
+# Torsion magnitude used to seed the surface fit from both chirality signs.
+_TORSION_SEED = 0.3
 
 
 def _default_frame0() -> npt.NDArray[np.float64]:
@@ -467,6 +477,156 @@ def _estimate_growing_tube_nls3d(X_i, arc_length):
     return np.array([e_g, float(sol.x[0]), float(sol.x[1]), 0.0, 0.0])
 
 
+def _reduce_surface(surface):
+    r"""Reduce a tube surface to its centerline, radius, and arc length.
+
+    The reduction is aperture-shape-agnostic: each cross-section's centroid
+    (mean over phi) is the centerline point, and the mean
+    distance from it is the tube radius. The arc length is the cumulative
+    length of the centerline.
+
+    Parameters
+    ----------
+    surface : ndarray of shape (n_s, n_phi, 3)
+        Structured surface coordinates.
+
+    Returns
+    -------
+    centers : ndarray of shape (n_s, 3)
+        Centerline points (per-section centroids).
+    radius : ndarray of shape (n_s,)
+        Tube radius per section.
+    arc_length : ndarray of shape (n_s,)
+        Cumulative length of the centerline.
+    """
+    centers = surface.mean(axis=1)
+    radius = np.linalg.norm(surface - centers[:, None, :], axis=2).mean(axis=1)
+    seg = np.linalg.norm(np.diff(centers, axis=0), axis=1)
+    arc_length = np.concatenate([[0.0], np.cumsum(seg)])
+    return centers, radius, arc_length
+
+
+def _estimate_growing_tube_surface(surface):
+    r"""Estimate ``(e_g, c_g, t_g, delta_g, gamma_g)`` from a structured surface.
+
+    The :func:`growing_tube` is fit directly (least squares) to
+    the surface coordinates. The estimate is consistent with
+    ``inverse_transform`` (``transform(inverse_transform(params))`` recovers
+    ``params``) and the aperture orientation is recovered too.
+    Only the coordinate values are used; the grid parameter values (``s`` and ``phi``)
+    are not assumed. The estimator uses the array structure: rows are uniform in
+    ``s`` (as :func:`growing_tube` samples them) with an unknown total span,
+    and columns are the uniform full-circle aperture sampling of ``inverse_transform``.
+
+    The fit combines three parts for robustness:
+
+    1. Radius-law reduction: reduce the surface to its centerline, radius, and
+       arc length; the linear law ``r = r0 + e_g * l`` yields ``e_g``, ``r0``,
+       and the span initial guess.
+    2. Centerline registration: fit the trajectory (``c_g``, ``t_g``) and rigid
+       pose to the centerline (a well-conditioned curve fit).
+    3. Full-surface refinement: refine all parameters, adding the aperture
+       orientation and the span, against the full surface with bounds
+       (``c_g >= 0``, ``sigma > 0``).
+
+    Parameters
+    ----------
+    surface : ndarray of shape (n_s, n_phi, 3)
+        Structured surface coordinates.
+
+    Returns
+    -------
+    ndarray of shape (5,)
+        Estimated ``(e_g, c_g, t_g, delta_g, gamma_g)``.
+    """
+    S = np.asarray(surface, dtype=float)
+    n_s, n_phi = S.shape[0], S.shape[1]
+    u = np.linspace(0.0, 1.0, n_s)
+    phi = np.linspace(0.0, 2.0 * np.pi, n_phi)  # matches inverse_transform default
+
+    centers, radius, arc_length = _reduce_surface(S)
+    r0_hat, e_hat = np.linalg.lstsq(
+        np.column_stack([np.ones_like(arc_length), arc_length]), radius, rcond=None
+    )[0]
+    r0_hat = r0_hat if r0_hat > 1e-12 else max(radius[0], 1e-9)
+    if abs(e_hat) > 1e-12:
+        s_from_l = np.log1p(e_hat * arc_length / r0_hat) / e_hat
+    else:
+        s_from_l = arc_length / r0_hat
+    span0 = float(s_from_l[-1])
+
+    # Full-surface unknowns: (e_g, c_g, t_g, delta_g, gamma_g, span, r0, p0[3],
+    # rotvec[3]).
+    lower = [1e-9, 0.0, -np.inf, -0.9, -0.9, 1e-9, 1e-9, *([-np.inf] * 6)]
+    upper = [np.inf, np.inf, np.inf, 0.9, 0.9, np.inf, np.inf, *([np.inf] * 6)]
+
+    # The initial frame is always right-handed (xi_3 = xi_1 x xi_2 from
+    # _init_frame); only the torsion sign is ambiguous.
+    rv0 = Rotation.from_matrix(_init_frame(centers)).as_rotvec()
+
+    # Centerline registration: pose + (c_g, t_g); e_g, r0 from the radius law.
+    def centerline_residuals(q):
+        frame0 = Rotation.from_rotvec(q[5:8]).as_matrix()
+        traj, _, _ = _growing_tube_trajectory(
+            e_hat, q[0], q[1], r0_hat, s_from_l, q[2:5], frame0, method="closed"
+        )
+        return (traj - centers).ravel()
+
+    # Full-surface refinement: refine every parameter against the surface.
+    def surface_residuals(q):
+        frame0 = Rotation.from_rotvec(q[10:13]).as_matrix()
+        model = _growing_tube_surface(
+            q[0],
+            q[1],
+            q[2],
+            q[3],
+            q[4],
+            r0=q[6],
+            s_range=q[5] * u,
+            phi_range=phi,
+            p0=q[7:10],
+            frame0=frame0,
+            method="closed",
+        )
+        return (model - S).ravel()
+
+    best_x, best_rms = None, np.inf
+    for t_g_seed in (_TORSION_SEED, -_TORSION_SEED):
+        centerline_fit = least_squares(
+            centerline_residuals, np.concatenate([[0.3, t_g_seed], centers[0], rv0])
+        )
+        x0 = np.array(
+            [
+                e_hat,
+                max(centerline_fit.x[0], 1e-6),
+                centerline_fit.x[1],
+                0.0,
+                0.0,
+                span0,
+                r0_hat,
+                *centerline_fit.x[2:5],
+                *centerline_fit.x[5:8],
+            ]
+        )
+        surface_fit = least_squares(
+            surface_residuals, x0, bounds=(lower, upper), method="trf"
+        )
+        rms = float(np.sqrt(np.mean(surface_fit.fun**2)))
+        if rms < best_rms:
+            best_x, best_rms = surface_fit.x, rms
+
+    scale = max(float(radius.mean()), 1e-12)
+    if best_rms > _SURFACE_FIT_RTOL * scale:
+        warnings.warn(
+            "GrowingTubeModel surface estimation did not converge to a good fit "
+            f"(residual RMS {best_rms:.3e} vs tube-radius scale {scale:.3e}); the "
+            "returned parameters may be unreliable.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+    return np.asarray(best_x[:5], dtype=float)
+
+
 class GrowingTubeModel(
     ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator
 ):
@@ -474,7 +634,8 @@ class GrowingTubeModel(
 
     The growing tube model [Okamoto_1988]_. ``inverse_transform`` is the
     generative map ``Phi: (e_g, c_g, t_g, delta_g, gamma_g) -> form``.
-    ``transform`` estimates ``(e_g, c_g, t_g)``.
+    ``transform`` estimates the parameters from measured shells (``"nls_3d"``)
+    or, symmetrically, from a structured surface (``"surface"``).
 
     Parameters
     ----------
@@ -482,8 +643,13 @@ class GrowingTubeModel(
         Initial tube radius (scale) used for generation.
     method : {"ode", "closed"}, default = "ode"
         Forward solver passed to :func:`growing_tube`.
-    estimator : str, default = "nls_3d"
-        Estimation method used by ``transform``; only ``"nls_3d"`` is implemented.
+    estimator : {"nls_3d", "surface"}, default = "nls_3d"
+        Estimation method used by ``transform``. ``"nls_3d"`` fits the centerline
+        and radius from a per-point ``(x, y, z, r)`` panel. ``"surface"`` fits the
+        generative map directly to a structured surface panel (the coordinate
+        output of ``inverse_transform``), recovering the aperture orientation
+        ``(delta_g, gamma_g)`` as well; it is consistent with
+        ``inverse_transform`` (``transform(inverse_transform(params)) ~= params``).
     n_jobs : int, optional
         Number of jobs for the per-specimen estimation in ``transform``.
     verbose : int, default = 0
@@ -518,29 +684,47 @@ class GrowingTubeModel(
         return True
 
     def transform(self, X, domain_coords=None, aperture=None):
-        """Estimate ``(e_g, c_g, t_g)`` from measured shells..
+        """Estimate growing tube parameters from measured shells.
 
         Parameters
         ----------
         X : list of array-like, ndarray, or DataFrame
-            Per-specimen panel of ``(n_points_i, 4)`` centroid-and-thickness
-            sequences ``(x, y, z, r)``. See
-            :func:`ktch.coiling._panel._check_panel` for the accepted encodings.
+            The input panel; its encoding depends on ``estimator``. For
+            ``"nls_3d"``, a per-specimen panel of ``(n_points_i, 4)``
+            centroid-and-thickness sequences ``(x, y, z, r)`` (see
+            :func:`ktch.coiling._panel._check_panel`). For ``"surface"``, a
+            panel of ``(n_s, n_phi, 3)`` structured surfaces (see
+            :func:`ktch.coiling._panel._check_surface_panel`).
         domain_coords : list of array-like, optional
             Per-point arc length ``l`` (for example from an external
-            arc-length refinement). When omitted, a tentative cumulative chord
-            length is used.
+            arc-length refinement), used by ``"nls_3d"`` only. When omitted, a
+            tentative cumulative chord length is used.
         aperture : None
             Aperture shape; only the circular default is supported.
 
         Returns
         -------
         X_transformed : ndarray of shape (n_samples, 5)
-            Estimated ``(e_g, c_g, t_g, 0, 0)``; the orientation columns
-            ``delta_g, gamma_g`` are not estimated and returned as zero.
+            Estimated ``(e_g, c_g, t_g, delta_g, gamma_g)``. The ``"nls_3d"``
+            estimator returns zeros for the orientation columns; the
+            ``"surface"`` estimator recovers them.
         """
         if aperture is not None:
             raise NotImplementedError("general aperture shapes are not supported yet")
+        if self.estimator not in _VALID_ESTIMATORS:
+            raise ValueError(
+                f"estimator must be one of {_VALID_ESTIMATORS}, got {self.estimator!r}"
+            )
+
+        if self.estimator == "surface":
+            surfaces = _check_surface_panel(X)
+            if len(surfaces) == 0:
+                return np.empty((0, 5))
+            estimates = Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
+                delayed(_estimate_growing_tube_surface)(surf) for surf in surfaces
+            )
+            return np.stack(estimates)
+
         panel = _check_panel(
             X, channel_names=["x", "y", "z", "r"], domain_coords=domain_coords
         )

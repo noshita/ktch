@@ -164,6 +164,125 @@ def test_growing_tube_model_fit_transform_routes_domain_coords():
         )
 
 
+# --- surface estimator (structured-surface fit) -----------------------------
+
+
+def test_growing_tube_surface_round_trip_orientation():
+    # transform(inverse_transform(params)) recovers all five parameters,
+    # including the aperture orientation a centerline fit cannot see.
+    model = GrowingTubeModel(estimator="surface", method="closed")
+    params = np.array(
+        [[0.30, 1.20, 0.25, 0.40, 0.30], [0.05, 0.80, -0.30, -0.20, 0.10]]
+    )
+    s = np.linspace(0, 4.5, 200)
+    surf = model.inverse_transform(params, s_range=s)
+    assert surf.shape[0] == 2 and surf.shape[-1] == 3
+    est = model.transform(surf)
+    assert est.shape == (2, 5)
+    np.testing.assert_allclose(est, params, atol=1e-6)
+
+
+def test_growing_tube_surface_round_trip_ode():
+    # An ODE-generated surface still round-trips; the ode/closed gap sets the tol.
+    model = GrowingTubeModel(estimator="surface")  # method="ode"
+    params = np.array([[0.05, 0.6, 0.2, 0.1, -0.15]])
+    s = np.linspace(0, 20, 200)
+    est = model.transform(model.inverse_transform(params, s_range=s))
+    np.testing.assert_allclose(est, params, atol=1e-4)
+
+
+def test_growing_tube_surface_recovers_arbitrary_scale():
+    # r0 is a free nuisance, so a surface at a non-unit scale round-trips.
+    model = GrowingTubeModel(estimator="surface", method="closed", r0=2.0)
+    params = np.array([[0.2, 1.0, 0.3, 0.15, -0.2]])
+    s = np.linspace(0, 4.5, 200)
+    est = model.transform(model.inverse_transform(params, s_range=s))
+    np.testing.assert_allclose(est, params, atol=1e-6)
+
+
+def test_growing_tube_surface_recovers_under_rigid_pose():
+    # The estimator fits its own pose, so an arbitrarily rotated/translated
+    # surface yields the same (pose-invariant) shape parameters.
+    from scipy.spatial.transform import Rotation
+
+    model = GrowingTubeModel(estimator="surface", method="closed")
+    params = np.array([0.20, 1.0, 0.3, 0.25, -0.2])
+    s = np.linspace(0, 4.5, 200)
+    surf = model.inverse_transform(params, s_range=s)  # canonical pose
+    R = Rotation.from_euler("xyz", [0.5, -0.8, 1.2]).as_matrix()
+    posed = surf @ R.T + np.array([3.0, -2.0, 5.0])
+    est = model.transform(posed)
+    np.testing.assert_allclose(est[0], params, atol=1e-6)
+
+
+@pytest.mark.parametrize("seed", range(6))
+def test_growing_tube_surface_battery(seed):
+    rng = np.random.default_rng(seed)
+    model = GrowingTubeModel(estimator="surface", method="closed")
+    params = np.array(
+        [
+            rng.uniform(0.05, 0.5),
+            rng.uniform(0.4, 1.8),
+            rng.uniform(-0.8, 0.8),
+            rng.uniform(-0.4, 0.4),
+            rng.uniform(-0.4, 0.4),
+        ]
+    )
+    s = np.linspace(0, rng.uniform(3.5, 5.5), 180)
+    est = model.transform(model.inverse_transform(params[None, :], s_range=s))
+    np.testing.assert_allclose(est[0], params, atol=1e-5)
+
+
+def test_growing_tube_surface_input_encodings():
+    # 4D ndarray, list of 3D, single 3D, and the long DataFrame all agree.
+    model = GrowingTubeModel(estimator="surface", method="closed")
+    params = np.array([[0.2, 1.0, 0.3, 0.1, 0.2]])
+    s = np.linspace(0, 4.0, 150)
+    surf4d = model.inverse_transform(params, s_range=s)
+    ref = model.transform(surf4d)
+    np.testing.assert_allclose(model.transform([surf4d[0]]), ref, atol=1e-9)
+    np.testing.assert_allclose(model.transform(surf4d[0]), ref, atol=1e-9)
+    df = model.inverse_transform(params, s_range=s, as_frame=True)
+    np.testing.assert_allclose(model.transform(df), ref, atol=1e-9)
+
+
+def test_growing_tube_surface_empty_panel():
+    assert GrowingTubeModel(estimator="surface").transform([]).shape == (0, 5)
+
+
+def test_growing_tube_invalid_estimator():
+    with pytest.raises(ValueError, match="estimator"):
+        GrowingTubeModel(estimator="bogus").transform(np.zeros((1, 5, 5, 3)))
+
+
+def test_growing_tube_surface_rejects_aperture():
+    with pytest.raises(NotImplementedError, match="aperture"):
+        GrowingTubeModel(estimator="surface").transform(
+            np.zeros((1, 5, 5, 3)), aperture=object()
+        )
+
+
+def test_growing_tube_surface_rejects_non_finite():
+    # A partial aperture (missing points as NaN) is not supported yet; the
+    # estimator fails fast rather than propagating NaN into the fit.
+    surf = np.zeros((1, 5, 5, 3))
+    surf[0, 2, 1, :] = np.nan
+    with pytest.raises(ValueError, match="non-finite"):
+        GrowingTubeModel(estimator="surface").transform(surf)
+
+
+def test_growing_tube_surface_nonconvergence_warns():
+    # A heavily perturbed surface cannot be fit well; the estimator warns.
+    model = GrowingTubeModel(estimator="surface", method="closed")
+    params = np.array([[0.2, 1.0, 0.3, 0.0, 0.0]])
+    s = np.linspace(0, 4.0, 120)
+    surf = model.inverse_transform(params, s_range=s)[0]
+    rng = np.random.default_rng(0)
+    surf = surf + rng.normal(scale=0.5, size=surf.shape)
+    with pytest.warns(RuntimeWarning, match="did not converge"):
+        model.transform([surf])
+
+
 # --- heteromorph (varying parameters) ---------------------------------------
 
 

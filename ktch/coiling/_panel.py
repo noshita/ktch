@@ -349,3 +349,106 @@ def _validate_meta(values, meta):
             f"meta has {meta.shape[0]} rows but the panel has {len(values)} samples."
         )
     return meta
+
+
+def _check_surface_panel(
+    X, *, coord_names: tuple[str, str, str] = ("x", "y", "z")
+) -> list[npt.NDArray[np.float64]]:
+    """Normalize a panel of tube surfaces to a list of ``(n_s, n_phi, 3)`` arrays.
+
+    A surface is the structured coordinate output of a coiling model's
+    ``inverse_transform``: rows index the growth direction and columns index the
+    aperture angle. Only the coordinate values are used; the grid parameter
+    values (``s``/``theta`` and ``phi``) are not carried and are recovered by the
+    estimator.
+
+    Accepts these encodings and normalizes them to a common representation:
+
+    - a ``list``/``tuple`` of ``(n_s, n_phi, 3)`` arrays (ragged ``n_s``/``n_phi``
+      allowed);
+    - a 4D ``ndarray`` of shape ``(n_samples, n_s, n_phi, 3)``;
+    - a single 3D ``ndarray`` of shape ``(n_s, n_phi, 3)`` (a one-specimen panel);
+    - a long 3-level ``MultiIndex`` ``DataFrame`` indexed by
+      ``(specimen, trajectory, phi)`` with the coordinates as named columns
+      (as produced by ``inverse_transform(as_frame=True)``).
+
+    Parameters
+    ----------
+    X : list of array-like, ndarray, or DataFrame
+        The surface panel in one of the accepted encodings.
+    coord_names : tuple of str, default = ("x", "y", "z")
+        Coordinate columns for the long-DataFrame encoding.
+
+    Returns
+    -------
+    list of ndarray
+        One ``(n_s, n_phi, 3)`` array per specimen.
+
+    Raises
+    ------
+    ValueError
+        For an unrecognized encoding, a wrong trailing dimension, a surface with
+        fewer than three rows or columns, non-finite (NaN/inf) values, or a
+        missing coordinate column.
+    """
+    if isinstance(X, pd.DataFrame) and isinstance(X.index, pd.MultiIndex):
+        surfaces = _surface_panel_from_long_dataframe(X, coord_names=coord_names)
+    elif isinstance(X, np.ndarray):
+        if X.ndim == 4:
+            surfaces = [x.astype(float) for x in X]
+        elif X.ndim == 3:
+            surfaces = [X.astype(float)]
+        else:
+            raise ValueError(
+                "A surface ndarray panel must be 4D (n_samples, n_s, n_phi, 3) "
+                f"or 3D (n_s, n_phi, 3); got {X.ndim}D."
+            )
+    elif isinstance(X, (list, tuple)):
+        surfaces = [np.asarray(x, dtype=float) for x in X]
+    else:
+        raise ValueError(
+            "Unrecognized surface panel encoding: expected a list of "
+            "(n_s, n_phi, 3) arrays, a 3D/4D ndarray, or a 3-level MultiIndex "
+            f"DataFrame; got {type(X).__name__}."
+        )
+
+    for i, surf in enumerate(surfaces):
+        if surf.ndim != 3 or surf.shape[2] != 3:
+            raise ValueError(
+                f"Surface {i} must be a 3D (n_s, n_phi, 3) array; got shape "
+                f"{surf.shape}."
+            )
+        if surf.shape[0] < 3 or surf.shape[1] < 3:
+            raise ValueError(
+                f"Surface {i} must have at least 3 rows and 3 columns; got "
+                f"shape {surf.shape}."
+            )
+        if not np.isfinite(surf).all():
+            raise ValueError(
+                f"Surface {i} contains non-finite values (NaN/inf). The surface "
+                "estimator requires complete surfaces; partial apertures "
+                "(missing points) are not supported yet."
+            )
+    return surfaces
+
+
+def _surface_panel_from_long_dataframe(
+    X: pd.DataFrame, *, coord_names: tuple[str, str, str]
+) -> list[npt.NDArray[np.float64]]:
+    """Rebuild ``(n_s, n_phi, 3)`` surfaces from a long ``(specimen, s, phi)`` frame."""
+    if X.index.nlevels != 3:
+        raise ValueError(
+            "A long surface DataFrame must have a 3-level "
+            "(specimen, trajectory, phi) index."
+        )
+    missing = [c for c in coord_names if c not in X.columns]
+    if missing:
+        raise ValueError(f"Coordinate columns absent from the DataFrame: {missing}.")
+    surfaces = []
+    for _, g in X.groupby(level=0, sort=False):
+        g = g.sort_index()
+        n_s = g.index.get_level_values(1).nunique()
+        n_phi = g.index.get_level_values(2).nunique()
+        arr = g.loc[:, list(coord_names)].to_numpy(dtype=float)
+        surfaces.append(arr.reshape(n_s, n_phi, 3))
+    return surfaces
