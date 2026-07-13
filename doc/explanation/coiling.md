@@ -3,27 +3,23 @@
 # Theoretical morphological models of coiling
 
 The `ktch.coiling` module provides morphological analyses using 
-theoretical morphological models of shell coiling. For
-hands-on use, see the tutorials linked at the end.
+theoretical morphological models of shell coiling.
 
 ## Theoretical morphological models
 
-A theoretical morphological model is a model that mimics 
-morphologies and morphogenesis: it maps (a few interpretable) parameters to 
-a form (parameters to form). The parameters span a theoretical morphospace, 
-so the model can describe not only forms that exist but also those
-that are geometrically possible yet unobserved. 
+A theoretical morphological model is a model that mimics morphologies 
+and morphogenesis: it maps (a few interpretable) parameters to a form. 
+The parameters span a theoretical morphospace; the model can describe not only 
+forms that exist but also those that are theoretically possible yet to be observed. 
 
-In practice the main interest is usually generating forms (generative map).
-ktch currently provides the generative map as `inverse_transform`, 
-and parameter estimation from measurement data is planned. 
+ktch provides both functions: `transform` estimates the parameters from a form, 
+and `inverse_transform` generates a form from parameters. 
 
 ## Coiling models
 
-The `ktch.coiling` module describes an unbranched accretionary tube: a
-generating curve (the aperture shape) swept along a generating spiral (also
-called the growth trajectory), the space curve traced by a reference point as the
-organism grows.
+The `ktch.coiling` module describes an accretionary tube: a generating curve 
+(the aperture shape) swept along a generating spiral (also called the growth trajectory), 
+the space curve traced by a reference point as the organism grows.
 
 The module covers forms from a straight tube to a tightly coiled tube, including
 shells, horns, tusks, and beaks. 
@@ -76,11 +72,12 @@ satisfying $dl/ds = r$. Here $E_G$ is the expansion rate (`e_g`), and $C_G$
 curvature and torsion expressed relative to the tube radius. ktch implements this
 as the `growing_tube` function and the `GrowingTubeModel` class. 
 
-The model was introduced by Okamoto (1988) to analyse heteromorph ammonoids ($E_G$ is the logarithm of Okamoto's
-original expansion rate $E$; Noshita 2014). Because the parameters are specified
-locally, each may vary along growth, passed as a function of $s$ rather than a
-constant. This yields heteromorph (irregularly coiled) shells, such as the
-meandering ammonite *Nipponites*, which no constant parameter set can describe.
+The model was introduced by Okamoto (1988) to analyze heteromorph ammonoids. 
+The growing Frenet frame naturally describes the logarithmic spiral 
+in three-dimensional space. The parameters are specified locally, 
+and each may vary along growth. These yield heteromorph 
+(irregularly coiled) shells, such as the meandering ammonite *Nipponites*, 
+which no constant parameter set can describe.
 
 ## Relationships between models
 
