@@ -35,7 +35,8 @@ docs = []
 plot = ["matplotlib>=3.10", "plotly>=6.0", "seaborn>=0.13.2"]
 
 [project.urls]
-Homepage = "https://doc.ktch.dev"
+Homepage = "https://doc.ktch.dev/stable/"
+Documentation = "https://doc.ktch.dev/stable/"
 Repository = "https://github.com/noshita/ktch"
 
 [dependency-groups]
