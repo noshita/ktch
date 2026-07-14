@@ -47,6 +47,7 @@ extensions = [
     "sphinxcontrib.mermaid",
     "sphinx.ext.viewcode",
     "noindex_utilities",
+    "canonical_urls",
     "sphinx.ext.mathjax",
     "numpydoc",
     "myst_nb",

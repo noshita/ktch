@@ -148,6 +148,11 @@ jobs:
             sed -i "s|https://doc.ktch.dev/${ACTUAL_STABLE}/|https://doc.ktch.dev/stable/|g" {} +
           if [ -f "doc/_build/html/stable/sitemap.xml" ]; then
             sed -i "s|https://doc.ktch.dev/${ACTUAL_STABLE}/|https://doc.ktch.dev/stable/|g" doc/_build/html/stable/sitemap.xml
+            # Use clean directory URLs (drop index.html) so sitemap entries match
+            # the canonical form emitted by the canonical_urls extension. The HTML
+            # canonical tags are already clean at the source, so only the sitemap
+            # (generated separately by sphinx-sitemap) needs this adjustment.
+            sed -i "s|/index.html</loc>|/</loc>|g" doc/_build/html/stable/sitemap.xml
           fi
 
           # Copy robots.txt to site root (html_extra_path places it inside each
