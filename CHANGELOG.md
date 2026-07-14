@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.10.1](https://github.com/noshita/ktch/compare/v0.10.0...v0.10.1) (2026-07-14)
+
+
+### Features
+
+* **coiling:** ✨ add panel input normalization for estimators ([3446703](https://github.com/noshita/ktch/commit/34467038e2aee86e2afce5dcc25082e41f5b3dd0))
+* **coiling:** ✨ estimate growing tube parameters from a surface ([edd68bc](https://github.com/noshita/ktch/commit/edd68bc586feee097bb9a463bbed2775d3a08df1))
+* **coiling:** ✨ estimate raup parameters from a surface ([6f14647](https://github.com/noshita/ktch/commit/6f146471335b6cccefefccb68acef1f293d12d14))
+* **coiling:** ✨ implement parameter estimation (transform) ([0ed5d4a](https://github.com/noshita/ktch/commit/0ed5d4a02fc53c7b55d2d2bbc6b928b7a5571ed7))
+* **harmonic:** ✨ add SphericalHarmonicRegistration transformer ([412f94b](https://github.com/noshita/ktch/commit/412f94bca6512d24aa4db33e1e587c2479ccbc47))
+
+
+### Performance Improvements
+
+* ⚡️ speed up Wigner-D rotation and SPHARM registration ([5ed87c5](https://github.com/noshita/ktch/commit/5ed87c5a2c0fbdac8b959ae344430295addd5044))
+
+
+### Documentation
+
+* 📚 point documentation link to stable ([3679ed4](https://github.com/noshita/ktch/commit/3679ed474515ca9b469eb156d129c7f4fe8ce6f0))
+* **coiling:** 📚 document transform-based parameter estimation ([7a07815](https://github.com/noshita/ktch/commit/7a078155cb2e4a2fd384fa552a8134c8295fc262))
+* **coiling:** 📚 tighten growing-tube surface estimator docstring ([4156810](https://github.com/noshita/ktch/commit/415681007dc04f58035c59c31cdd9945b05ca86d))
+* **harmonic:** 📚 document coefficient registration API ([362052f](https://github.com/noshita/ktch/commit/362052fe4b4d384e854cce74bb76e7d31e80c3ec))
+
+
+### Continuous Integration
+
+* 👷 bump workflow actions and add lint permissions ([b317eed](https://github.com/noshita/ktch/commit/b317eedf8801c9f6c189f2e54e69e9cee3ed1c2a))
+* 👷 enforce ruff via pre-commit and a CI lint gate ([98026f9](https://github.com/noshita/ktch/commit/98026f963f9628ea3531c88a53d240dc739738cf))
+
 ## [0.10.0](https://github.com/noshita/ktch/compare/v0.9.1...v0.10.0) (2026-06-26)
 
 
