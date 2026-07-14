@@ -509,14 +509,10 @@ def _reduce_surface(surface):
 def _estimate_growing_tube_surface(surface):
     r"""Estimate ``(e_g, c_g, t_g, delta_g, gamma_g)`` from a structured surface.
 
-    The :func:`growing_tube` is fit directly (least squares) to
-    the surface coordinates. The estimate is consistent with
-    ``inverse_transform`` (``transform(inverse_transform(params))`` recovers
-    ``params``) and the aperture orientation is recovered too.
-    Only the coordinate values are used; the grid parameter values (``s`` and ``phi``)
-    are not assumed. The estimator uses the array structure: rows are uniform in
-    ``s`` (as :func:`growing_tube` samples them) with an unknown total span,
-    and columns are the uniform full-circle aperture sampling of ``inverse_transform``.
+    Fit :func:`growing_tube` to the surface coordinates by least squares, with
+    the rigid pose. Only the coordinates are used; the growth
+    stage ``s`` and aperture angle ``phi`` grids are not assumed, and the
+    aperture orientation is recovered.
 
     The fit combines three parts for robustness:
 
