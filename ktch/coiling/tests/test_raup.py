@@ -174,6 +174,106 @@ def test_raup_model_fit_transform_routes_aperture():
         RaupModel().fit_transform([np.zeros((10, 2))], aperture=object())
 
 
+# --- surface estimator (structured-surface fit) -----------------------------
+
+
+def test_raup_surface_round_trip_orientation():
+    # transform(inverse_transform(params)) recovers all five parameters,
+    # including the aperture orientation.
+    model = RaupModel(estimator="surface")
+    params = np.array([[1.3, 0.2, 0.3, 0.15, -0.2], [1.6, -0.1, 0.1, -0.2, 0.1]])
+    theta = np.linspace(0, 8 * np.pi, 300)
+    surf = model.inverse_transform(params, theta_range=theta)
+    assert surf.shape[0] == 2 and surf.shape[-1] == 3
+    est = model.transform(surf)
+    assert est.shape == (2, 5)
+    np.testing.assert_allclose(est, params, atol=1e-6)
+
+
+def test_raup_surface_recovers_arbitrary_scale():
+    # A surface at a non-unit scale round-trips.
+    model = RaupModel(estimator="surface", r0=2.0)
+    params = np.array([[1.4, 0.15, 0.25, 0.1, -0.15]])
+    theta = np.linspace(0, 8 * np.pi, 300)
+    est = model.transform(model.inverse_transform(params, theta_range=theta))
+    np.testing.assert_allclose(est, params, atol=1e-6)
+
+
+def test_raup_surface_recovers_under_rigid_pose():
+    # The estimator fits its own pose.
+    # An arbitrarily rotated/translated surface yields the
+    # same (pose-invariant) shape parameters.
+    from scipy.spatial.transform import Rotation
+
+    model = RaupModel(estimator="surface")
+    params = np.array([1.4, 0.2, 0.3, 0.2, -0.15])
+    theta = np.linspace(0, 8 * np.pi, 300)
+    surf = model.inverse_transform(params, theta_range=theta)  # coiling axis = z
+    rot = Rotation.from_euler("xyz", [0.7, -0.5, 1.1]).as_matrix()
+    posed = surf @ rot.T + np.array([4.0, -3.0, 2.0])
+    est = model.transform(posed)
+    np.testing.assert_allclose(est[0], params, atol=1e-6)
+
+
+@pytest.mark.parametrize("seed", range(6))
+def test_raup_surface_battery(seed):
+    rng = np.random.default_rng(seed)
+    model = RaupModel(estimator="surface")
+    params = np.array(
+        [
+            rng.uniform(1.1, 2.0),
+            rng.uniform(-0.5, 0.5),
+            rng.uniform(0.0, 0.6),
+            rng.uniform(-0.4, 0.4),
+            rng.uniform(-0.4, 0.4),
+        ]
+    )
+    theta = np.linspace(0, rng.uniform(4 * np.pi, 10 * np.pi), 250)
+    est = model.transform(model.inverse_transform(params[None, :], theta_range=theta))
+    np.testing.assert_allclose(est[0], params, atol=1e-5)
+
+
+def test_raup_surface_input_encodings():
+    # 4D ndarray, list of 3D, single 3D, and the long DataFrame all agree.
+    model = RaupModel(estimator="surface")
+    params = np.array([[1.4, 0.2, 0.3, 0.1, 0.15]])
+    theta = np.linspace(0, 8 * np.pi, 250)
+    surf4d = model.inverse_transform(params, theta_range=theta)
+    ref = model.transform(surf4d)
+    np.testing.assert_allclose(model.transform([surf4d[0]]), ref, atol=1e-9)
+    np.testing.assert_allclose(model.transform(surf4d[0]), ref, atol=1e-9)
+    df = model.inverse_transform(params, theta_range=theta, as_frame=True)
+    np.testing.assert_allclose(model.transform(df), ref, atol=1e-9)
+
+
+def test_raup_surface_empty_panel():
+    assert RaupModel(estimator="surface").transform([]).shape == (0, 5)
+
+
+def test_raup_invalid_estimator():
+    with pytest.raises(ValueError, match="estimator"):
+        RaupModel(estimator="bogus").transform(np.zeros((1, 5, 5, 3)))
+
+
+def test_raup_surface_rejects_aperture():
+    with pytest.raises(NotImplementedError, match="aperture"):
+        RaupModel(estimator="surface").transform(
+            np.zeros((1, 5, 5, 3)), aperture=object()
+        )
+
+
+def test_raup_surface_nonconvergence_warns():
+    # A heavily perturbed surface cannot be fit well; the estimator warns.
+    model = RaupModel(estimator="surface")
+    params = np.array([[1.4, 0.2, 0.3, 0.0, 0.0]])
+    theta = np.linspace(0, 6 * np.pi, 200)
+    surf = model.inverse_transform(params, theta_range=theta)[0]
+    rng = np.random.default_rng(0)
+    surf = surf + rng.normal(scale=0.5 * np.abs(surf).mean(), size=surf.shape)
+    with pytest.warns(RuntimeWarning, match="did not converge"):
+        model.transform([surf])
+
+
 # --- arc-length conversion (l_r, theta_r) -----------------------------------
 
 ARC_CASES = [(1.5, 2.6, 0.6), (1.3, 1.5, 0.2), (2.0, 0.5, 0.05), (1.1, 0.0, 0.4)]

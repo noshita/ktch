@@ -14,9 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
+
 import numpy as np
 import numpy.typing as npt
 from scipy.optimize import least_squares
+from scipy.spatial.transform import Rotation
 from sklearn.base import (
     BaseEstimator,
     ClassNamePrefixFeaturesOutMixin,
@@ -25,7 +28,13 @@ from sklearn.base import (
 from sklearn.utils.parallel import Parallel, delayed
 
 from ._generating_curve import _pad_orientation, _surfaces_to_frame, whorl_theta_range
-from ._panel import _check_panel
+from ._panel import _check_panel, _check_surface_panel
+
+_VALID_ESTIMATORS = ("ml_2d", "surface")
+
+# Surface fit warns when its residual RMS exceeds this fraction of the mean
+# tube radius.
+_SURFACE_FIT_RTOL = 1e-3
 
 
 def _validate_raup_params(w_r: float, t_r: float, d_r: float, r0: float) -> None:
@@ -359,20 +368,120 @@ def _validate_cb(c, b, n_samples):
     return c, b
 
 
+def _estimate_raup_surface(surface):
+    r"""Estimate ``(w_r, t_r, d_r, delta_r, gamma_r)`` from a structured surface.
+
+    Fit :func:`raup` to the surface coordinates by least squares, with the rigid
+    pose. Only the coordinates are used; the coiling angle ``theta`` and aperture
+    angle ``phi`` grids are not assumed, and the aperture orientation is
+    recovered.
+
+    Parameters
+    ----------
+    surface : ndarray of shape (n_theta, n_phi, 3)
+        Structured surface coordinates.
+
+    Returns
+    -------
+    ndarray of shape (5,)
+        Estimated ``(w_r, t_r, d_r, delta_r, gamma_r)``.
+    """
+    S = np.asarray(surface, dtype=float)
+    n_theta, n_phi = S.shape[0], S.shape[1]
+    u = np.linspace(0.0, 1.0, n_theta)
+    phi = np.linspace(0.0, 2.0 * np.pi, n_phi)  # matches inverse_transform default
+
+    centers = S.mean(axis=1)  # section centroids == generating-curve reference locus
+    radius = np.linalg.norm(S - centers[:, None, :], axis=2).mean(axis=1)
+    cbar = centers.mean(axis=0)
+    # Coiling axis from the centerline's areal velocity about cbar.
+    axis = np.sum(np.cross(centers[:-1] - cbar, np.diff(centers, axis=0)), axis=0)
+    naxis = np.linalg.norm(axis)
+    axis = axis / naxis if naxis > 1e-12 else np.array([0.0, 0.0, 1.0])
+
+    # Unknowns parameters `q`:
+    # w_r, t_r, d_r, delta_r, gamma_r, theta_span, r0, rotvec[3], translation[3]
+    def residuals(q):
+        theta = q[5] * u
+        model = _raup_surface(q[0], q[1], q[2], q[3], q[4], q[6], theta, phi)
+        rot = Rotation.from_rotvec(q[7:10]).as_matrix()
+        return (model @ rot.T + q[10:13] - S).ravel()
+
+    lower = [1.0 + 1e-9, -np.inf, -0.999, -0.9, -0.9, 1e-6, 1e-9, *([-np.inf] * 6)]
+    upper = [np.inf, np.inf, 0.999, 0.9, 0.9, np.inf, np.inf, *([np.inf] * 6)]
+
+    best_x, best_rms = None, np.inf
+    for sign in (1.0, -1.0):
+        # Align the coiling axis to z, then read the canonical warm start.
+        align = Rotation.align_vectors([[0.0, 0.0, 1.0]], [sign * axis])[0]
+        canon = (centers - cbar) @ align.as_matrix().T  # centerline aligned to z
+        # Coiling angle from the winding; w_r, r0 from the radius law given it.
+        ang = np.unwrap(np.arctan2(canon[:, 1], canon[:, 0]))
+        theta_span = abs(float(ang[-1] - ang[0]))
+        theta_n = u * theta_span
+        coef = np.linalg.lstsq(
+            np.column_stack([np.ones_like(theta_n), theta_n / (2.0 * np.pi)]),
+            np.log(radius),
+            rcond=None,
+        )[0]
+        r0_seed = float(np.exp(coef[0]))
+        w_r_seed = float(np.exp(coef[1]))
+        # Offset (vx, vz) from the centerline relative to the section scale.
+        vx = float((np.hypot(canon[:, 0], canon[:, 1]) / radius).mean())
+        vz = float((canon[:, 2] / radius).mean())
+        d_r_seed = float(np.clip((vx - 1.0) / (vx + 1.0), -0.95, 0.95))
+        t_r_seed = vz / (2.0 * (d_r_seed / (1.0 - d_r_seed) + 1.0))
+        rv0 = align.inv().as_rotvec()  # canonical -> posed
+        x0 = np.array(
+            [
+                max(w_r_seed, 1.0 + 1e-6),
+                t_r_seed,
+                d_r_seed,
+                0.0,
+                0.0,
+                max(theta_span, 0.1),
+                max(r0_seed, 1e-6),
+                *rv0,
+                *cbar,
+            ]
+        )
+        sol = least_squares(residuals, x0, bounds=(lower, upper), method="trf")
+        rms = float(np.sqrt(np.mean(sol.fun**2)))
+        if rms < best_rms:
+            best_x, best_rms = sol.x, rms
+
+    scale = max(float(radius.mean()), 1e-12)
+    if best_rms > _SURFACE_FIT_RTOL * scale:
+        warnings.warn(
+            "RaupModel surface estimation did not converge to a good fit "
+            f"(residual RMS {best_rms:.3e} vs tube-radius scale {scale:.3e}); the "
+            "returned parameters may be unreliable.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+    return np.asarray(best_x[:5], dtype=float)
+
+
 class RaupModel(ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator):
     """Raup's model.
 
     Raup’s logarithmic shell coiling model [Raup_1965]_ [Raup_1966]_.
     ``inverse_transform`` is the generative map
     ``Phi: (w_r, t_r, d_r, delta_r, gamma_r) -> form``. ``transform`` estimates
-    ``(w_r, t_r, d_r)`` from lateral and umbilical measurements (``ml_2d``).
+    the parameters from lateral and umbilical measurements (``ml_2d``) or,
+    from a structured surface (``surface``).
 
     Parameters
     ----------
     r0 : float, default = 1.0
         Initial tube radius (scale) used for generation.
-    estimator : str, default = "ml_2d"
-        Estimation method used by ``transform``; only ``"ml_2d"`` is implemented.
+    estimator : {"ml_2d", "surface"}, default = "ml_2d"
+        Estimation method used by ``transform``. ``"ml_2d"`` fits the lateral
+        ``(d, f)`` series and combines it with ``d_r = c / (c + b)``.
+        ``"surface"`` fits the model directly to a structured surface
+        panel (the coordinate output of ``inverse_transform``), recovering the
+        aperture orientation ``(delta_r, gamma_r)`` as well. It is consistent
+        with ``inverse_transform`` (``transform(inverse_transform(params)) ~= params``).
     n_jobs : int, optional
         Number of jobs for the per-specimen estimation in ``transform``.
     verbose : int, default = 0
@@ -409,29 +518,47 @@ class RaupModel(ClassNamePrefixFeaturesOutMixin, TransformerMixin, BaseEstimator
     def transform(self, X, c=None, b=None, aperture=None):
         """Estimate Raup parameters from measured shells.
 
-        Maximum-likelihood ``ml_2d`` estimation: fit the lateral
-        ``(d, f)`` series and combine with ``d_r = c / (c + b)``.
+        For ``estimator="ml_2d"``, fit the lateral ``(d, f)`` series and combine
+        with ``d_r = c / (c + b)``. For ``estimator="surface"``, fit the
+        model directly to a structured surface.
 
         Parameters
         ----------
         X : list of array-like, ndarray, or DataFrame
-            Per-specimen panel of ``(n_points_i, 2)`` lateral digitizing points
-            ``(d, f)``. See :func:`ktch.coiling._panel._check_panel` for the
-            accepted encodings.
+            The input panel; its encoding depends on ``estimator``. For
+            ``"ml_2d"``, a per-specimen panel of ``(n_points_i, 2)`` lateral
+            digitizing points ``(d, f)``. For ``"surface"``, a
+            panel of ``(n_theta, n_phi, 3)`` structured surfaces.
         c, b : array-like of shape (n_samples,)
             Per-specimen umbilical measurements (axis-to-inner-margin distance
-            and aperture width) giving ``d_r = c / (c + b)``. Required.
+            and aperture width) giving ``d_r = c / (c + b)``. Required by
+            ``"ml_2d"`` and ignored by ``"surface"``.
         aperture : None
-            Aperture shape; only the circular default is supported.
+            Aperture shape.
 
         Returns
         -------
         X_transformed : ndarray of shape (n_samples, 5)
-            Estimated ``(w_r, t_r, d_r, 0, 0)``; the orientation columns
-            ``delta_r, gamma_r`` are not estimated and returned as zero.
+            Estimated ``(w_r, t_r, d_r, delta_r, gamma_r)``. The ``"ml_2d"``
+            estimator returns zeros for the orientation columns; the
+            ``"surface"`` estimator recovers them.
         """
         if aperture is not None:
             raise NotImplementedError("general aperture shapes are not supported yet")
+        if self.estimator not in _VALID_ESTIMATORS:
+            raise ValueError(
+                f"estimator must be one of {_VALID_ESTIMATORS}, got {self.estimator!r}"
+            )
+
+        if self.estimator == "surface":
+            surfaces = _check_surface_panel(X)
+            if len(surfaces) == 0:
+                return np.empty((0, 5))
+            estimates = Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
+                delayed(_estimate_raup_surface)(surf) for surf in surfaces
+            )
+            return np.stack(estimates)
+
         panel = _check_panel(X, channel_names=["d", "f"])
         c, b = _validate_cb(c, b, panel.n_samples)
         if panel.n_samples == 0:
