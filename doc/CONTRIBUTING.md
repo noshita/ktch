@@ -9,7 +9,7 @@ For build instructions, see `README.md` in this directory.
 
 ## Overview
 
-- URL: <https://doc.ktch.dev/>
+- URL: <https://doc.ktch.dev/stable/>
 - Framework: Sphinx with pydata-sphinx-theme
 - Format: MyST Markdown (with myst-nb for executable notebooks, sphinxcontrib-mermaid for diagrams)
 
