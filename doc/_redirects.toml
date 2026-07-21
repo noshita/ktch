@@ -1,0 +1,70 @@
+# Redirect map for documentation URLs that earlier layouts published.
+#
+# Keys are site-root-relative paths that used to resolve and now return 404.
+# Values are Sphinx docnames in the current layout. Docnames are stored without
+# a file extension on purpose: scripts/gen_redirects.py resolves each one
+# against the tree that was actually built, so the same map works whether the
+# site is produced with the `html` or the `dirhtml` builder, and no entry has to
+# be rewritten if the builder changes.
+#
+# The build fails when a target docname is missing from the built site, or when
+# a source path would overwrite a real page. Renaming or removing a documented
+# page therefore requires updating this file in the same change, which is what
+# stops a URL layout change from shipping unnoticed.
+#
+# Source paths were recovered from public web archives and each was confirmed to
+# return 404 before being listed. `/index.html` is deliberately absent: the site
+# root already serves a redirect to the stable version.
+
+[redirects]
+# Layout used up to v0.3: /user_guide/ and /modules/
+"/modules/classes.html" = "api/index"
+"/modules/generated/ktch.datasets.convert_coords_df_to_df_sklearn_transform.html" = "api/generated/ktch.io.convert_coords_df_to_df_sklearn_transform"
+"/modules/generated/ktch.datasets.convert_coords_df_to_list.html" = "api/generated/ktch.io.convert_coords_df_to_list"
+"/modules/generated/ktch.datasets.load_landmark_mosquito_wings.html" = "api/generated/ktch.datasets.load_landmark_mosquito_wings"
+"/modules/generated/ktch.datasets.load_outline_mosquito_wings.html" = "api/generated/ktch.datasets.load_outline_mosquito_wings"
+"/modules/generated/ktch.io.read_tps.html" = "api/generated/ktch.io.read_tps"
+"/modules/generated/ktch.io.write_tps.html" = "api/generated/ktch.io.write_tps"
+"/modules/generated/ktch.landmark.GeneralizedProcrustesAnalysis.html" = "api/generated/ktch.landmark.GeneralizedProcrustesAnalysis"
+"/modules/generated/ktch.landmark.centroid_size.html" = "api/generated/ktch.landmark.centroid_size"
+"/modules/generated/ktch.landmark.tps_grid_2d_plot.html" = "api/generated/ktch.plot.tps_grid_2d_plot"
+"/modules/generated/ktch.outline.EllipticFourierAnalysis.html" = "api/generated/ktch.harmonic.EllipticFourierAnalysis"
+"/modules/generated/ktch.outline.spharm.html" = "api/generated/ktch.harmonic.spharm"
+"/user_guide/getting_started/getting_started.html" = "installation"
+"/user_guide/index.html" = "explanation/index"
+"/user_guide/outline/outline_based_morphometrics.html" = "explanation/harmonic"
+"/user_guide/outline_based_morphometrics.html" = "explanation/harmonic"
+
+# Layout used up to v0.5: /api/, /notebooks/ and the flat getting-started page
+"/api/datasets.html" = "api/datasets"
+"/api/generated/ktch.datasets.convert_coords_df_to_df_sklearn_transform.html" = "api/generated/ktch.io.convert_coords_df_to_df_sklearn_transform"
+"/api/generated/ktch.datasets.convert_coords_df_to_list.html" = "api/generated/ktch.io.convert_coords_df_to_list"
+"/api/generated/ktch.datasets.load_landmark_mosquito_wings.html" = "api/generated/ktch.datasets.load_landmark_mosquito_wings"
+"/api/generated/ktch.datasets.load_outline_mosquito_wings.html" = "api/generated/ktch.datasets.load_outline_mosquito_wings"
+"/api/generated/ktch.io.read_tps.html" = "api/generated/ktch.io.read_tps"
+"/api/generated/ktch.io.write_tps.html" = "api/generated/ktch.io.write_tps"
+"/api/generated/ktch.landmark.GeneralizedProcrustesAnalysis.html" = "api/generated/ktch.landmark.GeneralizedProcrustesAnalysis"
+"/api/generated/ktch.landmark.centroid_size.html" = "api/generated/ktch.landmark.centroid_size"
+"/api/generated/ktch.landmark.tps_grid_2d_plot.html" = "api/generated/ktch.plot.tps_grid_2d_plot"
+"/api/generated/ktch.outline.EllipticFourierAnalysis.html" = "api/generated/ktch.harmonic.EllipticFourierAnalysis"
+"/api/generated/ktch.outline.spharm.html" = "api/generated/ktch.harmonic.spharm"
+"/api/index.html" = "api/index"
+"/api/io.html" = "api/io"
+"/api/landmark.html" = "api/landmark"
+"/api/outline.html" = "api/harmonic"
+"/api/plotting.html" = "api/plotting"
+"/getting_started.html" = "installation"
+"/notebooks/index.html" = "tutorials/index"
+"/notebooks/landmark/generalized_Procrustes_analysis.html" = "tutorials/landmark/generalized_Procrustes_analysis"
+"/notebooks/landmark/gpa_from_tps.html" = "tutorials/landmark/gpa_from_tps"
+"/notebooks/landmark/index.html" = "tutorials/landmark/index"
+"/notebooks/landmark/thin_plate_spline.html" = "tutorials/landmark/thin_plate_spline"
+"/notebooks/outline/elliptic_Fourier_analysis.html" = "tutorials/harmonic/elliptic_Fourier_analysis"
+"/notebooks/outline/elliptic_Fourier_analysis_3d.html" = "tutorials/harmonic/elliptic_Fourier_analysis_3d"
+"/notebooks/outline/index.html" = "tutorials/harmonic/index"
+"/notebooks/outline/manipulating_coordinate_values.html" = "how-to/data/2d_outline_registration"
+
+# Sphinx utility pages that used to live at the site root
+"/genindex.html" = "genindex"
+"/py-modindex.html" = "py-modindex"
+"/search.html" = "search"

@@ -175,6 +175,14 @@ jobs:
           </html>
           EOF
 
+          # Emit redirects for URLs that earlier documentation layouts
+          # published and that external pages still link to. This runs after
+          # /stable/ exists because the redirect targets are resolved against
+          # the tree that was actually built, and it fails the build if the map
+          # has gone stale -- that is what stops a page rename from silently
+          # turning inbound links into 404s.
+          python3 scripts/gen_redirects.py --site-dir doc/_build/html
+
           # Create .nojekyll for GitHub Pages
           touch doc/_build/html/.nojekyll
 
