@@ -40,27 +40,30 @@ ktch is a python package for model-based morphometrics.
    api/index
 
 
-`Installation <installation.html>`_
+Installation
 -------------------------------------------------
 
-Get started by installing ktch.
+Get started by :doc:`installing ktch <installation>`.
 
-`Tutorials <tutorials/index.html>`_
+Tutorials
 -------------------------------------------------
 
-Step-by-step guides for learning ktch through hands-on examples.
+:doc:`Step-by-step guides <tutorials/index>` for learning ktch through
+hands-on examples.
 
-`How-to Guides <how-to/index.html>`_
+How-to guides
 -------------------------------------------------
 
-Task-oriented guides for common operations.
+:doc:`Task-oriented guides <how-to/index>` for common operations.
 
-`Explanation <explanation/index.html>`_
+Explanation
 -------------------------------------------------
 
-Conceptual explanations of morphometric methods and theory.
+:doc:`Conceptual explanations <explanation/index>` of morphometric methods
+and theory.
 
-`API Reference <api/index.html>`_
+API reference
 -------------------------------------------------
 
-Complete API documentation for all classes, functions, and modules.
+:doc:`Complete API documentation <api/index>` for all classes, functions,
+and modules.
