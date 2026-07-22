@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.10.2](https://github.com/noshita/ktch/compare/v0.10.1...v0.10.2) (2026-07-22)
+
+
+### Documentation
+
+* 📚 document dirhtml build, redirects, and the indexing reality ([db413c6](https://github.com/noshita/ktch/commit/db413c697ee83134520937430ab7b1f9f379a1e6))
+* 📚 emit clean directory-style canonical URLs ([4d0e0e7](https://github.com/noshita/ktch/commit/4d0e0e754c173634f9d8c9781dc7a22c3eca8695))
+* 📚 exclude opensearch/ from the sitemap under dirhtml ([60a6abb](https://github.com/noshita/ktch/commit/60a6abb45984a9cdccd45e95944bb8c7dddaae9c))
+* 📚 keep old .html URLs alive after the dirhtml switch ([363defd](https://github.com/noshita/ktch/commit/363defd9a9c1023f93a7a890c015130bd2954a7c))
+* 📚 point contributing guide URL to stable docs ([f68c1c3](https://github.com/noshita/ktch/commit/f68c1c3599c8e4afb22f12fb42c0fa7a68b500be))
+* 📚 point project URLs to stable docs ([dec1d46](https://github.com/noshita/ktch/commit/dec1d46cfe0de6851c2cf6c218c368c818bb7aa9))
+* 📚 redirect documentation URLs from earlier layouts ([faeaafe](https://github.com/noshita/ktch/commit/faeaafec01f65c57b623fb3c98bb9f44a461399c))
+* 📚 switch documentation to the dirhtml builder ([124e138](https://github.com/noshita/ktch/commit/124e1383db76fa53a72a2c68a00e30d208f24bdb))
+* 📚 update versions.json for v0.10.1 ([4bafb47](https://github.com/noshita/ktch/commit/4bafb47d900f457bb5a41c6c961373c095ef070e))
+* 📚 use :doc: roles for landing page navigation links ([18ee054](https://github.com/noshita/ktch/commit/18ee054a1491fad1174cc152b52b38abd74cee24))
+
 ## [0.10.1](https://github.com/noshita/ktch/compare/v0.10.0...v0.10.1) (2026-07-14)
 
 
