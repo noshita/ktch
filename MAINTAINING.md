@@ -287,6 +287,12 @@ from your personal fork. The bot PR is then closed.
 - [ ] Google Search Console: sitemap (`/stable/sitemap.xml`) is detected
   and page count is correct
 
+`/stable/` is rebuilt from the release tag, so any documentation *source* fix
+merged to `main` after the previous release first appears on `/stable/` with
+this release (it was only on `/dev/` before). `conf.py` and workflow changes, by
+contrast, apply to `/stable/` on every build regardless of the tag. When a
+release is expected to carry such a docs fix, confirm it on `/stable/` here.
+
 #### Re-building documentation without cache
 
 Before v1.0, minor version releases (e.g., 0.8.0 → 0.9.0) may introduce
@@ -322,25 +328,35 @@ the automatic calculation for the next release PR.
 
 #### Pages not indexed by Google
 
-The documentation site uses the following SEO configuration:
+SEO configuration of the documentation site:
 
 - `robots.txt`: allows `/stable/`, blocks `/dev/` and versioned paths
-- `sphinx-sitemap`: generates `/stable/sitemap.xml` with canonical URLs
+- `sphinx-sitemap`: generates `/stable/sitemap.xml` with clean `/page/`
+  (dirhtml) URLs; `sitemap_excludes` keeps builder-generated pages
+  (`genindex/`, `py-modindex/`, `search/`, `opensearch/`) out
 - `noindex_utilities` (custom Sphinx extension): adds
   `<meta name="robots" content="noindex">` to low-value pages
   (`_modules/*`, `genindex`, `py-modindex`, `search`, `opensearch`)
 - `sphinxext-opengraph`: generates Open Graph meta tags
+- `scripts/gen_redirects.py`: redirect stubs for legacy and pre-dirhtml URLs
 
-If pages are not being indexed by Google Search Console (GSC):
+The technical crawl configuration above was audited in July 2026 and is
+healthy: the sitemap is valid, `robots.txt` allows `/stable/`, canonical tags
+are correct, and the property is verified. Repeatedly re-checking these has not
+moved indexing, because they are not the bottleneck.
 
-1. Verify the sitemap is accessible at
-   <https://doc.ktch.dev/stable/sitemap.xml> and contains the expected URLs
-2. Verify `robots.txt` at <https://doc.ktch.dev/robots.txt> does not
-   block `/stable/`
-3. Inspect individual pages using GSC's URL Inspection tool and request
-   indexing for key pages (tutorials, API top page)
-4. Check that content pages do not have unintended
-   `<meta name="robots" content="noindex">` tags
+When GSC reports "Crawled - currently not indexed", that is a quality/authority
+judgment on pages Google fetched successfully, not a crawl block. The dominant
+lever is inbound authority: dofollow, in-content links from indexed third-party
+pages. Note that PyPI and GitHub links to the docs carry `rel="nofollow"` and
+transfer no ranking signal. Higher-value actions than any further technical
+tweak: a JOSS paper or other citation, and links from pages other people
+control.
+
+Only if a specific page is genuinely missing from the index, first rule out the
+mechanical causes: the URL is in `/stable/sitemap.xml`, returns 200 (not a
+redirect stub or 404), and has no unintended `noindex`; then request indexing
+via GSC's URL Inspection tool.
 
 ## Remote datasets (Cloudflare R2)
 

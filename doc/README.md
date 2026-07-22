@@ -9,6 +9,15 @@ uv run make html
 
 The output is generated in `doc/_build/html/`.
 
+The published site is built with the `dirhtml` builder, which serves each
+page at `page/` instead of `page.html`. To reproduce the published URL form
+locally:
+
+```bash
+cd doc
+uv run make dirhtml   # output in doc/_build/dirhtml/
+```
+
 For live-reload during editing:
 
 ```bash
@@ -20,19 +29,32 @@ uv run sphinx-autobuild . _build/html
 
 The CI workflow (`.github/workflows/documentation.yml`) uses
 [sphinx-multiversion](https://github.com/sphinx-contrib/multiversion)
-to build documentation for all versions listed in `_static/versions.json`.
+to build documentation for all versions listed in `_static/versions.json`,
+with `-b dirhtml`.
 
-Each version's `conf.py` is loaded independently, so CI must install
-all dependencies required by older versions' `conf.py` files.
+sphinx-multiversion builds every version with the *current* checkout's
+`conf.py` (it passes `-c` pointing at the working tree's `doc/`), while taking
+each version's *source documents* from that version's git ref. So `conf.py`
+changes and workflow changes reach `/stable/` on the next build, but changes to
+source files under `doc/` only appear once a release tag carries them. `conf.py`
+branches on `SPHINX_MULTIVERSION_NAME` to render each version correctly.
 
-Version-specific dependencies:
+Because older versions' *source* is built with today's toolchain, CI must
+install any build-time dependency an older version's source still needs (not its
+`conf.py`, which is not used). When removing a version from `versions.json`,
+drop any dependency it alone required from
+`.github/workflows/documentation.yml`.
 
-| Version | Dependency | Reason | Remove when |
-|---------|------------|--------|-------------|
-| v0.6.1 | `jupytext` | `conf.py` imports jupytext | v0.6.1 dropped from `versions.json` |
+## Redirects
 
-When removing a version from `versions.json`, also remove its dependencies
-from `.github/workflows/documentation.yml`.
+`scripts/gen_redirects.py` writes redirect stubs into the built site so that old
+URLs keep working; the CI workflow runs it after the version builds. It has
+three modes: `stubs` maps the legacy pre-`/stable/` layout URLs listed in
+`doc/_redirects.toml` onto current pages (and fails the build if a target is
+missing); `html-aliases` keeps every old `page.html` URL working after the
+dirhtml switch by walking the built tree; `cloudflare` emits a `_redirects` file
+of real 301s for a future move off GitHub Pages. See
+`scripts/gen_redirects.py` for details.
 
 ## Release workflow
 
