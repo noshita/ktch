@@ -337,13 +337,16 @@ sitemap_url_scheme = "{link}"
 
 # Exclude auto-generated and utility pages from the sitemap so that only
 # meaningful content pages are advertised to search engines.
-# The dirhtml builder publishes every page as a directory, so these utility
-# pages are advertised as genindex/, search/, etc. -- not the .html forms.
+# The dirhtml builder publishes every page as a directory, so these
+# builder-generated, non-content pages are advertised as genindex/, opensearch/,
+# etc. -- not the .html forms. opensearch/ in particular has no page behind it
+# (only _static/opensearch.xml), so leaving it in would put a 404 in the sitemap.
 sitemap_excludes = [
     "_modules/*",
     "genindex/",
     "py-modindex/",
     "search/",
+    "opensearch/",
 ]
 
 if _smv_name == "main":
