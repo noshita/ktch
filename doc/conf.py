@@ -47,7 +47,6 @@ extensions = [
     "sphinxcontrib.mermaid",
     "sphinx.ext.viewcode",
     "noindex_utilities",
-    "canonical_urls",
     "sphinx.ext.mathjax",
     "numpydoc",
     "myst_nb",
@@ -338,12 +337,13 @@ sitemap_url_scheme = "{link}"
 
 # Exclude auto-generated and utility pages from the sitemap so that only
 # meaningful content pages are advertised to search engines.
+# The dirhtml builder publishes every page as a directory, so these utility
+# pages are advertised as genindex/, search/, etc. -- not the .html forms.
 sitemap_excludes = [
     "_modules/*",
-    "genindex.html",
-    "py-modindex.html",
-    "search.html",
-    "opensearch.html",
+    "genindex/",
+    "py-modindex/",
+    "search/",
 ]
 
 if _smv_name == "main":

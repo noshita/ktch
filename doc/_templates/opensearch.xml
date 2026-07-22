@@ -1,0 +1,20 @@
+{#-
+  OpenSearch description. Overrides the stock theme template, whose search URL
+  is `{{ use_opensearch }}/{{ pathto('search') }}`. Under the dirhtml builder
+  `pathto('search')` is a page-relative path (e.g. `../search/`), which appended
+  to the absolute `use_opensearch` base yields a broken `.../<version>/../search/`.
+  Point at `<base>/search/` directly instead. This assumes dirhtml output (search
+  published as `search/`, not `search.html`); revisit if the html builder returns.
+-#}
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>{{ project|e }}</ShortName>
+  <Description>{% trans docstitle=docstitle|e %}Search {{ docstitle }}{% endtrans %}</Description>
+  <InputEncoding>utf-8</InputEncoding>
+  <Url type="text/html" method="get"
+       template="{{ use_opensearch }}/search/?q={searchTerms}"/>
+  <LongName>{{ docstitle|e }}</LongName>
+{%- if favicon_url %}
+  <Image height="16" width="16" type="image/x-icon">{{ use_opensearch }}/{{ favicon_url|e }}</Image>
+{%- endif %}
+</OpenSearchDescription>

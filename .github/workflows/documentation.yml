@@ -77,7 +77,9 @@ jobs:
         run: |
           # Build all versions with sphinx-multiversion
           # -j auto enables parallel build (auto-detects CPU cores)
-          sphinx-multiversion doc doc/_build/html -j auto
+          # -b dirhtml publishes each page as <name>/index.html, served at the
+          # clean directory URL <name>/ instead of <name>.html
+          sphinx-multiversion doc doc/_build/html -b dirhtml -j auto
 
           # Rename main -> dev
           if [ -d "doc/_build/html/main" ]; then
@@ -142,18 +144,15 @@ jobs:
           echo "Creating /stable/ directory as copy of ${ACTUAL_STABLE}"
           cp -r "$SOURCE_DIR" doc/_build/html/stable
 
-          # Fix canonical URLs and sitemap in stable to use /stable/ instead of versioned path
+          # Rewrite the version-prefixed absolute URLs baked into the copied
+          # version so they point at /stable/. This covers canonical tags and
+          # og:url in the HTML, the sitemap, and the OpenSearch search URL.
+          # The dirhtml builder already emits clean directory URLs, so no
+          # index.html stripping is needed.
           echo "Fixing URLs in /stable/ (${ACTUAL_STABLE} -> stable)"
-          find doc/_build/html/stable -name "*.html" -exec \
+          find doc/_build/html/stable \( -name "*.html" -o -name "sitemap.xml" \
+            -o -name "opensearch.xml" \) -exec \
             sed -i "s|https://doc.ktch.dev/${ACTUAL_STABLE}/|https://doc.ktch.dev/stable/|g" {} +
-          if [ -f "doc/_build/html/stable/sitemap.xml" ]; then
-            sed -i "s|https://doc.ktch.dev/${ACTUAL_STABLE}/|https://doc.ktch.dev/stable/|g" doc/_build/html/stable/sitemap.xml
-            # Use clean directory URLs (drop index.html) so sitemap entries match
-            # the canonical form emitted by the canonical_urls extension. The HTML
-            # canonical tags are already clean at the source, so only the sitemap
-            # (generated separately by sphinx-sitemap) needs this adjustment.
-            sed -i "s|/index.html</loc>|/</loc>|g" doc/_build/html/stable/sitemap.xml
-          fi
 
           # Copy robots.txt to site root (html_extra_path places it inside each
           # version subdirectory, but Google expects it at the domain root)
