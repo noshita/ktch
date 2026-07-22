@@ -96,6 +96,13 @@ jobs:
             fi
           done
 
+          # Keep old <page>.html URLs working after the dirhtml switch, which
+          # publishes each page at <page>/ instead. Runs on every version
+          # directory before the /stable/ copy, so /stable/ inherits the
+          # aliases and the version -> stable URL rewrite below fixes their
+          # canonical links.
+          python3 scripts/gen_redirects.py --site-dir doc/_build/html --emit html-aliases
+
           # Get stable version number from versions.json (the preferred entry's version)
           STABLE_VERSION=$(python3 -c "
           import json

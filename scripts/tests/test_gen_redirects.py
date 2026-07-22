@@ -22,6 +22,7 @@ resolve = gen_redirects.resolve
 plan = gen_redirects.plan
 emit_stubs = gen_redirects.emit_stubs
 emit_cloudflare = gen_redirects.emit_cloudflare
+emit_html_aliases = gen_redirects.emit_html_aliases
 
 
 # ---------------------------------------------------------------------------
@@ -160,6 +161,83 @@ class TestEmit:
         )
         lines = (tmp_path / "_redirects").read_text(encoding="utf-8").splitlines()
         assert lines == ["/a.html  /stable/a/  301", "/b.html  /stable/b/  301"]
+
+
+# ---------------------------------------------------------------------------
+# emit_html_aliases() -- keep old foo.html URLs alive after html -> dirhtml
+# ---------------------------------------------------------------------------
+
+
+def _make_dirhtml_version(root, version, docnames):
+    """Lay out a dirhtml version directory: each docname as <docname>/index.html."""
+    vdir = root / version
+    for doc in docnames:
+        page = vdir / doc / "index.html" if doc else vdir / "index.html"
+        page.parent.mkdir(parents=True, exist_ok=True)
+        page.write_text("page", encoding="utf-8")
+    return vdir
+
+
+class TestHtmlAliases:
+    def test_leaf_page_gets_an_alias_to_its_directory_url(self, tmp_path):
+        _make_dirhtml_version(tmp_path, "stable", ["installation"])
+        emit_html_aliases(tmp_path, "https://doc.ktch.dev")
+        alias = tmp_path / "stable/installation.html"
+        assert alias.exists()
+        text = alias.read_text(encoding="utf-8")
+        # Relative refresh (version-independent) + absolute canonical.
+        assert "0; url=installation/" in text
+        assert (
+            'rel="canonical" href="https://doc.ktch.dev/stable/installation/"' in text
+        )
+
+    def test_nested_leaf_alias_is_written_next_to_its_directory(self, tmp_path):
+        _make_dirhtml_version(tmp_path, "stable", ["tutorials/harmonic/spharm"])
+        emit_html_aliases(tmp_path, "https://doc.ktch.dev")
+        alias = tmp_path / "stable/tutorials/harmonic/spharm.html"
+        assert alias.exists()
+        # Refresh target is the last segment only, so it resolves relative to
+        # the alias's own directory.
+        assert "0; url=spharm/" in alias.read_text(encoding="utf-8")
+
+    def test_version_root_gets_no_alias(self, tmp_path):
+        _make_dirhtml_version(tmp_path, "stable", [""])
+        emit_html_aliases(tmp_path, "https://doc.ktch.dev")
+        assert not (tmp_path / "stable.html").exists()
+
+    def test_asset_directories_are_skipped(self, tmp_path):
+        _make_dirhtml_version(tmp_path, "stable", ["_modules/ktch/io/_tps"])
+        emit_html_aliases(tmp_path, "https://doc.ktch.dev")
+        assert not (tmp_path / "stable/_modules/ktch/io/_tps.html").exists()
+
+    def test_every_version_directory_is_processed(self, tmp_path):
+        _make_dirhtml_version(tmp_path, "stable", ["installation"])
+        _make_dirhtml_version(tmp_path, "dev", ["installation"])
+        written = emit_html_aliases(tmp_path, "https://doc.ktch.dev")
+        assert (tmp_path / "stable/installation.html").exists()
+        assert (tmp_path / "dev/installation.html").exists()
+        assert written == 2
+
+    def test_canonical_carries_the_version_prefix(self, tmp_path):
+        # The workflow rewrites <version>/ -> stable/ in the copied stable dir,
+        # so the alias canonical must carry the version prefix to be rewritten.
+        _make_dirhtml_version(tmp_path, "0.10.1", ["installation"])
+        emit_html_aliases(tmp_path, "https://doc.ktch.dev")
+        text = (tmp_path / "0.10.1/installation.html").read_text(encoding="utf-8")
+        assert "https://doc.ktch.dev/0.10.1/installation/" in text
+
+    def test_aliases_are_never_noindex(self, tmp_path):
+        _make_dirhtml_version(tmp_path, "stable", ["installation"])
+        emit_html_aliases(tmp_path, "https://doc.ktch.dev")
+        text = (tmp_path / "stable/installation.html").read_text(encoding="utf-8")
+        assert "noindex" not in text
+
+    def test_does_not_overwrite_a_real_html_file(self, tmp_path):
+        vdir = _make_dirhtml_version(tmp_path, "stable", ["guide"])
+        real = vdir / "guide.html"
+        real.write_text("REAL PAGE", encoding="utf-8")
+        emit_html_aliases(tmp_path, "https://doc.ktch.dev")
+        assert real.read_text(encoding="utf-8") == "REAL PAGE"
 
 
 # ---------------------------------------------------------------------------

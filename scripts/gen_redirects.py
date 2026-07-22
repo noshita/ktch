@@ -8,13 +8,20 @@ return 404. ``doc/_redirects.toml`` maps each of those paths onto the docname
 that replaced it; this script turns that map into redirect artifacts inside a
 built site.
 
-Two output formats are supported:
+Output formats:
 
 ``--emit stubs`` (default)
-    Write a small HTML file at each legacy path holding a zero-delay
-    ``meta refresh`` plus a canonical link to the target. This is the only
-    mechanism available on GitHub Pages, which cannot serve a 301 for an
-    arbitrary path.
+    Write a small HTML file at each legacy path from ``doc/_redirects.toml``,
+    holding a zero-delay ``meta refresh`` plus a canonical link to the target.
+    This is the only mechanism available on GitHub Pages, which cannot serve a
+    301 for an arbitrary path.
+
+``--emit html-aliases``
+    Walk the built tree instead of the map, and for every page the dirhtml
+    builder publishes at ``<page>/index.html``, write a ``<page>.html`` stub
+    redirecting to ``<page>/``. This keeps the old ``.html`` URLs alive after
+    the html -> dirhtml switch. No map is involved; the alias set is derived
+    entirely from what was built.
 
 ``--emit cloudflare``
     Write a ``_redirects`` file of real 301 rules at the site root, for hosts
@@ -26,14 +33,15 @@ one against the tree that was actually built. The same map therefore yields
 ``/stable/api/datasets/`` from a ``dirhtml`` build, and switching builders needs
 no edit to the map.
 
-The script exits non-zero when a target docname is absent from the build, or
-when a legacy path would overwrite a real page. A page rename that is not
-reflected in the map therefore fails the documentation build rather than
+The ``stubs`` mode exits non-zero when a target docname is absent from the
+build, or when a legacy path would overwrite a real page. A page rename that is
+not reflected in the map therefore fails the documentation build rather than
 shipping redirects that point at nothing.
 
-Usage:
-    uv run python scripts/gen_redirects.py --site-dir doc/_build/html
-    uv run python scripts/gen_redirects.py --site-dir doc/_build/html --emit cloudflare
+Usage (SITE=doc/_build/html):
+    uv run python scripts/gen_redirects.py --site-dir "$SITE"
+    uv run python scripts/gen_redirects.py --site-dir "$SITE" --emit html-aliases
+    uv run python scripts/gen_redirects.py --site-dir "$SITE" --emit cloudflare
 """
 
 from __future__ import annotations
@@ -162,6 +170,54 @@ def emit_cloudflare(resolved: list[tuple[str, str]], site_dir: Path) -> None:
     (site_dir / "_redirects").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+# Sphinx-internal trees, not documentation pages: no .html alias is wanted for
+# their directory indexes.
+_ASSET_DIRS = frozenset(
+    {"_static", "_sources", "_modules", "_images", "_downloads", "jupyter_execute"}
+)
+
+
+def emit_html_aliases(site_dir: Path, base_url: str) -> int:
+    """Keep old ``foo.html`` URLs alive after the html -> dirhtml switch.
+
+    The dirhtml builder publishes a leaf page ``foo`` as ``foo/index.html``,
+    served at ``foo/``; its old URL ``foo.html`` no longer exists and 404s.
+    For every ``<dir>/index.html`` under each version directory, write a stub
+    at ``<dir>.html`` that redirects to ``<dir>/``, so links and bookmarks to
+    the old form keep working and hand their ranking signal to the new URL.
+
+    A directory-index page (docname ``<dir>/index``) is published at the same
+    ``<dir>/index.html`` path under both builders and does not break; the stub
+    written for it (``<dir>.html``) is a harmless additional alias, not a
+    recreation of a URL that ever 404'd.
+
+    Returns the number of stubs written.
+    """
+    written = 0
+    for version_dir in sorted(p for p in site_dir.iterdir() if p.is_dir()):
+        canonical_base = f"{base_url.rstrip('/')}/{version_dir.name}"
+        for index_file in version_dir.rglob("index.html"):
+            rel = index_file.parent.relative_to(version_dir)
+            if not rel.parts or rel.parts[0] in _ASSET_DIRS:
+                continue
+            alias = version_dir / f"{rel.as_posix()}.html"
+            if alias.exists():
+                continue
+            # Relative refresh target keeps the stub version-independent; the
+            # canonical link is absolute so search engines consolidate onto the
+            # new URL. Same no-noindex rule as the legacy redirect stubs.
+            alias.write_text(
+                _STUB.format(
+                    marker=_MARKER,
+                    url=f"{rel.parts[-1]}/",
+                    canonical=f"{canonical_base}/{rel.as_posix()}/",
+                ),
+                encoding="utf-8",
+            )
+            written += 1
+    return written
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate legacy URL redirects.")
     parser.add_argument(
@@ -176,9 +232,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--version", default="stable", help="version directory redirects point into"
     )
-    parser.add_argument("--emit", choices=("stubs", "cloudflare"), default="stubs")
+    parser.add_argument(
+        "--emit", choices=("stubs", "cloudflare", "html-aliases"), default="stubs"
+    )
     parser.add_argument("--base-url", default="https://doc.ktch.dev")
     args = parser.parse_args(argv)
+
+    # html-aliases walks the built tree instead of the legacy map: every current
+    # page keeps its old .html URL working after the dirhtml switch.
+    if args.emit == "html-aliases":
+        written = emit_html_aliases(args.site_dir, args.base_url)
+        print(f"gen_redirects: wrote {written} redirects (html-aliases)")
+        return 0
 
     mapping = tomllib.loads(args.map.read_text(encoding="utf-8"))["redirects"]
     resolved = plan(mapping, args.site_dir, args.version)
