@@ -518,11 +518,11 @@ class SphericalHarmonicRegistration(_BaseHarmonicRegistration):
     (``[cx_0_0, cx_1_-1, ..., cy_..., cz_...]``); ``l_max`` is inferred from the
     input width.
 
-    Registration removes the codomain nuisances (group A: translation,
-    rotation, scale) and, for ``first_order``, the parameter-sphere symmetry
-    (group B). It is a per-sample canonicalization, so ``fit`` is a no-op for
-    the implemented methods and :meth:`transform` maps each coefficient vector
-    independently.
+    Registration removes the codomain nuisances (translation, rotation, scale)
+    and, for ``first_order``, the orientation of the parameter sphere, which
+    fixes the correspondence between parameter values and surface points. It is
+    a per-sample canonicalization, so ``fit`` is a no-op for the implemented
+    methods and :meth:`transform` maps each coefficient vector independently.
 
     Parameters
     ----------
@@ -545,9 +545,9 @@ class SphericalHarmonicRegistration(_BaseHarmonicRegistration):
         Size measure when ``scale=True``. ``None`` resolves to the method
         default (``"first_order"``: ``"semi_major_axis"``).
     align_parameter : bool, default=True
-        Parameter-domain (group B, SO(3) / phase) alignment. ``"first_order"``
-        always applies it; ``align_parameter=False`` is reserved and raises
-        ``NotImplementedError``.
+        Whether to rotate the parameter sphere (SO(3)) as well as the codomain.
+        ``"first_order"`` always applies it; ``align_parameter=False`` is
+        reserved and raises ``NotImplementedError``.
     reflect : bool, default=False
         Whether to also remove reflection (chirality). ``False`` enforces a
         proper codomain rotation (``det=+1``).
@@ -563,11 +563,12 @@ class SphericalHarmonicRegistration(_BaseHarmonicRegistration):
     Notes
     -----
     ``first_order`` writes the l=1 ellipsoid as ``M1 = U Σ Vᵀ``, applies ``Uᵀ``
-    to the codomain (group A) and the SO(3) rotation ``V`` to every degree via
-    Wigner-D (group B), drops the l=0 mode (translation), and scales by the
-    semi-major axis or ellipsoid volume. The ellipsoid's Klein-four sign
-    ambiguity is broken by a rotation- and reparameterization-invariant third
-    moment, which is ill-conditioned for near-symmetric shapes.
+    to the codomain, rotates the parameter sphere by ``V`` via Wigner-D, drops
+    the l=0 mode (translation), and divides by a length derived from the
+    ellipsoid: the semi-major axis, or the cube root of the ellipsoid volume.
+    The ellipsoid's Klein-four sign ambiguity is broken by a rotation- and
+    reparameterization-invariant third moment, which is ill-conditioned for
+    near-symmetric shapes.
 
     Examples
     --------
@@ -677,7 +678,9 @@ def _first_order_register_coef(coef_flat, n_dim, *, scale, scale_method, reflect
     if scale:
         sm = scale_method or "semi_major_axis"
         if sm == "ellipsoid_volume":
-            s = (4.0 / 3.0) * np.pi * sig[0] * sig[1] * sig[2]
+            # The divisor must be a length, as semi_major_axis is; dividing by
+            # a volume would leave a residual size dependence.
+            s = ((4.0 / 3.0) * np.pi * sig[0] * sig[1] * sig[2]) ** (1.0 / 3.0)
         else:  # "semi_major_axis"
             s = sig[0]
     else:

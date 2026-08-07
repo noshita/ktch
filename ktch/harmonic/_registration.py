@@ -1,7 +1,8 @@
 """Shared registration utilities for harmonic methods.
 
-Registration removes nuisance similarity transforms of the codomain (group A:
-translation, rotation, scale) and the parameter-domain symmetry (group B).
+Registration removes nuisance similarity transforms of the codomain
+(translation, rotation, scale) and the symmetry of the parameter domain (the
+starting point of a contour, or the orientation of the parameter sphere).
 """
 
 # Copyright 2026 Koji Noshita
@@ -102,8 +103,7 @@ def validate_registration(
     if method == "first_order" and not align_parameter:
         raise NotImplementedError(
             "align_parameter=False is not yet implemented; 'first_order' "
-            "always aligns the parameter domain (group B). Use "
-            "align_parameter=True."
+            "always aligns the parameter domain. Use align_parameter=True."
         )
     if n_dim not in (2, 3):
         raise ValueError(
@@ -132,7 +132,8 @@ def moment_frame(
 
     For an orthonormal basis, ``M = sum_k a_k a_k^T`` equals the shape second
     moment (covariance up to the measure). Its eigenvectors are the principal
-    axes (group A, codomain rotation only).
+    axes, which fix the codomain rotation only; the parameter domain is left
+    untouched.
 
     Parameters
     ----------
@@ -199,7 +200,7 @@ def moment_register(
 
     Removes translation (constant mode -> 0), rotates the codomain to the
     principal-axis frame, and optionally divides by the centroid size. Does
-    not touch the parameter domain (group B is not resolved by ``moment``).
+    not touch the parameter domain, which ``moment`` does not resolve.
 
     Parameters
     ----------
@@ -263,10 +264,10 @@ class _BaseRegistration(TransformerMixin, BaseEstimator):
     (``_register_single``).
 
     Registration is a per-sample canonicalization: it removes nuisance
-    similarity transforms of the codomain (group A: translation, rotation,
-    scale) and the parameter-domain symmetry (group B). It preserves the number
-    of samples and their order, so it fits the ``transform`` contract. ``fit``
-    is a no-op for the stateless methods.
+    similarity transforms of the codomain (translation, rotation, scale) and
+    the symmetry of the parameter domain. It preserves the number of samples
+    and their order, so it fits the ``transform`` contract. ``fit`` is a no-op
+    for the stateless methods.
 
     Parameters
     ----------
@@ -281,8 +282,9 @@ class _BaseRegistration(TransformerMixin, BaseEstimator):
         Size measure when ``scale=True``; ``None`` resolves to the method
         default. Valid values depend on the concrete registration.
     align_parameter : bool, default=True
-        Parameter-domain (group B) alignment. ``first_order`` always applies
-        it; ``align_parameter=False`` is not yet implemented.
+        Whether to align the parameter domain as well as the codomain.
+        ``first_order`` always applies it; ``align_parameter=False`` is not yet
+        implemented.
     reflect : bool, default=False
         Whether to also remove reflection (chirality). ``False`` enforces a
         proper rotation.

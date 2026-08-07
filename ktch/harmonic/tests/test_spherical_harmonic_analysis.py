@@ -854,7 +854,7 @@ class TestSPHARMRegistration:
 
     def test_first_order_parameter_so3_invariance(self):
         # Rotating the sphere parameterization (SO(3)) and re-fitting must give
-        # the same registered coefficients (group B).
+        # the same registered coefficients.
         l_max = 3
         X, theta_phi, _ = _synthetic_sphere(l_max, 800, n_dim=3, seed=7)
         sha = SphericalHarmonicAnalysis(
@@ -1009,6 +1009,52 @@ class TestSphericalHarmonicRegistration:
             )
 
         assert_allclose(spectrum(out[0]), spectrum(raw[0]), rtol=1e-8)
+
+    # Arbitrary non-unit factors, one magnifying and one shrinking.
+    @pytest.mark.parametrize("factor", [0.4, 3.7])
+    @pytest.mark.parametrize(
+        "method,scale_method",
+        [
+            ("first_order", None),
+            ("first_order", "semi_major_axis"),
+            ("first_order", "ellipsoid_volume"),
+            ("moment", None),
+            ("moment", "centroid_size"),
+        ],
+    )
+    def test_scale_invariance(self, method, scale_method, factor):
+        # Guards every scale_method against a divisor that is not a length.
+        raw = self._raw_coeffs(3, seed=30, n_samples=2)
+        reg = SphericalHarmonicRegistration(
+            method=method, scale=True, scale_method=scale_method
+        )
+        assert_allclose(
+            reg.fit_transform(raw),
+            reg.fit_transform(factor * raw),
+            rtol=1e-8,
+            atol=1e-10,
+        )
+
+    def test_ellipsoid_volume_normalizes_to_unit_volume(self):
+        # Unit volume requires dividing by the cube root, not by the volume.
+        raw = self._raw_coeffs(3, seed=31, n_samples=2)
+        out = SphericalHarmonicRegistration(
+            method="first_order", scale=True, scale_method="ellipsoid_volume"
+        ).fit_transform(raw)
+        for row in out:
+            sig = np.linalg.svd(row.reshape(3, -1)[:, 1:4], compute_uv=False)
+            volume = (4.0 / 3.0) * np.pi * np.prod(sig)
+            assert volume == pytest.approx(1.0, rel=1e-9)
+
+    def test_semi_major_axis_normalizes_to_unit_length(self):
+        # The companion invariant for the default scale_method.
+        raw = self._raw_coeffs(3, seed=31, n_samples=2)
+        out = SphericalHarmonicRegistration(
+            method="first_order", scale=True, scale_method="semi_major_axis"
+        ).fit_transform(raw)
+        for row in out:
+            sig = np.linalg.svd(row.reshape(3, -1)[:, 1:4], compute_uv=False)
+            assert sig[0] == pytest.approx(1.0, rel=1e-9)
 
     def test_feature_names_preserved(self):
         raw = self._raw_coeffs(2, seed=23, n_samples=1)
