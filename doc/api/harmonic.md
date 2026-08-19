@@ -33,6 +33,7 @@
    :template: base.rst
    
    harmonic.disk_harm
+   harmonic.rotate_spharm_coeffs
    harmonic.rotation_matrix_2d
    harmonic.spharm
    harmonic.xy2polar
