@@ -672,7 +672,7 @@ def _first_order_register_coef(coef_flat, n_dim, *, scale, scale_method, reflect
 
     # B. Parameter SO(3) alignment in the coefficient domain: rotate the sphere
     # by R = w_mat^T via Wigner-D (per axis).
-    rotated = rotate_real_sph_coef(mat.T, w_mat.T)  # (n_coeffs, 3)
+    rotated = rotate_parameter_sphere(mat.T, w_mat.T)  # (n_coeffs, 3)
 
     # A. Codomain rotation + scale + translation removal.
     if scale:
@@ -831,7 +831,7 @@ def _wigner_D(
     return np.exp(-1j * m * alpha)[:, None] * d * np.exp(-1j * m * gamma)[None, :]
 
 
-def rotate_real_sph_coef(
+def rotate_parameter_sphere(
     coef_per_lm: npt.NDArray[np.float64], rotation: npt.NDArray[np.float64]
 ) -> npt.NDArray[np.float64]:
     """Rotate real SPHARM coefficients by a 3D rotation, in the coefficient domain.

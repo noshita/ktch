@@ -39,6 +39,47 @@ _RESERVED_REGISTRATIONS = {"landmark", "rotational_match"}
 _VALID_REGISTRATIONS = {None, "first_order", "moment"} | _RESERVED_REGISTRATIONS
 
 
+def infer_l_max(n_features, n_dim):
+    """Infer ``l_max`` from the width of a flat coefficient vector.
+
+    The width is ``n_dim * (l_max + 1) ** 2``: a width of 48 reads as
+    ``n_dim=3, l_max=3`` or ``n_dim=12, l_max=1``.
+
+    Parameters
+    ----------
+    n_features : int
+        Width of one flat coefficient vector.
+    n_dim : int
+        Codomain dimension of the shape data.
+
+    Returns
+    -------
+    int
+        Maximum harmonic degree.
+
+    Raises
+    ------
+    ValueError
+        If ``n_dim`` is not positive, if the width is not divisible by
+        ``n_dim``, or if the per-axis count is not a perfect square.
+    """
+    if n_dim < 1:
+        raise ValueError(f"n_dim must be a positive integer, got {n_dim}")
+    if n_features % n_dim != 0:
+        raise ValueError(
+            f"Input width ({n_features}) is not divisible by n_dim "
+            f"({n_dim}); cannot interpret it as harmonic coefficients."
+        )
+    n_per_axis = n_features // n_dim
+    l_max = int(round(n_per_axis**0.5)) - 1
+    if (l_max + 1) ** 2 != n_per_axis:
+        raise ValueError(
+            f"Input width per axis ({n_per_axis}) is not a perfect square "
+            "(l_max + 1) ** 2; cannot infer l_max."
+        )
+    return l_max
+
+
 def validate_registration(
     method,
     scale_method,
@@ -385,26 +426,5 @@ class _BaseHarmonicRegistration(OneToOneFeatureMixin, _BaseRegistration):
     """
 
     def _setup(self, X):
-        self._l_max = self._infer_l_max(self.n_features_in_)
+        self._l_max = infer_l_max(self.n_features_in_, self.n_dim)
         self._resolved_method = self._resolve_method()
-
-    def _infer_l_max(self, n_features):
-        """Infer ``l_max`` from the flat coefficient width.
-
-        The width is ``n_dim * (l_max + 1) ** 2``.
-        """
-        if self.n_dim < 1:
-            raise ValueError(f"n_dim must be a positive integer, got {self.n_dim}")
-        if n_features % self.n_dim != 0:
-            raise ValueError(
-                f"Input width ({n_features}) is not divisible by n_dim "
-                f"({self.n_dim}); cannot interpret it as harmonic coefficients."
-            )
-        n_per_axis = n_features // self.n_dim
-        l_max = int(round(n_per_axis**0.5)) - 1
-        if (l_max + 1) ** 2 != n_per_axis:
-            raise ValueError(
-                f"Input width per axis ({n_per_axis}) is not a perfect square "
-                "(l_max + 1) ** 2; cannot infer l_max."
-            )
-        return l_max

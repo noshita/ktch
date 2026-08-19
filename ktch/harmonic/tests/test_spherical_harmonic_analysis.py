@@ -18,7 +18,7 @@ from ktch.harmonic._spherical_harmonic_analysis import (
     _third_moment_grid_basis,
     _wigner_d_small,
     cvt_spharm_coef_to_list,
-    rotate_real_sph_coef,
+    rotate_parameter_sphere,
 )
 
 
@@ -29,7 +29,7 @@ def _spherical_to_xyz(theta_phi):
     )
 
 
-class TestRotateRealSphCoef:
+class TestRotateParameterSphere:
     """Coefficient-domain SH rotation == rotate parameterization + re-fit."""
 
     def _setup(self, seed):
@@ -54,7 +54,7 @@ class TestRotateRealSphCoef:
         l_max, theta_phi, coords, coef = self._setup(0)
         R = sp.spatial.transform.Rotation.from_rotvec([0.3, -0.5, 0.8]).as_matrix()
         expected = self._refit_after_param_rotation(l_max, theta_phi, coords, R)
-        got = rotate_real_sph_coef(coef, R)
+        got = rotate_parameter_sphere(coef, R)
         assert_allclose(got, expected, atol=1e-7)
 
     def test_matches_refit_improper(self):
@@ -64,12 +64,12 @@ class TestRotateRealSphCoef:
         R = R @ np.diag([1.0, 1.0, -1.0])  # make it improper
         assert np.linalg.det(R) < 0
         expected = self._refit_after_param_rotation(l_max, theta_phi, coords, R)
-        got = rotate_real_sph_coef(coef, R)
+        got = rotate_parameter_sphere(coef, R)
         assert_allclose(got, expected, atol=1e-7)
 
     def test_identity(self):
         _, _, _, coef = self._setup(2)
-        got = rotate_real_sph_coef(coef, np.eye(3))
+        got = rotate_parameter_sphere(coef, np.eye(3))
         assert_allclose(got, coef, atol=1e-10)
 
     def test_matches_refit_higher_degree(self):
@@ -87,19 +87,19 @@ class TestRotateRealSphCoef:
 
         R = sp.spatial.transform.Rotation.from_rotvec([0.6, -0.2, 0.9]).as_matrix()
         expected = self._refit_after_param_rotation(l_max, theta_phi, coords, R)
-        got = rotate_real_sph_coef(coef, R)
+        got = rotate_parameter_sphere(coef, R)
         assert_allclose(got, expected, atol=1e-6)
 
     def test_inverse_rotation_round_trip(self):
         _, _, _, coef = self._setup(5)
         R = sp.spatial.transform.Rotation.from_rotvec([0.4, 0.7, -0.3]).as_matrix()
-        back = rotate_real_sph_coef(rotate_real_sph_coef(coef, R), R.T)
+        back = rotate_parameter_sphere(rotate_parameter_sphere(coef, R), R.T)
         assert_allclose(back, coef, atol=1e-9)
 
     def test_1d_input(self):
         _, _, _, coef = self._setup(3)
         R = sp.spatial.transform.Rotation.from_rotvec([0.1, 0.2, 0.3]).as_matrix()
-        got = rotate_real_sph_coef(coef[:, 0], R)
+        got = rotate_parameter_sphere(coef[:, 0], R)
         assert got.shape == (coef.shape[0],)
 
     def test_composition(self):
@@ -108,8 +108,8 @@ class TestRotateRealSphCoef:
         _, _, _, coef = self._setup(7)
         R1 = sp.spatial.transform.Rotation.from_rotvec([0.5, -0.2, 0.8]).as_matrix()
         R2 = sp.spatial.transform.Rotation.from_rotvec([0.1, 0.9, -0.4]).as_matrix()
-        composed = rotate_real_sph_coef(rotate_real_sph_coef(coef, R1), R2)
-        direct = rotate_real_sph_coef(coef, R2 @ R1)
+        composed = rotate_parameter_sphere(rotate_parameter_sphere(coef, R1), R2)
+        direct = rotate_parameter_sphere(coef, R2 @ R1)
         assert_allclose(composed, direct, atol=1e-9)
 
 
