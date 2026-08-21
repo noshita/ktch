@@ -2,10 +2,11 @@
 
 Thank you for your interest in contributing to ktch!
 
-Currently, this project is maintained by a small team and
-is not actively accepting pull requests from external contributors.
-If you find a bug, have a feature request, or want to suggest an improvement,
-please [open an issue](https://github.com/noshita/ktch/issues).
+ktch is maintained by a single researcher. Pull requests are not accepted
+at this time because a single maintainer cannot reliably promise a review
+turnaround. Instead, change proposals are welcome via
+[GitHub Issues](https://github.com/noshita/ktch/issues), including bug
+reports, feature requests, usage questions, and improvement suggestions.
 
 The rest of this document describes the development workflow
 and conventions used in this project.
@@ -70,6 +71,14 @@ The preferred way to contribute is through
 - Bug reports: describe the problem, steps to reproduce, and expected behavior
 - Feature requests: describe the use case and expected behavior
 - Questions: ask about usage, design decisions, or implementation details
+
+## Getting help
+
+The support channel is
+[GitHub Issues](https://github.com/noshita/ktch/issues). Usage questions
+are welcome, not only bug reports. If you have a question about how to use
+a function, whether a behavior is intended, or how to apply ktch to your
+data, open an issue.
 
 ## Development workflow
 

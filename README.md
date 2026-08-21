@@ -90,9 +90,9 @@ See [doc.ktch.dev](https://doc.ktch.dev/stable/) for full documentation:
 - Explanation: Theoretical background on morphometric methods
 - API reference: Complete API documentation
 
-## Contributing
+## Contributing and support
 
-Bug reports and feature requests are welcome via [GitHub Issues](https://github.com/noshita/ktch/issues).
+Bug reports, feature requests, and usage questions are all welcome via [GitHub Issues](https://github.com/noshita/ktch/issues).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and conventions.
 
