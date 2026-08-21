@@ -209,7 +209,8 @@ method domain has its own subpackage:
 - `ktch/io/` - File format readers/writers
 - `ktch/datasets/` - Built-in example datasets
 - `ktch/plot/` - Visualization functions
-- `ktch/motion/` - Motion analysis utilities
+- `ktch/motion/` - Placeholder for planned motion analysis utilities
+  (not implemented; excluded from the wheel)
 
 ### Naming, imports, and patterns
 

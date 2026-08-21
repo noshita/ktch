@@ -11,7 +11,7 @@ ktch implements the following morphometric analysis methods:
 - Landmark-based methods: Generalized Procrustes Analysis (GPA) with curve/surface semilandmark sliding, thin-plate spline interpolation
 - Harmonic-based methods: Elliptic Fourier Analysis (EFA) for 2D/3D closed curves, spherical harmonic analysis (SPHARM) and disk harmonic analysis (DHA) for surfaces
 - Theoretical morphological models of coiling: Raup's model and the growing tube model
-- File I/O: Support for standard morphometric file formats (TPS, CHC, SPHARM-PDM)
+- File I/O: Support for standard morphometric file formats (TPS, CHC, NEF, SPHARM-PDM)
 - Datasets: Built-in example datasets for learning and testing
 - Visualization: TPS deformation grids, PCA variance plots (with optional `plot` extra)
 
