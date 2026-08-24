@@ -227,7 +227,6 @@ html_theme_options = {
     # "external_links": [
     #     {"name": "Learn", "url": "https://numpy.org/numpy-tutorials/"}
     #     ],
-    "analytics": {"google_analytics_id": "G-6WZ5SLD7H7"},
     "article_header_end": ["notebook-download"],
     # Version switcher configuration
     "switcher": {

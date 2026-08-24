@@ -34,6 +34,7 @@ from sklearn.utils.parallel import Parallel, delayed
 
 from ._registration import (
     _BaseHarmonicRegistration,
+    infer_l_max,
     moment_register,
     validate_registration,
 )
@@ -46,6 +47,12 @@ _FIRST_ORDER_TOL = 1e-12
 
 # Tolerance below which a principal-axis skewness is treated as zero.
 _SKEW_TOL = 1e-9
+
+# Domains a rotation can act on; see rotate_spharm_coeffs.
+_ROTATION_DOMAINS = ("parameter", "codomain", "coupled")
+
+# Tolerance for accepting a supplied matrix as orthogonal.
+_ORTHOGONAL_TOL = 1e-8
 
 # Highest degree for which the closed-form Wigner small-d is float64-safe.
 # The factorial series overflows at l = 50 (verified), producing NaN; guard
@@ -518,11 +525,11 @@ class SphericalHarmonicRegistration(_BaseHarmonicRegistration):
     (``[cx_0_0, cx_1_-1, ..., cy_..., cz_...]``); ``l_max`` is inferred from the
     input width.
 
-    Registration removes the codomain nuisances (group A: translation,
-    rotation, scale) and, for ``first_order``, the parameter-sphere symmetry
-    (group B). It is a per-sample canonicalization, so ``fit`` is a no-op for
-    the implemented methods and :meth:`transform` maps each coefficient vector
-    independently.
+    Registration removes the codomain nuisances (translation, rotation, scale)
+    and, for ``first_order``, the orientation of the parameter sphere, which
+    fixes the correspondence between parameter values and surface points. It is
+    a per-sample canonicalization, so ``fit`` is a no-op for the implemented
+    methods and :meth:`transform` maps each coefficient vector independently.
 
     Parameters
     ----------
@@ -545,9 +552,9 @@ class SphericalHarmonicRegistration(_BaseHarmonicRegistration):
         Size measure when ``scale=True``. ``None`` resolves to the method
         default (``"first_order"``: ``"semi_major_axis"``).
     align_parameter : bool, default=True
-        Parameter-domain (group B, SO(3) / phase) alignment. ``"first_order"``
-        always applies it; ``align_parameter=False`` is reserved and raises
-        ``NotImplementedError``.
+        Whether to rotate the parameter sphere (SO(3)) as well as the codomain.
+        ``"first_order"`` always applies it; ``align_parameter=False`` is
+        reserved and raises ``NotImplementedError``.
     reflect : bool, default=False
         Whether to also remove reflection (chirality). ``False`` enforces a
         proper codomain rotation (``det=+1``).
@@ -563,11 +570,12 @@ class SphericalHarmonicRegistration(_BaseHarmonicRegistration):
     Notes
     -----
     ``first_order`` writes the l=1 ellipsoid as ``M1 = U Σ Vᵀ``, applies ``Uᵀ``
-    to the codomain (group A) and the SO(3) rotation ``V`` to every degree via
-    Wigner-D (group B), drops the l=0 mode (translation), and scales by the
-    semi-major axis or ellipsoid volume. The ellipsoid's Klein-four sign
-    ambiguity is broken by a rotation- and reparameterization-invariant third
-    moment, which is ill-conditioned for near-symmetric shapes.
+    to the codomain, rotates the parameter sphere by ``V`` via Wigner-D, drops
+    the l=0 mode (translation), and divides by a length derived from the
+    ellipsoid: the semi-major axis, or the cube root of the ellipsoid volume.
+    The ellipsoid's Klein-four sign ambiguity is broken by a rotation- and
+    reparameterization-invariant third moment, which is ill-conditioned for
+    near-symmetric shapes.
 
     Examples
     --------
@@ -671,13 +679,15 @@ def _first_order_register_coef(coef_flat, n_dim, *, scale, scale_method, reflect
 
     # B. Parameter SO(3) alignment in the coefficient domain: rotate the sphere
     # by R = w_mat^T via Wigner-D (per axis).
-    rotated = rotate_real_sph_coef(mat.T, w_mat.T)  # (n_coeffs, 3)
+    rotated = rotate_parameter_sphere(mat.T, w_mat.T)  # (n_coeffs, 3)
 
     # A. Codomain rotation + scale + translation removal.
     if scale:
         sm = scale_method or "semi_major_axis"
         if sm == "ellipsoid_volume":
-            s = (4.0 / 3.0) * np.pi * sig[0] * sig[1] * sig[2]
+            # The divisor must be a length, as semi_major_axis is; dividing by
+            # a volume would leave a residual size dependence.
+            s = ((4.0 / 3.0) * np.pi * sig[0] * sig[1] * sig[2]) ** (1.0 / 3.0)
         else:  # "semi_major_axis"
             s = sig[0]
     else:
@@ -828,10 +838,172 @@ def _wigner_D(
     return np.exp(-1j * m * alpha)[:, None] * d * np.exp(-1j * m * gamma)[None, :]
 
 
-def rotate_real_sph_coef(
+def rotate_spharm_coeffs(coeffs, rotation, *, domain, n_dim=3):
+    """Rotate flat SPHARM coefficients in a specific domain.
+
+    Coefficients carry two independent rotations.
+
+    - ``"codomain"`` re-poses the shape, ``x'(p) = R x(p)``, leaving the
+      correspondence untouched. Use it for a convention change applied to every
+      specimen.
+    - ``"parameter"`` re-indexes the parameter sphere, ``x'(R p) = x(p)``. The
+      point set does not move. Use it to bring an associated field along with
+      its geometry.
+    - ``"coupled"`` applies both, ``x'(R p) = R x(p)``. This is the residual
+      freedom of ``first_order`` registration (``M1 = U S Vᵀ`` is unchanged by
+      ``(U, V) -> (UG, VG)``), so it moves a specimen to a different
+      representative.
+
+    A specimen on a different representative looks like one rotated by 180
+    degrees about a principal axis. Correcting that with ``"codomain"`` fixes
+    the pose and leaves the correspondence inconsistent with the remaining sample.
+
+    Parameters
+    ----------
+    coeffs : array-like of shape (n_features,) or (n_samples, n_features)
+        Real SPHARM coefficients in the axis-major flat layout produced by
+        :meth:`SphericalHarmonicAnalysis.transform`
+        (``[cx_0_0, cx_1_-1, ..., cy_..., cz_...]``). The output has the same
+        shape.
+    rotation : array-like of shape (k, k) or (n_samples, k, k)
+        Orthogonal matrix, or one per sample. ``k`` is ``n_dim`` for
+        ``domain="codomain"`` and ``3`` otherwise. Improper matrices
+        (``det=-1``) are accepted, and the two domains differ: in the parameter
+        domain one reverses the parameterization without moving the shape, in
+        the codomain it mirrors the shape.
+    domain : {"parameter", "codomain", "coupled"}
+        Which domain the rotation applies to.
+    n_dim : int, default=3
+        Codomain dimension, needed to split the flat width
+        (``n_dim * (l_max + 1) ** 2``), which does not decompose on its own.
+        ``domain="coupled"`` requires ``3``.
+
+    Returns
+    -------
+    ndarray
+        Rotated coefficients, same shape and layout as ``coeffs``.
+
+    Raises
+    ------
+    ValueError
+        For an unknown ``domain``, a width that cannot be split with the given
+        ``n_dim``, a rotation of the wrong shape or count, a non-orthogonal
+        rotation, or ``domain="coupled"`` with ``n_dim != 3``.
+
+    See Also
+    --------
+    rotate_parameter_sphere : the same parameter-domain rotation on the
+        ``((l_max+1)**2, D)`` layout, when that is the shape already held.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from ktch.harmonic import SphericalHarmonicRegistration, rotate_spharm_coeffs
+    >>> coeffs = np.random.default_rng(0).standard_normal((4, 3 * (3 + 1) ** 2))
+    >>> registered = SphericalHarmonicRegistration(scale=False).fit_transform(coeffs)
+    >>> flip = np.diag([1.0, -1.0, -1.0])  # a 180-degree turn about x
+    >>> corrected = rotate_spharm_coeffs(registered, flip, domain="coupled")
+    >>> corrected.shape
+    (4, 48)
+    """
+    if domain not in _ROTATION_DOMAINS:
+        raise ValueError(f"domain must be one of {_ROTATION_DOMAINS}; got {domain!r}.")
+    if domain == "coupled" and n_dim != 3:
+        raise ValueError(
+            "domain='coupled' requires n_dim=3; the codomain and parameter "
+            f"rotations coincide as one 3x3 matrix only there, but got "
+            f"n_dim={n_dim}. Apply domain='codomain' and domain='parameter' "
+            "separately instead."
+        )
+
+    coeffs = np.asarray(coeffs, dtype=float)
+    if coeffs.ndim not in (1, 2):
+        raise ValueError(
+            "coeffs must be 1-D (a single sample) or 2-D "
+            f"(n_samples, n_features); got {coeffs.ndim} dimensions."
+        )
+    single = coeffs.ndim == 1
+    x_mat = coeffs[None, :] if single else coeffs
+    n_samples, n_features = x_mat.shape
+    n_coeffs = (infer_l_max(n_features, n_dim) + 1) ** 2
+
+    k = n_dim if domain == "codomain" else 3
+    rot = _check_rotation(rotation, n_samples, k)
+
+    if rot.ndim == 2:
+        out = _rotate_shared(x_mat, rot, domain, n_dim, n_coeffs)
+    else:
+        out = np.stack(
+            [
+                _rotate_one(row.reshape(n_dim, n_coeffs), r, domain).ravel()
+                for row, r in zip(x_mat, rot)
+            ]
+        )
+    return out[0] if single else out
+
+
+def _check_rotation(rotation, n_samples, k):
+    """Validate a rotation (or a per-sample stack) of ``k`` x ``k`` matrices."""
+    rot = np.asarray(rotation, dtype=float)
+    if rot.ndim == 2:
+        stack = rot[None]
+    elif rot.ndim == 3:
+        if rot.shape[0] != n_samples:
+            raise ValueError(
+                f"rotation holds {rot.shape[0]} matrices but coeffs has "
+                f"{n_samples} samples."
+            )
+        stack = rot
+    else:
+        raise ValueError(
+            f"rotation must be ({k}, {k}) or (n_samples, {k}, {k}); got shape "
+            f"{rot.shape}."
+        )
+    if stack.shape[1:] != (k, k):
+        raise ValueError(
+            f"rotation must be ({k}, {k}) for this domain and n_dim; got shape "
+            f"{rot.shape}."
+        )
+    gram = stack @ np.transpose(stack, (0, 2, 1))
+    if not np.allclose(gram, np.eye(k), atol=_ORTHOGONAL_TOL):
+        raise ValueError(
+            "rotation must be orthogonal (R @ R.T == I); improper matrices "
+            "(det = -1) are allowed, arbitrary ones are not."
+        )
+    return rot
+
+
+def _rotate_one(mat, rot, domain):
+    """Rotate one ``(n_dim, n_coeffs)`` coefficient matrix."""
+    if domain == "codomain":
+        return rot @ mat
+    rotated = rotate_parameter_sphere(mat.T, rot).T
+    if domain == "parameter":
+        return rotated
+    return rot @ rotated  # "coupled"
+
+
+def _rotate_shared(x_mat, rot, domain, n_dim, n_coeffs):
+    """Apply one rotation to every sample.
+
+    Wigner-D depends only on ``rot``. The batch uses
+    :func:`rotate_parameter_sphere` once, stacked along its codomain axis.
+    """
+    n_samples = x_mat.shape[0]
+    per_sample = x_mat.reshape(n_samples, n_dim, n_coeffs)
+    if domain != "codomain":
+        stacked = per_sample.transpose(2, 0, 1).reshape(n_coeffs, n_samples * n_dim)
+        rotated = rotate_parameter_sphere(stacked, rot)
+        per_sample = rotated.reshape(n_coeffs, n_samples, n_dim).transpose(1, 2, 0)
+    if domain in ("codomain", "coupled"):
+        per_sample = np.einsum("ij,sjk->sik", rot, per_sample)
+    return per_sample.reshape(n_samples, n_dim * n_coeffs)
+
+
+def rotate_parameter_sphere(
     coef_per_lm: npt.NDArray[np.float64], rotation: npt.NDArray[np.float64]
 ) -> npt.NDArray[np.float64]:
-    """Rotate real SPHARM coefficients by a 3D rotation, in the coefficient domain.
+    """Rotate the parameter sphere of real SPHARM coefficients.
 
     Applies the Wigner-D rotational property of spherical harmonics (Ritchie &
     Kemp 1999, Shen et al. 2009): per degree ``l`` the coefficients transform
@@ -845,7 +1017,9 @@ def rotate_real_sph_coef(
     Parameters
     ----------
     coef_per_lm : ndarray of shape ((l_max+1)**2,) or ((l_max+1)**2, D)
-        Real SPHARM coefficients in flat ``(l, m)`` ordering.
+        Real SPHARM coefficients in flat ``(l, m)`` ordering. The codomain
+        dimension ``D`` is arbitrary. Scalar fields and n-D fields rotate the
+        same way as a 3-D surface.
     rotation : ndarray of shape (3, 3)
         Orthogonal matrix applied to the parameter sphere. Proper rotations
         (``det=+1``) and improper ones (``det=-1``, i.e. with a reflection)
@@ -856,6 +1030,11 @@ def rotate_real_sph_coef(
     -------
     ndarray of same shape as ``coef_per_lm``
         Rotated real coefficients.
+
+    See Also
+    --------
+    rotate_spharm_coeffs : the same rotation on the flat axis-major layout,
+        plus the codomain and coupled domains.
     """
     coef = np.asarray(coef_per_lm)
     squeeze = coef.ndim == 1

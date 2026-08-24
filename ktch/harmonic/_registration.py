@@ -1,7 +1,8 @@
 """Shared registration utilities for harmonic methods.
 
-Registration removes nuisance similarity transforms of the codomain (group A:
-translation, rotation, scale) and the parameter-domain symmetry (group B).
+Registration removes nuisance similarity transforms of the codomain
+(translation, rotation, scale) and the symmetry of the parameter domain (the
+starting point of a contour, or the orientation of the parameter sphere).
 """
 
 # Copyright 2026 Koji Noshita
@@ -36,6 +37,47 @@ _SKEW_TOL = 1e-9
 # Registration methods reserved (contract only) but not implemented yet.
 _RESERVED_REGISTRATIONS = {"landmark", "rotational_match"}
 _VALID_REGISTRATIONS = {None, "first_order", "moment"} | _RESERVED_REGISTRATIONS
+
+
+def infer_l_max(n_features, n_dim):
+    """Infer ``l_max`` from the width of a flat coefficient vector.
+
+    The width is ``n_dim * (l_max + 1) ** 2``: a width of 48 reads as
+    ``n_dim=3, l_max=3`` or ``n_dim=12, l_max=1``.
+
+    Parameters
+    ----------
+    n_features : int
+        Width of one flat coefficient vector.
+    n_dim : int
+        Codomain dimension of the shape data.
+
+    Returns
+    -------
+    int
+        Maximum harmonic degree.
+
+    Raises
+    ------
+    ValueError
+        If ``n_dim`` is not positive, if the width is not divisible by
+        ``n_dim``, or if the per-axis count is not a perfect square.
+    """
+    if n_dim < 1:
+        raise ValueError(f"n_dim must be a positive integer, got {n_dim}")
+    if n_features % n_dim != 0:
+        raise ValueError(
+            f"Input width ({n_features}) is not divisible by n_dim "
+            f"({n_dim}); cannot interpret it as harmonic coefficients."
+        )
+    n_per_axis = n_features // n_dim
+    l_max = int(round(n_per_axis**0.5)) - 1
+    if (l_max + 1) ** 2 != n_per_axis:
+        raise ValueError(
+            f"Input width per axis ({n_per_axis}) is not a perfect square "
+            "(l_max + 1) ** 2; cannot infer l_max."
+        )
+    return l_max
 
 
 def validate_registration(
@@ -102,8 +144,7 @@ def validate_registration(
     if method == "first_order" and not align_parameter:
         raise NotImplementedError(
             "align_parameter=False is not yet implemented; 'first_order' "
-            "always aligns the parameter domain (group B). Use "
-            "align_parameter=True."
+            "always aligns the parameter domain. Use align_parameter=True."
         )
     if n_dim not in (2, 3):
         raise ValueError(
@@ -132,7 +173,8 @@ def moment_frame(
 
     For an orthonormal basis, ``M = sum_k a_k a_k^T`` equals the shape second
     moment (covariance up to the measure). Its eigenvectors are the principal
-    axes (group A, codomain rotation only).
+    axes, which fix the codomain rotation only; the parameter domain is left
+    untouched.
 
     Parameters
     ----------
@@ -199,7 +241,7 @@ def moment_register(
 
     Removes translation (constant mode -> 0), rotates the codomain to the
     principal-axis frame, and optionally divides by the centroid size. Does
-    not touch the parameter domain (group B is not resolved by ``moment``).
+    not touch the parameter domain, which ``moment`` does not resolve.
 
     Parameters
     ----------
@@ -263,10 +305,10 @@ class _BaseRegistration(TransformerMixin, BaseEstimator):
     (``_register_single``).
 
     Registration is a per-sample canonicalization: it removes nuisance
-    similarity transforms of the codomain (group A: translation, rotation,
-    scale) and the parameter-domain symmetry (group B). It preserves the number
-    of samples and their order, so it fits the ``transform`` contract. ``fit``
-    is a no-op for the stateless methods.
+    similarity transforms of the codomain (translation, rotation, scale) and
+    the symmetry of the parameter domain. It preserves the number of samples
+    and their order, so it fits the ``transform`` contract. ``fit`` is a no-op
+    for the stateless methods.
 
     Parameters
     ----------
@@ -281,8 +323,9 @@ class _BaseRegistration(TransformerMixin, BaseEstimator):
         Size measure when ``scale=True``; ``None`` resolves to the method
         default. Valid values depend on the concrete registration.
     align_parameter : bool, default=True
-        Parameter-domain (group B) alignment. ``first_order`` always applies
-        it; ``align_parameter=False`` is not yet implemented.
+        Whether to align the parameter domain as well as the codomain.
+        ``first_order`` always applies it; ``align_parameter=False`` is not yet
+        implemented.
     reflect : bool, default=False
         Whether to also remove reflection (chirality). ``False`` enforces a
         proper rotation.
@@ -383,26 +426,5 @@ class _BaseHarmonicRegistration(OneToOneFeatureMixin, _BaseRegistration):
     """
 
     def _setup(self, X):
-        self._l_max = self._infer_l_max(self.n_features_in_)
+        self._l_max = infer_l_max(self.n_features_in_, self.n_dim)
         self._resolved_method = self._resolve_method()
-
-    def _infer_l_max(self, n_features):
-        """Infer ``l_max`` from the flat coefficient width.
-
-        The width is ``n_dim * (l_max + 1) ** 2``.
-        """
-        if self.n_dim < 1:
-            raise ValueError(f"n_dim must be a positive integer, got {self.n_dim}")
-        if n_features % self.n_dim != 0:
-            raise ValueError(
-                f"Input width ({n_features}) is not divisible by n_dim "
-                f"({self.n_dim}); cannot interpret it as harmonic coefficients."
-            )
-        n_per_axis = n_features // self.n_dim
-        l_max = int(round(n_per_axis**0.5)) - 1
-        if (l_max + 1) ** 2 != n_per_axis:
-            raise ValueError(
-                f"Input width per axis ({n_per_axis}) is not a perfect square "
-                "(l_max + 1) ** 2; cannot infer l_max."
-            )
-        return l_max

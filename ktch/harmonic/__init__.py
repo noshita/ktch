@@ -22,6 +22,7 @@ from ._elliptic_fourier_analysis import EllipticFourierAnalysis, rotation_matrix
 from ._spherical_harmonic_analysis import (
     SphericalHarmonicAnalysis,
     SphericalHarmonicRegistration,
+    rotate_spharm_coeffs,
     spharm,
     xyz2spherical,
 )
@@ -34,6 +35,7 @@ __all__ = [
     "rotation_matrix_2d",
     "SphericalHarmonicAnalysis",
     "SphericalHarmonicRegistration",
+    "rotate_spharm_coeffs",
     "spharm",
     "xyz2spherical",
 ]

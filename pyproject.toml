@@ -103,6 +103,7 @@ build-backend = "hatchling.build"
 exclude = [
   "**/tests/",
   "doc/",
+  "paper/",
   "ref/",
   "scripts/",
   "CONTRIBUTING.md",
@@ -130,7 +131,9 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.wheel]
-exclude = ["**/tests/"]
+# ktch/motion/ is an unimplemented placeholder; keep it in the repository but
+# out of the distribution so it is not part of the installed API surface.
+exclude = ["**/tests/", "ktch/motion/"]
 
 [tool.licensecheck]
 fail_licenses = ["GPL-3.0-ONLY", "GNU AGPLV3"]

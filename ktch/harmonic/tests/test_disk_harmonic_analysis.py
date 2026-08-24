@@ -783,7 +783,7 @@ class TestDHARegistration:
 
     def test_first_order_disk_rotation_invariance(self):
         # Rotating the disk parameterization (theta -> theta + alpha) and
-        # re-fitting must give the same registered coefficients (group B).
+        # re-fitting must give the same registered coefficients.
         n_max = 3
         vertices, r_theta, _ = _generate_synthetic_surface(n_max, 600, n_dim=3, seed=7)
         dha = DiskHarmonicAnalysis(

@@ -6,6 +6,7 @@ from numpy.testing import assert_allclose, assert_array_almost_equal
 from ktch.harmonic import (
     SphericalHarmonicAnalysis,
     SphericalHarmonicRegistration,
+    rotate_spharm_coeffs,
     spharm,
     xyz2spherical,
 )
@@ -18,7 +19,7 @@ from ktch.harmonic._spherical_harmonic_analysis import (
     _third_moment_grid_basis,
     _wigner_d_small,
     cvt_spharm_coef_to_list,
-    rotate_real_sph_coef,
+    rotate_parameter_sphere,
 )
 
 
@@ -29,7 +30,7 @@ def _spherical_to_xyz(theta_phi):
     )
 
 
-class TestRotateRealSphCoef:
+class TestRotateParameterSphere:
     """Coefficient-domain SH rotation == rotate parameterization + re-fit."""
 
     def _setup(self, seed):
@@ -54,7 +55,7 @@ class TestRotateRealSphCoef:
         l_max, theta_phi, coords, coef = self._setup(0)
         R = sp.spatial.transform.Rotation.from_rotvec([0.3, -0.5, 0.8]).as_matrix()
         expected = self._refit_after_param_rotation(l_max, theta_phi, coords, R)
-        got = rotate_real_sph_coef(coef, R)
+        got = rotate_parameter_sphere(coef, R)
         assert_allclose(got, expected, atol=1e-7)
 
     def test_matches_refit_improper(self):
@@ -64,12 +65,12 @@ class TestRotateRealSphCoef:
         R = R @ np.diag([1.0, 1.0, -1.0])  # make it improper
         assert np.linalg.det(R) < 0
         expected = self._refit_after_param_rotation(l_max, theta_phi, coords, R)
-        got = rotate_real_sph_coef(coef, R)
+        got = rotate_parameter_sphere(coef, R)
         assert_allclose(got, expected, atol=1e-7)
 
     def test_identity(self):
         _, _, _, coef = self._setup(2)
-        got = rotate_real_sph_coef(coef, np.eye(3))
+        got = rotate_parameter_sphere(coef, np.eye(3))
         assert_allclose(got, coef, atol=1e-10)
 
     def test_matches_refit_higher_degree(self):
@@ -87,19 +88,19 @@ class TestRotateRealSphCoef:
 
         R = sp.spatial.transform.Rotation.from_rotvec([0.6, -0.2, 0.9]).as_matrix()
         expected = self._refit_after_param_rotation(l_max, theta_phi, coords, R)
-        got = rotate_real_sph_coef(coef, R)
+        got = rotate_parameter_sphere(coef, R)
         assert_allclose(got, expected, atol=1e-6)
 
     def test_inverse_rotation_round_trip(self):
         _, _, _, coef = self._setup(5)
         R = sp.spatial.transform.Rotation.from_rotvec([0.4, 0.7, -0.3]).as_matrix()
-        back = rotate_real_sph_coef(rotate_real_sph_coef(coef, R), R.T)
+        back = rotate_parameter_sphere(rotate_parameter_sphere(coef, R), R.T)
         assert_allclose(back, coef, atol=1e-9)
 
     def test_1d_input(self):
         _, _, _, coef = self._setup(3)
         R = sp.spatial.transform.Rotation.from_rotvec([0.1, 0.2, 0.3]).as_matrix()
-        got = rotate_real_sph_coef(coef[:, 0], R)
+        got = rotate_parameter_sphere(coef[:, 0], R)
         assert got.shape == (coef.shape[0],)
 
     def test_composition(self):
@@ -108,9 +109,194 @@ class TestRotateRealSphCoef:
         _, _, _, coef = self._setup(7)
         R1 = sp.spatial.transform.Rotation.from_rotvec([0.5, -0.2, 0.8]).as_matrix()
         R2 = sp.spatial.transform.Rotation.from_rotvec([0.1, 0.9, -0.4]).as_matrix()
-        composed = rotate_real_sph_coef(rotate_real_sph_coef(coef, R1), R2)
-        direct = rotate_real_sph_coef(coef, R2 @ R1)
+        composed = rotate_parameter_sphere(rotate_parameter_sphere(coef, R1), R2)
+        direct = rotate_parameter_sphere(coef, R2 @ R1)
         assert_allclose(composed, direct, atol=1e-9)
+
+
+class TestRotateSpharmCoeffs:
+    """Domain-aware rotation of flat SPHARM coefficients."""
+
+    L_MAX = 3
+    N_TH, N_PH = 25, 50
+
+    def _grid(self):
+        theta = np.linspace(0.01, np.pi - 0.01, self.N_TH)
+        phi = np.linspace(0, 2 * np.pi, self.N_PH, endpoint=False)
+        tg, pg = np.meshgrid(theta, phi, indexing="ij")
+        return tg.ravel(), pg.ravel()
+
+    def _coeffs(self, n_samples=2, seed=0, n_dim=3, registered=True):
+        rows = []
+        for s in range(n_samples):
+            X, theta_phi, _ = _synthetic_sphere(
+                self.L_MAX, 500, n_dim=n_dim, seed=seed + s
+            )
+            sha = SphericalHarmonicAnalysis(
+                n_harmonics=self.L_MAX, n_dim=n_dim, registration=None, n_jobs=1
+            )
+            rows.append(sha.transform([X], theta_phi=[theta_phi])[0])
+        raw = np.stack(rows)
+        if registered and n_dim == 3:
+            return SphericalHarmonicRegistration(scale=False).fit_transform(raw)
+        return raw
+
+    def _eval(self, row, theta, phi, n_dim=3):
+        basis = _real_sph_harm_basis_matrix(self.L_MAX, theta, phi)
+        return basis @ np.asarray(row).reshape(n_dim, -1).T
+
+    def _rotated_grid(self, theta, phi, R):
+        xyz = _spherical_to_xyz(np.column_stack([theta, phi]))
+        tp = xyz2spherical(xyz @ R.T)
+        return tp[:, 0], tp[:, 1]
+
+    @staticmethod
+    def _rotation(rotvec):
+        return sp.spatial.transform.Rotation.from_rotvec(rotvec).as_matrix()
+
+    # -- semantics of each domain ----------------------------------------
+    # Each test states the domain's defining identity, so a convention drift
+    # in the Wigner-D or reshape layers cannot pass silently.
+
+    def test_codomain_moves_the_shape(self):
+        # x'(p) = R x(p): same parameter value, point rotated in space.
+        X = self._coeffs(n_samples=1)
+        R = self._rotation([0.3, -0.4, 0.8])
+        out = rotate_spharm_coeffs(X, R, domain="codomain")
+        theta, phi = self._grid()
+        assert_allclose(
+            self._eval(out[0], theta, phi),
+            self._eval(X[0], theta, phi) @ R.T,
+            atol=1e-9,
+        )
+
+    def test_parameter_moves_the_parameterization(self):
+        # The parameterization is re-indexed by p -> R p, so x'(R p) = x(p):
+        # the same point, reached from a different parameter value.
+        X = self._coeffs(n_samples=1)
+        R = self._rotation([0.3, -0.4, 0.8])
+        out = rotate_spharm_coeffs(X, R, domain="parameter")
+        theta, phi = self._grid()
+        theta_r, phi_r = self._rotated_grid(theta, phi, R)
+        assert_allclose(
+            self._eval(out[0], theta_r, phi_r),
+            self._eval(X[0], theta, phi),
+            atol=1e-8,
+        )
+
+    def test_coupled_moves_both(self):
+        # x'(R p) = R x(p): re-indexed and re-posed together.
+        X = self._coeffs(n_samples=1)
+        R = self._rotation([0.3, -0.4, 0.8])
+        out = rotate_spharm_coeffs(X, R, domain="coupled")
+        theta, phi = self._grid()
+        theta_r, phi_r = self._rotated_grid(theta, phi, R)
+        assert_allclose(
+            self._eval(out[0], theta_r, phi_r),
+            self._eval(X[0], theta, phi) @ R.T,
+            atol=1e-8,
+        )
+
+    # -- properties -------------------------------------------------------
+
+    @pytest.mark.parametrize("domain", ["parameter", "codomain", "coupled"])
+    def test_transpose_undoes(self, domain):
+        X = self._coeffs()
+        R = self._rotation([0.5, 0.2, -0.7])
+        out = rotate_spharm_coeffs(X, R, domain=domain)
+        back = rotate_spharm_coeffs(out, R.T, domain=domain)
+        assert_allclose(back, X, atol=1e-9)
+
+    @pytest.mark.parametrize("domain", ["parameter", "codomain", "coupled"])
+    def test_shared_rotation_matches_per_sample(self, domain):
+        # The shared-rotation path batches every sample through one Wigner-D
+        # build; it must agree with applying the same matrix sample by sample.
+        X = self._coeffs(n_samples=4, seed=5)
+        R = self._rotation([0.2, -0.6, 0.3])
+        shared = rotate_spharm_coeffs(X, R, domain=domain)
+        stacked = rotate_spharm_coeffs(X, np.repeat(R[None], 4, axis=0), domain=domain)
+        assert_allclose(shared, stacked, atol=1e-12)
+
+    def test_per_sample_rotations_differ_per_sample(self):
+        X = self._coeffs(n_samples=2, seed=9)
+        rots = np.stack([np.eye(3), self._rotation([0.4, 0.1, -0.2])])
+        out = rotate_spharm_coeffs(X, rots, domain="coupled")
+        assert_allclose(out[0], X[0], atol=1e-12)
+        assert np.linalg.norm(out[1] - X[1]) > 1e-3
+
+    def test_coupled_flip_stays_a_first_order_representative(self):
+        # A Klein-four element leaves the l=1 ellipsoid alone, so registering
+        # the flipped coefficients recovers the canonical representative.
+        X = self._coeffs(n_samples=2, seed=11)
+        flip = np.diag([1.0, -1.0, -1.0])
+        flipped = rotate_spharm_coeffs(X, flip, domain="coupled")
+        assert np.linalg.norm(flipped - X) > 1e-6
+        again = SphericalHarmonicRegistration(scale=False).fit_transform(flipped)
+        assert_allclose(again, X, atol=1e-8)
+
+    def test_parameter_rotation_applies_to_an_n_dim_field(self):
+        # The parameter sphere is a 2-sphere, whatever the codomain dimension is.
+        # A field defined on it rotates with the same 3x3 matrix.
+        F = self._coeffs(n_samples=1, seed=3, n_dim=1, registered=False)
+        R = self._rotation([0.1, 0.5, -0.3])
+        out = rotate_spharm_coeffs(F, R, domain="parameter", n_dim=1)
+        theta, phi = self._grid()
+        theta_r, phi_r = self._rotated_grid(theta, phi, R)
+        assert_allclose(
+            self._eval(out[0], theta_r, phi_r, n_dim=1),
+            self._eval(F[0], theta, phi, n_dim=1),
+            atol=1e-8,
+        )
+
+    def test_one_dimensional_input_returns_one_dimensional(self):
+        X = self._coeffs(n_samples=1)
+        R = self._rotation([0.2, 0.2, 0.2])
+        out = rotate_spharm_coeffs(X[0], R, domain="coupled")
+        assert out.shape == X[0].shape
+        assert_allclose(out, rotate_spharm_coeffs(X, R, domain="coupled")[0])
+
+    def test_improper_rotation_accepted(self):
+        X = self._coeffs(n_samples=1)
+        R = self._rotation([0.3, 0.1, 0.2]) @ np.diag([1.0, 1.0, -1.0])
+        assert np.linalg.det(R) < 0
+        assert rotate_spharm_coeffs(X, R, domain="parameter").shape == X.shape
+
+    # -- validation -------------------------------------------------------
+
+    def test_unknown_domain_raises(self):
+        X = self._coeffs(n_samples=1)
+        with pytest.raises(ValueError, match="domain must be one of"):
+            rotate_spharm_coeffs(X, np.eye(3), domain="both")
+
+    def test_coupled_requires_three_dimensions(self):
+        F = self._coeffs(n_samples=1, n_dim=1, registered=False)
+        with pytest.raises(ValueError, match="requires n_dim=3"):
+            rotate_spharm_coeffs(F, np.eye(3), domain="coupled", n_dim=1)
+
+    def test_non_orthogonal_rotation_raises(self):
+        X = self._coeffs(n_samples=1)
+        with pytest.raises(ValueError, match="must be orthogonal"):
+            rotate_spharm_coeffs(X, 2.0 * np.eye(3), domain="codomain")
+
+    def test_wrong_rotation_shape_raises(self):
+        X = self._coeffs(n_samples=1)
+        with pytest.raises(ValueError, match=r"rotation must be \(3, 3\)"):
+            rotate_spharm_coeffs(X, np.eye(2), domain="codomain")
+
+    def test_rotation_count_mismatch_raises(self):
+        X = self._coeffs(n_samples=2)
+        with pytest.raises(ValueError, match="holds 3 matrices"):
+            rotate_spharm_coeffs(
+                X, np.repeat(np.eye(3)[None], 3, axis=0), domain="codomain"
+            )
+
+    def test_bad_width_raises(self):
+        with pytest.raises(ValueError, match="not divisible by n_dim"):
+            rotate_spharm_coeffs(np.zeros(50), np.eye(3), domain="codomain")
+
+    def test_three_dimensional_input_raises(self):
+        with pytest.raises(ValueError, match="must be 1-D .* or 2-D"):
+            rotate_spharm_coeffs(np.zeros((2, 2, 48)), np.eye(3), domain="codomain")
 
 
 class TestWignerDSmall:
@@ -854,7 +1040,7 @@ class TestSPHARMRegistration:
 
     def test_first_order_parameter_so3_invariance(self):
         # Rotating the sphere parameterization (SO(3)) and re-fitting must give
-        # the same registered coefficients (group B).
+        # the same registered coefficients.
         l_max = 3
         X, theta_phi, _ = _synthetic_sphere(l_max, 800, n_dim=3, seed=7)
         sha = SphericalHarmonicAnalysis(
@@ -1009,6 +1195,52 @@ class TestSphericalHarmonicRegistration:
             )
 
         assert_allclose(spectrum(out[0]), spectrum(raw[0]), rtol=1e-8)
+
+    # Arbitrary non-unit factors, one magnifying and one shrinking.
+    @pytest.mark.parametrize("factor", [0.4, 3.7])
+    @pytest.mark.parametrize(
+        "method,scale_method",
+        [
+            ("first_order", None),
+            ("first_order", "semi_major_axis"),
+            ("first_order", "ellipsoid_volume"),
+            ("moment", None),
+            ("moment", "centroid_size"),
+        ],
+    )
+    def test_scale_invariance(self, method, scale_method, factor):
+        # Guards every scale_method against a divisor that is not a length.
+        raw = self._raw_coeffs(3, seed=30, n_samples=2)
+        reg = SphericalHarmonicRegistration(
+            method=method, scale=True, scale_method=scale_method
+        )
+        assert_allclose(
+            reg.fit_transform(raw),
+            reg.fit_transform(factor * raw),
+            rtol=1e-8,
+            atol=1e-10,
+        )
+
+    def test_ellipsoid_volume_normalizes_to_unit_volume(self):
+        # Unit volume requires dividing by the cube root, not by the volume.
+        raw = self._raw_coeffs(3, seed=31, n_samples=2)
+        out = SphericalHarmonicRegistration(
+            method="first_order", scale=True, scale_method="ellipsoid_volume"
+        ).fit_transform(raw)
+        for row in out:
+            sig = np.linalg.svd(row.reshape(3, -1)[:, 1:4], compute_uv=False)
+            volume = (4.0 / 3.0) * np.pi * np.prod(sig)
+            assert volume == pytest.approx(1.0, rel=1e-9)
+
+    def test_semi_major_axis_normalizes_to_unit_length(self):
+        # The companion invariant for the default scale_method.
+        raw = self._raw_coeffs(3, seed=31, n_samples=2)
+        out = SphericalHarmonicRegistration(
+            method="first_order", scale=True, scale_method="semi_major_axis"
+        ).fit_transform(raw)
+        for row in out:
+            sig = np.linalg.svd(row.reshape(3, -1)[:, 1:4], compute_uv=False)
+            assert sig[0] == pytest.approx(1.0, rel=1e-9)
 
     def test_feature_names_preserved(self):
         raw = self._raw_coeffs(2, seed=23, n_samples=1)

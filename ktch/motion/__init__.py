@@ -1,6 +1,9 @@
 """
-The :mod:`ktch.motion` module implements utility functions for analyzing
-motion (time-series of morphological properties).
+Placeholder for planned utilities for analyzing motion
+(time series of morphological properties).
+
+Nothing is implemented yet.  This subpackage is excluded from the built
+wheel, so it is not importable from a released installation.
 
 """
 
