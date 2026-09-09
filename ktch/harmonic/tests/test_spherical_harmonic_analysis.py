@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 import scipy as sp
 from numpy.testing import assert_allclose, assert_array_almost_equal
+from sklearn.utils.estimator_checks import parametrize_with_checks
 
 from ktch.harmonic import (
     SphericalHarmonicAnalysis,
@@ -1318,3 +1319,160 @@ class TestSphericalHarmonicRegistration:
             SphericalHarmonicRegistration(method="first_order").fit_transform(
                 mat.ravel()[None, :]
             )
+
+
+###########################################################
+#
+#   sklearn Pipeline integration
+#
+###########################################################
+
+
+def _sphere_batch(l_max, n_samples, n_points=300, seed=0):
+    """Batch of synthetic spherical surfaces as ragged lists (X, theta_phi)."""
+    X = []
+    theta_phi = []
+    for s in range(n_samples):
+        Xi, tp, _ = _synthetic_sphere(l_max, n_points, n_dim=3, seed=seed + s)
+        X.append(Xi)
+        theta_phi.append(tp)
+    return X, theta_phi
+
+
+def test_sha_pipeline_metadata_routing_theta_phi():
+    """Metadata routing of theta_phi through Pipeline.
+
+    With metadata routing enabled, parameters are passed by name (not
+    step__param prefix). The routing system uses set_transform_request
+    declarations to dispatch each parameter to the correct step.
+    """
+    import sklearn
+    from sklearn.decomposition import PCA
+    from sklearn.pipeline import Pipeline
+
+    l_max = 3
+    X, theta_phi = _sphere_batch(l_max, n_samples=6)
+
+    with sklearn.config_context(enable_metadata_routing=True):
+        sha = SphericalHarmonicAnalysis(n_harmonics=l_max, n_jobs=1)
+        sha.set_transform_request(theta_phi=True)
+        pipe = Pipeline([("sha", sha), ("pca", PCA(n_components=2))])
+
+        result = pipe.fit_transform(X, theta_phi=theta_phi)
+        assert result.shape == (6, 2)
+
+        # Also test fit + transform separately
+        pipe2 = Pipeline(
+            [
+                (
+                    "sha",
+                    SphericalHarmonicAnalysis(
+                        n_harmonics=l_max, n_jobs=1
+                    ).set_transform_request(theta_phi=True),
+                ),
+                ("pca", PCA(n_components=2)),
+            ]
+        )
+        pipe2.fit(X, theta_phi=theta_phi)
+        result2 = pipe2.transform(X, theta_phi=theta_phi)
+        assert_array_almost_equal(result, result2)
+
+
+def test_sha_pipeline_with_registration_step():
+    """theta_phi is routed to the SHA step only; registration runs on coefs."""
+    import sklearn
+    from sklearn.decomposition import PCA
+    from sklearn.pipeline import Pipeline
+
+    l_max = 3
+    X, theta_phi = _sphere_batch(l_max, n_samples=6, seed=10)
+
+    with sklearn.config_context(enable_metadata_routing=True):
+        pipe = Pipeline(
+            [
+                (
+                    "sha",
+                    SphericalHarmonicAnalysis(
+                        n_harmonics=l_max, registration=None, n_jobs=1
+                    ).set_transform_request(theta_phi=True),
+                ),
+                ("reg", SphericalHarmonicRegistration(method="first_order")),
+                ("pca", PCA(n_components=2)),
+            ]
+        )
+        result = pipe.fit_transform(X, theta_phi=theta_phi)
+        assert result.shape == (6, 2)
+
+        # Equivalent to the analysis estimator's built-in registration.
+        direct = SphericalHarmonicAnalysis(
+            n_harmonics=l_max, registration="first_order", n_jobs=1
+        ).fit_transform(X, theta_phi=theta_phi)
+        expected = pipe.named_steps["pca"].transform(direct)
+        assert_array_almost_equal(result, expected)
+
+
+def test_sha_pipeline_set_output_pandas():
+    """Pipeline with set_output propagates DataFrames correctly."""
+    import pandas as pd
+    import sklearn
+    from sklearn.decomposition import PCA
+    from sklearn.pipeline import Pipeline
+
+    l_max = 2
+    X, theta_phi = _sphere_batch(l_max, n_samples=4, seed=20)
+
+    with sklearn.config_context(enable_metadata_routing=True):
+        pipe = Pipeline(
+            [
+                (
+                    "sha",
+                    SphericalHarmonicAnalysis(
+                        n_harmonics=l_max, n_jobs=1
+                    ).set_transform_request(theta_phi=True),
+                ),
+                ("pca", PCA(n_components=2)),
+            ]
+        )
+        pipe.set_output(transform="pandas")
+        result = pipe.fit_transform(X, theta_phi=theta_phi)
+        assert isinstance(result, pd.DataFrame)
+        assert result.shape == (4, 2)
+
+
+###########################################################
+#
+#   sklearn estimator checks (parametrize_with_checks)
+#
+###########################################################
+
+# SphericalHarmonicRegistration requires n_features == n_dim * (l_max + 1)**2.
+# sklearn checks use test data whose width violates this domain constraint,
+# so we xfail those checks.
+_WIDTH_REASON = "sklearn test data has n_features not equal to n_dim * (l_max + 1)**2"
+
+_EXPECTED_FAILURES = {
+    "check_dtype_object": _WIDTH_REASON,
+    "check_estimators_dtypes": _WIDTH_REASON,
+    "check_estimators_fit_returns_self": _WIDTH_REASON,
+    "check_estimators_overwrite_params": _WIDTH_REASON,
+    "check_fit_check_is_fitted": _WIDTH_REASON,
+    "check_fit_idempotent": _WIDTH_REASON,
+    "check_fit2d_1feature": _WIDTH_REASON,
+    "check_fit2d_1sample": _WIDTH_REASON,
+    "check_n_features_in": _WIDTH_REASON,
+    "check_n_features_in_after_fitting": _WIDTH_REASON,
+    "check_positive_only_tag_during_fit": _WIDTH_REASON,
+    "check_readonly_memmap_input": _WIDTH_REASON,
+}
+
+
+def _expected_failed_checks(estimator):
+    return _EXPECTED_FAILURES
+
+
+@parametrize_with_checks(
+    [SphericalHarmonicRegistration()],
+    expected_failed_checks=_expected_failed_checks,
+)
+def test_sklearn_estimator_checks(estimator, check):
+    check(estimator)

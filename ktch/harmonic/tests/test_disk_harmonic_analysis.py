@@ -860,3 +860,86 @@ class TestDHARegistration:
         dha = DiskHarmonicAnalysis(n_harmonics=2, reflect=True)
         with pytest.raises(NotImplementedError, match="reflect"):
             dha.transform([np.zeros((10, 3))], r_theta=[np.zeros((10, 2))])
+
+
+#
+#   sklearn Pipeline integration
+#
+
+
+def _surface_batch(n_max, n_samples, n_points=200, seed=0):
+    """Batch of synthetic disk surfaces as ragged lists (X, r_theta)."""
+    X = []
+    r_theta = []
+    for s in range(n_samples):
+        vertices, rt, _ = _generate_synthetic_surface(n_max, n_points, seed=seed + s)
+        X.append(vertices)
+        r_theta.append(rt)
+    return X, r_theta
+
+
+def test_dha_pipeline_metadata_routing_r_theta():
+    """Metadata routing of r_theta through Pipeline.
+
+    With metadata routing enabled, parameters are passed by name (not
+    step__param prefix). The routing system uses set_transform_request
+    declarations to dispatch each parameter to the correct step.
+    """
+    import sklearn
+    from sklearn.decomposition import PCA
+    from sklearn.pipeline import Pipeline
+
+    n_max = 3
+    X, r_theta = _surface_batch(n_max, n_samples=6)
+
+    with sklearn.config_context(enable_metadata_routing=True):
+        dha = DiskHarmonicAnalysis(n_harmonics=n_max, n_jobs=1)
+        dha.set_transform_request(r_theta=True)
+        pipe = Pipeline([("dha", dha), ("pca", PCA(n_components=2))])
+
+        result = pipe.fit_transform(X, r_theta=r_theta)
+        assert result.shape == (6, 2)
+
+        # Also test fit + transform separately
+        pipe2 = Pipeline(
+            [
+                (
+                    "dha",
+                    DiskHarmonicAnalysis(
+                        n_harmonics=n_max, n_jobs=1
+                    ).set_transform_request(r_theta=True),
+                ),
+                ("pca", PCA(n_components=2)),
+            ]
+        )
+        pipe2.fit(X, r_theta=r_theta)
+        result2 = pipe2.transform(X, r_theta=r_theta)
+        assert_array_almost_equal(result, result2)
+
+
+def test_dha_pipeline_set_output_pandas():
+    """Pipeline with set_output propagates DataFrames correctly."""
+    import pandas as pd
+    import sklearn
+    from sklearn.decomposition import PCA
+    from sklearn.pipeline import Pipeline
+
+    n_max = 2
+    X, r_theta = _surface_batch(n_max, n_samples=4, seed=10)
+
+    with sklearn.config_context(enable_metadata_routing=True):
+        pipe = Pipeline(
+            [
+                (
+                    "dha",
+                    DiskHarmonicAnalysis(
+                        n_harmonics=n_max, n_jobs=1
+                    ).set_transform_request(r_theta=True),
+                ),
+                ("pca", PCA(n_components=2)),
+            ]
+        )
+        pipe.set_output(transform="pandas")
+        result = pipe.fit_transform(X, r_theta=r_theta)
+        assert isinstance(result, pd.DataFrame)
+        assert result.shape == (4, 2)
