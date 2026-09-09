@@ -11,4 +11,5 @@ Guides for morphometric analysis with scikit-learn integration.
     use_with_pipeline
     cross_validation
     reconstruct_shapes
+    sample_evenly_along_shell
 ```
