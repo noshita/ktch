@@ -297,3 +297,53 @@ class TestShaCoeffsToSpharmpdm:
         result = sha_coeffs_to_spharmpdm(sha_flat[0])
         assert len(result) == 1
         assert result[0].l_max == spharmpdm_data.l_max
+
+
+# --- Alignment survives the basis conversion ---
+
+
+class TestConversionCommutesWithCodomainRotation:
+    """The real/complex conversion acts on the parameter side only. A
+    codomain rotation applied before or after it gives the same result. This
+    is what lets registered coefficients round-trip through .coef files with
+    their alignment intact.
+    """
+
+    @pytest.fixture()
+    def flat(self):
+        return spharmpdm_to_sha_coeffs(
+            read_spharmpdm_coef(
+                Path(__file__).parent / "data" / "andesred_07_allSegments_SPHARM.coef"
+            )
+        )
+
+    def test_rotate_then_convert_equals_convert_then_rotate(self, flat):
+        from scipy.spatial.transform import Rotation
+
+        from ktch.harmonic import rotate_spharm_coeffs
+
+        rot = Rotation.random(random_state=np.random.default_rng(1)).as_matrix()
+        rotated_real = rotate_spharm_coeffs(flat, rot, domain="codomain")
+        # Rotate in the complex domain: each (l, m) row is a 3-vector.
+        data = sha_coeffs_to_spharmpdm(flat)[0]
+        rotated_complex = SpharmPdmData(
+            specimen_name=data.specimen_name,
+            coeffs=[(rot @ c.T).T for c in data.coeffs],
+        )
+        np.testing.assert_allclose(
+            spharmpdm_to_sha_coeffs(rotated_complex), rotated_real, atol=1e-12
+        )
+
+    def test_registered_coefficients_survive_round_trip(self, flat):
+        from ktch.harmonic import SphericalHarmonicRegistration
+
+        registered = SphericalHarmonicRegistration(
+            method="first_order", scale=False, align_parameter=False
+        ).fit_transform(flat)
+        back = spharmpdm_to_sha_coeffs(sha_coeffs_to_spharmpdm(registered))
+        np.testing.assert_allclose(back, registered, atol=1e-14)
+        # Nothing re-registers on the way back: a second pass is the identity.
+        again = SphericalHarmonicRegistration(
+            method="first_order", scale=False, align_parameter=False
+        ).fit_transform(back)
+        np.testing.assert_allclose(again, registered, atol=1e-12)

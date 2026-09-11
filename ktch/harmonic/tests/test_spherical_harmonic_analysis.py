@@ -1,3 +1,6 @@
+import warnings
+from pathlib import Path
+
 import numpy as np
 import pytest
 import scipy as sp
@@ -1079,10 +1082,28 @@ class TestSPHARMRegistration:
         with pytest.raises(NotImplementedError, match="return_transform"):
             sha.transform([np.zeros((10, 3))], theta_phi=[np.zeros((10, 2))])
 
-    def test_align_parameter_false_not_implemented(self):
-        sha = SphericalHarmonicAnalysis(n_harmonics=2, align_parameter=False)
-        with pytest.raises(NotImplementedError, match="align_parameter"):
-            sha.transform([np.zeros((10, 3))], theta_phi=[np.zeros((10, 2))])
+    def test_align_parameter_false_parity_with_registration(self):
+        # The analysis estimator's codomain-only path is the shared kernel.
+        l_max = 3
+        X, theta_phi, _ = _synthetic_sphere(l_max, 500, n_dim=3, seed=5)
+        raw = SphericalHarmonicAnalysis(
+            n_harmonics=l_max, registration=None, n_jobs=1
+        ).transform([X], theta_phi=[theta_phi])
+        # reflect=True: a random specimen's degree-1 frame may be left-handed.
+        with pytest.warns(UserWarning, match="not orthogonal"):
+            from_mesh = SphericalHarmonicAnalysis(
+                n_harmonics=l_max,
+                registration="first_order",
+                align_parameter=False,
+                scale=False,
+                reflect=True,
+                n_jobs=1,
+            ).transform([X], theta_phi=[theta_phi])
+        with pytest.warns(UserWarning, match="not orthogonal"):
+            from_coeffs = SphericalHarmonicRegistration(
+                method="first_order", align_parameter=False, scale=False, reflect=True
+            ).fit_transform(raw)
+        assert_allclose(from_mesh, from_coeffs, atol=1e-12)
 
     def test_reflect_first_order_allowed(self):
         # reflect=True IS implemented for SPHARM first_order; it must not be gated.
@@ -1279,13 +1300,6 @@ class TestSphericalHarmonicRegistration:
                 method="first_order", return_transform=True
             ).fit(raw)
 
-    def test_align_parameter_false_reserved(self):
-        raw = self._raw_coeffs(2, seed=28, n_samples=1)
-        with pytest.raises(NotImplementedError, match="align_parameter"):
-            SphericalHarmonicRegistration(
-                method="first_order", align_parameter=False
-            ).fit(raw)
-
     def test_first_order_requires_ndim3(self):
         # Valid n_dim=2 width so l_max inference passes before the n_dim check.
         raw = np.zeros((2, 2 * (3 + 1) ** 2))
@@ -1337,6 +1351,276 @@ def _sphere_batch(l_max, n_samples, n_points=300, seed=0):
         X.append(Xi)
         theta_phi.append(tp)
     return X, theta_phi
+
+
+class TestAlignParameterFalse:
+    """first_order with align_parameter=False: codomain only, parameterization
+    kept as given (SPHARM-PDM's ellipsoid alignment on its own input).
+    """
+
+    _COEF_PATH = (
+        Path(__file__).resolve().parents[2]
+        / "io"
+        / "tests"
+        / "data"
+        / "andesred_07_allSegments_SPHARM.coef"
+    )
+
+    @pytest.fixture()
+    def spharmpdm_flat(self):
+        """One SPHARM-PDM specimen whose parameter sphere is already aligned."""
+        from ktch.io import read_spharmpdm_coef, spharmpdm_to_sha_coeffs
+
+        return spharmpdm_to_sha_coeffs(read_spharmpdm_coef(self._COEF_PATH))
+
+    @staticmethod
+    def _degree1_xyz(flat):
+        """Degree-1 block of one flat vector, columns for parameter x, y, z."""
+        n_coeffs = flat.size // 3
+        mat = flat.reshape(3, n_coeffs)
+        return mat[:, [1, 2, 3]][:, [2, 0, 1]]
+
+    @staticmethod
+    def _spharm_pdm_alignment_reference(flat):
+        """SPHARM-PDM's coordinate alignment of a parameter-aligned specimen:
+        normalized degree-1 columns as rows of a codomain rotation, l=0
+        zeroed, no scaling, no decomposition.
+        """
+        n_coeffs = flat.size // 3
+        mat = flat.reshape(3, n_coeffs)
+        m1 = TestAlignParameterFalse._degree1_xyz(flat)
+        rows = (m1 / np.linalg.norm(m1, axis=0)).T
+        out = rows @ mat
+        out[:, 0] = 0.0
+        return out.ravel()
+
+    def _raw_coeffs(self, l_max, seed=0, n_samples=1):
+        rows = []
+        for s in range(n_samples):
+            X, theta_phi, _ = _synthetic_sphere(l_max, 500, n_dim=3, seed=seed + s)
+            sha = SphericalHarmonicAnalysis(
+                n_harmonics=l_max, registration=None, n_jobs=1
+            )
+            rows.append(sha.transform([X], theta_phi=[theta_phi])[0])
+        return np.stack(rows)
+
+    def test_matches_spharm_pdm_alignment_on_its_input(self, spharmpdm_flat):
+        # No decomposition on the parameter side: the input's frame (order
+        # and signs, i.e. SPHARM-PDM's flip choice) is kept exactly.
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            out = SphericalHarmonicRegistration(
+                method="first_order", scale=False, align_parameter=False
+            ).fit_transform(spharmpdm_flat)
+        ref = self._spharm_pdm_alignment_reference(spharmpdm_flat[0])
+        # The file carries six decimals: its degree-1 columns are
+        # orthogonal only to ~1e-5, and SPHARM-PDM's non-orthogonalized
+        # matrix differs from the nearest rotation by that much.
+        assert_allclose(out[0], ref, atol=1e-5)
+        assert not np.allclose(out[0], spharmpdm_flat[0], atol=1e-3)
+
+    def test_degree1_block_diagonal_in_input_order(self, spharmpdm_flat):
+        out = SphericalHarmonicRegistration(
+            method="first_order", scale=False, align_parameter=False
+        ).fit_transform(spharmpdm_flat)
+        m1_out = self._degree1_xyz(out[0])
+        norms_in = np.linalg.norm(self._degree1_xyz(spharmpdm_flat[0]), axis=0)
+        # Six-decimal input: off-diagonals are rounding, not structure.
+        assert_allclose(m1_out, np.diag(norms_in), atol=1e-5)
+        assert np.all(np.diag(m1_out) > 0)
+
+    def test_idempotent_on_aligned_input(self, spharmpdm_flat):
+        reg = SphericalHarmonicRegistration(
+            method="first_order", scale=False, align_parameter=False
+        )
+        once = reg.fit_transform(spharmpdm_flat)
+        twice = reg.fit_transform(once)
+        assert_allclose(twice, once, atol=1e-12)
+
+    def test_codomain_rotation_invariance(self, spharmpdm_flat):
+        rng = np.random.default_rng(3)
+        rot = sp.spatial.transform.Rotation.random(random_state=rng).as_matrix()
+        posed = rotate_spharm_coeffs(spharmpdm_flat, rot, domain="codomain")
+        reg = SphericalHarmonicRegistration(
+            method="first_order", scale=False, align_parameter=False
+        )
+        assert_allclose(
+            reg.fit_transform(posed), reg.fit_transform(spharmpdm_flat), atol=1e-10
+        )
+
+    def test_first_order_output_is_a_fixed_point(self):
+        # align_parameter=True leaves M1 = Sigma, and the codomain-only path
+        # then has nothing left to do: the two agree on already-aligned input.
+        raw = self._raw_coeffs(3, seed=7)
+        aligned = SphericalHarmonicRegistration(
+            method="first_order", scale=False
+        ).fit_transform(raw)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            again = SphericalHarmonicRegistration(
+                method="first_order", scale=False, align_parameter=False
+            ).fit_transform(aligned)
+        assert_allclose(again, aligned, atol=1e-12)
+
+    def _unaligned(self, l_max, seed):
+        """Right-handed coefficients whose parameter sphere is not aligned:
+        a registered specimen with its parameter sphere turned.
+        """
+        aligned = SphericalHarmonicRegistration(
+            method="first_order", scale=False
+        ).fit_transform(self._raw_coeffs(l_max, seed=seed))
+        rot = sp.spatial.transform.Rotation.random(
+            random_state=np.random.default_rng(seed)
+        ).as_matrix()
+        return rotate_spharm_coeffs(aligned, rot, domain="parameter")
+
+    def test_codomain_only_on_unaligned_input(self):
+        # Whatever the input, the output is one codomain rotation of it (no
+        # parameter rotation), applied to every degree, with l=0 dropped.
+        raw = self._unaligned(4, seed=8)
+        with pytest.warns(UserWarning, match="not orthogonal"):
+            out = SphericalHarmonicRegistration(
+                method="first_order", scale=False, align_parameter=False
+            ).fit_transform(raw)
+        n_coeffs = raw.shape[1] // 3
+        mat_in = raw[0].reshape(3, n_coeffs)
+        mat_out = out[0].reshape(3, n_coeffs)
+        q = mat_out[:, 1:4] @ np.linalg.inv(mat_in[:, 1:4])
+        assert_allclose(q @ q.T, np.eye(3), atol=1e-10)
+        assert np.linalg.det(q) > 0
+        assert_allclose(mat_out[:, 1:], q @ mat_in[:, 1:], atol=1e-10)
+        assert_allclose(mat_out[:, 0], 0.0, atol=0)
+
+    def test_warns_on_nonorthogonal_degree1(self):
+        # Turning the parameter sphere alone breaks the precondition.
+        raw = self._unaligned(2, seed=9)
+        with pytest.warns(UserWarning, match="not orthogonal"):
+            SphericalHarmonicRegistration(
+                method="first_order", align_parameter=False
+            ).fit_transform(raw)
+
+    def test_left_handed_frame_raises_unless_reflect(self, spharmpdm_flat):
+        mirrored = rotate_spharm_coeffs(
+            spharmpdm_flat, np.diag([-1.0, 1.0, 1.0]), domain="codomain"
+        )
+        with pytest.raises(ValueError, match="left-handed"):
+            SphericalHarmonicRegistration(
+                method="first_order", scale=False, align_parameter=False
+            ).fit_transform(mirrored)
+        out = SphericalHarmonicRegistration(
+            method="first_order", scale=False, align_parameter=False, reflect=True
+        ).fit_transform(mirrored)
+        # Chirality removed: the improper frame maps the mirrored input onto
+        # the unmirrored registration.
+        ref = SphericalHarmonicRegistration(
+            method="first_order", scale=False, align_parameter=False
+        ).fit_transform(spharmpdm_flat)
+        assert_allclose(out, ref, atol=1e-12)
+
+    @pytest.mark.parametrize(
+        "scale_method", [None, "semi_major_axis", "ellipsoid_volume"]
+    )
+    def test_scale_uses_ellipsoid_lengths(self, spharmpdm_flat, scale_method):
+        out = SphericalHarmonicRegistration(
+            method="first_order", align_parameter=False, scale_method=scale_method
+        ).fit_transform(spharmpdm_flat)
+        sig = np.linalg.svd(self._degree1_xyz(out[0]), compute_uv=False)
+        if scale_method == "ellipsoid_volume":
+            assert_allclose((4.0 / 3.0) * np.pi * np.prod(sig), 1.0, atol=1e-6)
+        else:
+            assert_allclose(sig[0], 1.0, atol=1e-6)
+
+    def test_moment_ignores_align_parameter(self):
+        raw = self._raw_coeffs(2, seed=10)
+        a = SphericalHarmonicRegistration(method="moment").fit_transform(raw)
+        b = SphericalHarmonicRegistration(
+            method="moment", align_parameter=False
+        ).fit_transform(raw)
+        assert_allclose(a, b, atol=0)
+
+
+# SPHARM-PDM's degree-1 basis functions for the cosine and sine terms carry
+# the Condon-Shortley sign, and the stored vectors its alignment sends to x
+# and y point opposite to the images of the parameter axes. Its frame is ktch's
+# turned by a half turn about z; derived from the SPHARM-PDM source and
+# measured on 1698 (raw, ellalign) pairs from three projects.
+_SPHARM_PDM_HALF_TURN = np.diag([-1.0, -1.0, 1.0])
+
+_PAIR_STEMS = [
+    "B_keratocytes000703",  # clearly triaxial
+    "0.33_echinocyte_I000346",  # clearly triaxial
+    "-1.00_spherocyte000090",  # near-symmetric: two shortest axes equal
+    "0.33_echinocyte_I000325",  # near-symmetric: two longest axes equal
+]
+
+
+class TestEllalignPairs:
+    """Regression against SPHARM-PDM's own `_ellalign.coef` output."""
+
+    _DATA = Path(__file__).resolve().parents[2] / "io" / "tests" / "data"
+
+    def _pair(self, stem):
+        from ktch.io import read_spharmpdm_coef, spharmpdm_to_sha_coeffs
+
+        raw = spharmpdm_to_sha_coeffs(
+            read_spharmpdm_coef(self._DATA / f"{stem}_SPHARM.coef")
+        )
+        ell = spharmpdm_to_sha_coeffs(
+            read_spharmpdm_coef(self._DATA / f"{stem}_SPHARM_ellalign.coef")
+        )
+        return raw, ell
+
+    @pytest.mark.parametrize("stem", _PAIR_STEMS)
+    def test_reproduces_ellalign_up_to_the_half_turn(self, stem):
+        raw, ell = self._pair(stem)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            out = SphericalHarmonicRegistration(
+                method="first_order", scale=False, align_parameter=False
+            ).fit_transform(raw)
+        turned = rotate_spharm_coeffs(out, _SPHARM_PDM_HALF_TURN, domain="codomain")
+        # Both files carry six decimals on values up to ~65; the residual
+        # is that rounding carried through the rotation.
+        assert_allclose(turned, ell, atol=1e-3)
+        assert np.abs(ell).max() > 10
+
+    @pytest.mark.parametrize("stem", _PAIR_STEMS)
+    def test_ellalign_input_lands_in_the_same_frame(self, stem):
+        # Registering the raw file and the ellalign file gives one frame, so
+        # specimens from either kind of file can be mixed after registration.
+        raw, ell = self._pair(stem)
+        reg = SphericalHarmonicRegistration(
+            method="first_order", scale=False, align_parameter=False
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            from_raw = reg.fit_transform(raw)
+            from_ell = reg.fit_transform(ell)
+        assert_allclose(from_ell, from_raw, atol=1e-3)
+        n_coeffs = raw.shape[1] // 3
+        assert_allclose(from_raw[0].reshape(3, n_coeffs)[:, 0], 0.0, atol=0)
+
+    def test_first_order_differs_from_ellalign_by_a_coupled_flip_only(self):
+        # The default rule picks its own representative; the two frames are
+        # related by one of the eight coupled sign patterns, never by a
+        # codomain-only rotation.
+        raw, ell = self._pair("B_keratocytes000703")
+        default = SphericalHarmonicRegistration(
+            method="first_order", scale=False
+        ).fit_transform(raw)
+        target = rotate_spharm_coeffs(ell, _SPHARM_PDM_HALF_TURN, domain="codomain")
+        signs = [(1, 1, 1), (1, -1, -1), (-1, 1, -1), (-1, -1, 1)]
+        residuals = [
+            np.linalg.norm(
+                rotate_spharm_coeffs(
+                    default, np.diag(np.array(s, float)), domain="coupled"
+                )
+                - target
+            )
+            / np.linalg.norm(target)
+            for s in signs
+        ]
+        assert min(residuals) < 1e-4
 
 
 def test_sha_pipeline_metadata_routing_theta_phi():

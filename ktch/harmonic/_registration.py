@@ -89,6 +89,7 @@ def validate_registration(
     return_transform,
     allow_first_order,
     align_parameter=True,
+    allow_align_parameter_false=False,
 ):
     """Validate registration settings for SPHARM/DHA-style estimators.
 
@@ -111,8 +112,11 @@ def validate_registration(
     allow_first_order : bool
         Whether ``"first_order"`` is implemented for this estimator.
     align_parameter : bool, default=True
-        Whether the parameter-domain group (B) is aligned. ``first_order``
-        always aligns it; ``False`` is not yet implemented and raises.
+        Whether ``first_order`` aligns the parameter domain as well as the
+        codomain.
+    allow_align_parameter_false : bool, default=False
+        Whether ``align_parameter=False`` is implemented for this estimator.
+        Where it is not, ``False`` raises rather than silently aligning.
 
     Raises
     ------
@@ -121,7 +125,8 @@ def validate_registration(
         ``scale_method``, or ``return_transform`` with ``method=None``.
     NotImplementedError
         For reserved methods, unimplemented ``first_order``,
-        ``return_transform``, or ``align_parameter=False``.
+        ``return_transform``, or ``align_parameter=False`` where it is not
+        implemented.
     """
     if method not in _VALID_REGISTRATIONS:
         raise ValueError(
@@ -141,7 +146,11 @@ def validate_registration(
             "registration='first_order' is not yet implemented for this "
             "estimator; use registration='moment' or registration=None."
         )
-    if method == "first_order" and not align_parameter:
+    if (
+        method == "first_order"
+        and not align_parameter
+        and not allow_align_parameter_false
+    ):
         raise NotImplementedError(
             "align_parameter=False is not yet implemented; 'first_order' "
             "always aligns the parameter domain. Use align_parameter=True."
@@ -323,9 +332,10 @@ class _BaseRegistration(TransformerMixin, BaseEstimator):
         Size measure when ``scale=True``; ``None`` resolves to the method
         default. Valid values depend on the concrete registration.
     align_parameter : bool, default=True
-        Whether to align the parameter domain as well as the codomain.
-        ``first_order`` always applies it; ``align_parameter=False`` is not yet
-        implemented.
+        Whether ``first_order`` aligns the parameter domain as well as the
+        codomain. ``False`` aligns the codomain only and keeps the
+        parameterization as given; concrete registrations state whether they
+        implement it.
     reflect : bool, default=False
         Whether to also remove reflection (chirality). ``False`` enforces a
         proper rotation.

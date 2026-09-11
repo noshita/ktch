@@ -48,6 +48,11 @@ _FIRST_ORDER_TOL = 1e-12
 # Tolerance below which a principal-axis skewness is treated as zero.
 _SKEW_TOL = 1e-9
 
+# Largest cosine between two degree-1 columns for the parameter sphere to
+# count as already aligned (align_parameter=False). SPHARM-PDM writes six
+# decimals, and an aligned .coef file shows cosines of order 1e-5.
+_DEGREE1_COSINE_TOL = 1e-3
+
 # Domains a rotation can act on; see rotate_spharm_coeffs.
 _ROTATION_DOMAINS = ("parameter", "codomain", "coupled")
 
@@ -98,9 +103,10 @@ class SphericalHarmonicAnalysis(
         default (``"first_order"``: ``"semi_major_axis"``; ``"moment"``:
         ``"centroid_size"``).
     align_parameter : bool, default=True
-        Parameter-domain (SO(3)) alignment. ``"first_order"`` always applies
-        it; ``align_parameter=False`` is not yet implemented and raises
-        ``NotImplementedError``.
+        Whether ``"first_order"`` rotates the parameter sphere (SO(3)) as well
+        as the codomain. ``False`` rotates the codomain only and keeps the
+        parameterization as given; see
+        :class:`SphericalHarmonicRegistration` for when that is appropriate.
     reflect : bool, default=False
         Whether to also remove reflection (chirality). ``False`` enforces a
         proper codomain rotation (``det=+1``); ``True`` allows an improper
@@ -205,6 +211,7 @@ class SphericalHarmonicAnalysis(
             return_transform=self.return_transform,
             allow_first_order=True,
             align_parameter=self.align_parameter,
+            allow_align_parameter_false=True,
         )
         if method == "first_order" and self.n_dim != 3:
             raise ValueError(
@@ -222,10 +229,11 @@ class SphericalHarmonicAnalysis(
             scale=self.scale,
             scale_method=self.scale_method,
             reflect=self.reflect,
+            align_parameter=self.align_parameter,
         )
 
     def _first_order_register(self, coef_flat):
-        """first_order registration for SPHARM (n_dim=3): A + B, coef-only.
+        """first_order registration for SPHARM (n_dim=3), coefficient-only.
 
         See :class:`SphericalHarmonicRegistration` for the algorithm.
         """
@@ -235,6 +243,7 @@ class SphericalHarmonicAnalysis(
             scale=self.scale,
             scale_method=self.scale_method,
             reflect=self.reflect,
+            align_parameter=self.align_parameter,
         )
 
     def fit(self, X, y=None):
@@ -552,9 +561,14 @@ class SphericalHarmonicRegistration(_BaseHarmonicRegistration):
         Size measure when ``scale=True``. ``None`` resolves to the method
         default (``"first_order"``: ``"semi_major_axis"``).
     align_parameter : bool, default=True
-        Whether to rotate the parameter sphere (SO(3)) as well as the codomain.
-        ``"first_order"`` always applies it; ``align_parameter=False`` is
-        reserved and raises ``NotImplementedError``.
+        Whether ``"first_order"`` rotates the parameter sphere as well as the
+        codomain. ``False`` rotates the codomain only and keeps the
+        parameterization as given, for input whose parameter sphere is
+        already aligned or already carries a correspondence, such as
+        SPHARM-PDM ``.coef`` files (with ``scale=False`` this reproduces
+        their ``_ellalign`` output up to a half turn about z, see Notes). It
+        warns when the degree-1 columns are not orthogonal. Ignored by
+        ``"moment"``.
     reflect : bool, default=False
         Whether to also remove reflection (chirality). ``False`` enforces a
         proper codomain rotation (``det=+1``).
@@ -576,6 +590,15 @@ class SphericalHarmonicRegistration(_BaseHarmonicRegistration):
     The ellipsoid's Klein-four sign ambiguity is broken by a rotation- and
     reparameterization-invariant third moment, which is ill-conditioned for
     near-symmetric shapes.
+
+    With ``align_parameter=False`` the codomain is rotated so that the images
+    of the parameter axes fall on x, y, and z (the nearest rotation to the
+    normalized degree-1 columns) and the parameter sphere is left as it is.
+    The input's frame is kept; the registered degree-1 block is diagonal in
+    the input's axis order. SPHARM-PDM's ``_ellalign`` frame is this output
+    turned by a half turn about z, ``diag(-1, -1, 1)`` on the codomain,
+    because its degree-1 basis functions follow the Condon-Shortley sign. The
+    turn is the same for every specimen.
 
     Examples
     --------
@@ -617,6 +640,7 @@ class SphericalHarmonicRegistration(_BaseHarmonicRegistration):
             return_transform=self.return_transform,
             allow_first_order=True,
             align_parameter=self.align_parameter,
+            allow_align_parameter_false=True,
         )
         if method == "first_order" and self.n_dim != 3:
             raise ValueError(
@@ -633,6 +657,7 @@ class SphericalHarmonicRegistration(_BaseHarmonicRegistration):
             scale=self.scale,
             scale_method=self.scale_method,
             reflect=self.reflect,
+            align_parameter=self.align_parameter,
         )
 
 
@@ -643,7 +668,9 @@ class SphericalHarmonicRegistration(_BaseHarmonicRegistration):
 ###########################################################
 
 
-def _first_order_register_coef(coef_flat, n_dim, *, scale, scale_method, reflect):
+def _first_order_register_coef(
+    coef_flat, n_dim, *, scale, scale_method, reflect, align_parameter=True
+):
     """first_order registration of one flat real SPHARM coefficient vector."""
     coef_flat = np.asarray(coef_flat, dtype=float)
     n_coeffs = coef_flat.size // n_dim
@@ -662,26 +689,34 @@ def _first_order_register_coef(coef_flat, n_dim, *, scale, scale_method, reflect
             "Degenerate first-order ellipsoid (near-zero semi-major axis); "
             "cannot register. Use registration='moment' or None."
         )
-    w_mat = wt.T
 
-    # Break the ellipsoid's Klein-four sign ambiguity (degree 1 fixes axes only
-    # up to 180-deg flips) with the higher-order third moment. Flip the coupled
-    # (U, V) columns.
-    signs = _axis_third_moment_signs(mat, u_mat, l_max)
-    for i in range(3):
-        if signs[i] < 0:
-            u_mat[:, i] = -u_mat[:, i]
-            w_mat[:, i] = -w_mat[:, i]
-    # Proper codomain rotation unless reflection is allowed.
-    if not reflect and np.linalg.det(u_mat) < 0:
-        u_mat[:, -1] = -u_mat[:, -1]
-        w_mat[:, -1] = -w_mat[:, -1]
+    if align_parameter:
+        w_mat = wt.T
 
-    # B. Parameter SO(3) alignment in the coefficient domain: rotate the sphere
-    # by R = w_mat^T via Wigner-D (per axis).
-    rotated = rotate_parameter_sphere(mat.T, w_mat.T)  # (n_coeffs, 3)
+        # Break the ellipsoid's Klein-four sign ambiguity (degree 1 fixes axes
+        # only up to 180-deg flips) with the higher-order third moment. Flip
+        # the coupled (U, V) columns.
+        signs = _axis_third_moment_signs(mat, u_mat, l_max)
+        for i in range(3):
+            if signs[i] < 0:
+                u_mat[:, i] = -u_mat[:, i]
+                w_mat[:, i] = -w_mat[:, i]
+        # Proper codomain rotation unless reflection is allowed.
+        if not reflect and np.linalg.det(u_mat) < 0:
+            u_mat[:, -1] = -u_mat[:, -1]
+            w_mat[:, -1] = -w_mat[:, -1]
 
-    # A. Codomain rotation + scale + translation removal.
+        # Parameter SO(3) alignment in the coefficient domain: rotate the
+        # sphere by R = w_mat^T via Wigner-D (per axis).
+        rotated = rotate_parameter_sphere(mat.T, w_mat.T)  # (n_coeffs, 3)
+        rot = u_mat.T
+    else:
+        # Codomain only: the parameterization is kept as given and each
+        # parameter axis is sent to the codomain axis of the same name.
+        rotated = mat.T
+        rot = _codomain_frame_from_degree1(m1_xyz, reflect=reflect)
+
+    # Codomain rotation + scale + translation removal.
     if scale:
         sm = scale_method or "semi_major_axis"
         if sm == "ellipsoid_volume":
@@ -693,12 +728,86 @@ def _first_order_register_coef(coef_flat, n_dim, *, scale, scale_method, reflect
     else:
         s = 1.0
 
-    out = (u_mat.T @ rotated.T) / s
+    out = (rot @ rotated.T) / s
     out[:, 0] = 0.0  # drop the constant (l=0) mode
     return out.ravel()
 
 
-def _register_spharm_coef(coef_flat, n_dim, method, *, scale, scale_method, reflect):
+def _codomain_frame_from_degree1(m1_xyz, *, reflect):
+    """Codomain rotation sending the degree-1 columns to the codomain axes.
+
+    The rows of the result are, as nearly as a rotation allows, the
+    normalized columns of ``m1_xyz`` (the images of the parameter axes), in
+    the input's order and with the input's signs. When the columns are
+    orthogonal this is that matrix itself, as in SPHARM-PDM's coordinate
+    alignment; otherwise it is the nearest orthogonal matrix (polar factor),
+    and beyond ``_DEGREE1_COSINE_TOL`` a warning says so.
+
+    Parameters
+    ----------
+    m1_xyz : ndarray of shape (3, 3)
+        Degree-1 block with columns for the parameter axes x, y, z.
+    reflect : bool
+        Whether an improper frame (left-handed degree-1 columns) may be
+        applied as-is, removing chirality. If ``False`` such input raises,
+        because a proper rotation cannot be reached without touching the
+        parameter sphere.
+
+    Returns
+    -------
+    rot : ndarray of shape (3, 3)
+        Orthogonal matrix to apply to the codomain.
+    """
+    norms = np.linalg.norm(m1_xyz, axis=0)
+    if np.any(norms < _FIRST_ORDER_TOL):
+        raise ValueError(
+            "Degenerate first-order ellipsoid (a parameter axis maps to a "
+            "near-zero vector); cannot register with align_parameter=False."
+        )
+    unit_cols = m1_xyz / norms
+    cosines = unit_cols.T @ unit_cols
+    max_cos = np.max(np.abs(cosines - np.eye(3)))
+    if max_cos > _DEGREE1_COSINE_TOL:
+        warnings.warn(
+            "align_parameter=False: the degree-1 columns are not orthogonal "
+            f"(max |cos| = {max_cos:.2e}): the parameter sphere of this "
+            "specimen is not aligned to its first-order ellipsoid, and the "
+            "result does not reproduce SPHARM-PDM's ellipsoid alignment. The "
+            "codomain is rotated by the nearest rotation and the "
+            "parameterization is kept; the registered specimens are then only "
+            "as consistent as their parameterizations are (for example, by a "
+            "shared template). Use align_parameter=True to align the "
+            "parameter sphere from the ellipsoid instead.",
+            UserWarning,
+            stacklevel=3,
+        )
+    # Nearest rotation: polar factor of the normalized columns as rows. On
+    # orthogonal columns this is that matrix itself; on a six-decimal .coef
+    # file the two differ by the file's own rounding (~1e-6), which is also
+    # how far either is from what SPHARM-PDM computed in memory.
+    u_n, _, vt_n = np.linalg.svd(unit_cols.T)
+    rot = u_n @ vt_n
+    if np.linalg.det(rot) < 0 and not reflect:
+        raise ValueError(
+            "align_parameter=False: the degree-1 columns form a left-handed "
+            "frame, and a proper codomain rotation cannot map them to the "
+            "codomain axes without also flipping the parameter sphere. Use "
+            "align_parameter=True, or reflect=True to allow an improper "
+            "rotation (which removes chirality)."
+        )
+    return rot
+
+
+def _register_spharm_coef(
+    coef_flat,
+    n_dim,
+    method,
+    *,
+    scale,
+    scale_method,
+    reflect,
+    align_parameter=True,
+):
     """Register one flat real SPHARM coefficient vector."""
     if method is None:
         return np.asarray(coef_flat, dtype=float)
@@ -706,7 +815,12 @@ def _register_spharm_coef(coef_flat, n_dim, method, *, scale, scale_method, refl
         return moment_register(coef_flat, n_dim, scale=scale, reflect=reflect)
     if method == "first_order":
         return _first_order_register_coef(
-            coef_flat, n_dim, scale=scale, scale_method=scale_method, reflect=reflect
+            coef_flat,
+            n_dim,
+            scale=scale,
+            scale_method=scale_method,
+            reflect=reflect,
+            align_parameter=align_parameter,
         )
     raise NotImplementedError(f"registration='{method}' is not implemented yet.")
 
