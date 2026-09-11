@@ -441,39 +441,6 @@ class DiskHarmonicAnalysis(
                     names.append(f"{axis}_{n}_{m}")
         return names
 
-    def _inverse_transform_single(
-        self,
-        X_transformed,
-        r_range,
-        theta_range,
-        n_max,
-    ):
-        """Reconstruct a single surface from DHA coefficients.
-
-        Parameters
-        ----------
-        X_transformed : ndarray
-            Flat coefficient vector for one sample.
-        r_range : array-like of shape (n_r,)
-            Radial coordinates for the reconstruction grid.
-        theta_range : array-like of shape (n_theta,)
-            Angular coordinates for the reconstruction grid.
-        n_max : int
-            Maximum degree of harmonics to use.
-
-        Returns
-        -------
-        ndarray of shape (n_theta, n_r, n_dim)
-            Reconstructed surface coordinates.
-        """
-        n_dim = self.n_dim
-        n_full = (self.n_harmonics + 1) ** 2
-        n_coeffs = (n_max + 1) ** 2
-        coef_matrix = X_transformed.reshape(n_dim, n_full)[:, :n_coeffs].T
-        coef_list = _cvt_dha_coef_to_list(coef_matrix)
-        coords = disk_harm(n_max, coef_list, r_range, theta_range)
-        return np.stack(coords, axis=-1)
-
     def inverse_transform(
         self,
         X_transformed,
@@ -509,16 +476,24 @@ class DiskHarmonicAnalysis(
         if n_max is None:
             n_max = self.n_harmonics
 
-        X_coords = np.stack(
-            Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
-                delayed(self._inverse_transform_single)(
-                    X_transformed[i], r_range, theta_range, n_max
-                )
-                for i in range(len(X_transformed))
-            )
-        )
+        n_full = (self.n_harmonics + 1) ** 2
+        n_coeffs = (n_max + 1) ** 2
+        n_samples = len(X_transformed)
+        n_r = len(r_range)
+        n_theta = len(theta_range)
 
-        return X_coords
+        # The design matrix depends only on (n_max, r_range, theta_range).
+        # It is built once and shared by the whole batch.
+        r_grid, theta_grid = np.meshgrid(r_range, theta_range)
+        basis = _disk_harm_basis_matrix(n_max, r_grid.ravel(), theta_grid.ravel())
+
+        coef = np.asarray(X_transformed, dtype=float).reshape(
+            n_samples, self.n_dim, n_full
+        )[:, :, :n_coeffs]
+        coords = coef.reshape(n_samples * self.n_dim, n_coeffs) @ basis.T
+        X_coords = coords.reshape(n_samples, self.n_dim, n_theta, n_r)
+
+        return np.moveaxis(X_coords, 1, -1)
 
 
 ###########################################################

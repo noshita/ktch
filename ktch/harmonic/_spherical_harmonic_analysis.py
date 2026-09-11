@@ -413,54 +413,6 @@ class SphericalHarmonicAnalysis(
                     names.append(f"{axis}_{l}_{m}")
         return names
 
-    def _inverse_transform_single(
-        self,
-        X_transformed,
-        theta_range,
-        phi_range,
-        l_max=None,
-    ):
-        """Reconstruct a single surface from SPHARM coefficients.
-
-        Parameters
-        ----------
-        X_transformed : ndarray of shape (n_dim * (n_harmonics + 1)**2,)
-            Flat SPHARM coefficient vector for one sample, in axis-major
-            layout (one ``(n_harmonics + 1)**2`` block per coordinate).
-        theta_range : array-like of shape (n_theta,)
-            Polar angle values (colatitude, 0 to pi).
-        phi_range : array-like of shape (n_phi,)
-            Azimuthal angle values (0 to 2*pi).
-        l_max : int, optional
-            Maximum degree of harmonics to use. Defaults to
-            ``self.n_harmonics``. When less than ``self.n_harmonics``,
-            the leading ``(l_max + 1) ** 2`` coefficients of each axis
-            block are kept and higher-degree terms are dropped.
-
-        Returns
-        -------
-        X_coords : ndarray of shape (n_theta, n_phi, n_dim)
-            Reconstructed surface coordinates.
-        """
-        if l_max is None:
-            l_max = self.n_harmonics
-
-        n_per_lm_full = (self.n_harmonics + 1) ** 2
-        n_per_lm = (l_max + 1) ** 2
-
-        # Axis-major layout: (n_dim, n_per_lm_full) → take leading n_per_lm cols.
-        coef_per_lm = (
-            np.asarray(X_transformed).reshape(self.n_dim, n_per_lm_full)[:, :n_per_lm].T
-        )
-        coords = spharm(
-            l_max,
-            cvt_spharm_coef_to_list(coef_per_lm),
-            theta_range,
-            phi_range,
-        )
-        X_coords = np.stack(coords, axis=-1)
-        return X_coords
-
     def inverse_transform(
         self,
         X_transformed,
@@ -512,16 +464,26 @@ class SphericalHarmonicAnalysis(
                 f"l_max ({l_max}) cannot exceed n_harmonics ({self.n_harmonics})"
             )
 
-        X_coords = np.stack(
-            Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
-                delayed(self._inverse_transform_single)(
-                    X_transformed[i], theta_range, phi_range, l_max
-                )
-                for i in range(len(X_transformed))
-            )
-        )
+        n_per_lm_full = (self.n_harmonics + 1) ** 2
+        n_per_lm = (l_max + 1) ** 2
+        n_samples = len(X_transformed)
+        n_theta = len(theta_range)
+        n_phi = len(phi_range)
 
-        return X_coords
+        # The design matrix depends only on (l_max, theta_range, phi_range).
+        # It is built once and shared by the whole batch.
+        theta_grid, phi_grid = np.meshgrid(theta_range, phi_range, indexing="ij")
+        basis = _real_sph_harm_basis_matrix(l_max, theta_grid.ravel(), phi_grid.ravel())
+
+        # Axis-major layout: (n_samples, n_dim, n_per_lm_full)
+        # -> take the leading n_per_lm columns of each axis block.
+        coef = np.asarray(X_transformed, dtype=float).reshape(
+            n_samples, self.n_dim, n_per_lm_full
+        )[:, :, :n_per_lm]
+        coords = coef.reshape(n_samples * self.n_dim, n_per_lm) @ basis.T
+        X_coords = coords.reshape(n_samples, self.n_dim, n_theta, n_phi)
+
+        return np.moveaxis(X_coords, 1, -1)
 
 
 class SphericalHarmonicRegistration(_BaseHarmonicRegistration):
