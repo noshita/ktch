@@ -2,9 +2,15 @@ import ast
 from pathlib import Path
 
 import numpy as np
+import pytest
 from numpy.testing import assert_array_almost_equal
 
-from ktch.io import read_spharmpdm_coef
+from ktch.io import (
+    read_spharmpdm_coef,
+    sha_coeffs_to_spharmpdm,
+    spharmpdm_to_sha_coeffs,
+    write_spharmpdm_coef,
+)
 from ktch.io._protocols import MorphoData
 from ktch.io._spharm_pdm import SpharmPdmData
 
@@ -97,3 +103,51 @@ def test_spharmpdm_data_repr():
     r = repr(data)
     assert "SpharmPdmData" in r
     assert "l_max=1" in r
+
+
+# --- write_spharmpdm_coef ---
+
+_COEF_PATH = Path(__file__).parent / "data" / "andesred_07_allSegments_SPHARM.coef"
+
+
+def _coeffs_equal(a, b):
+    return all(np.array_equal(x, y) for x, y in zip(a.coeffs, b.coeffs))
+
+
+def test_write_read_round_trip_is_exact(tmp_path):
+    data = read_spharmpdm_coef(_COEF_PATH)
+    out = tmp_path / "rt.coef"
+    write_spharmpdm_coef(out, data)
+    back = read_spharmpdm_coef(out)
+    assert back.l_max == data.l_max
+    assert _coeffs_equal(back, data)
+
+
+def test_write_precision_6_reproduces_spharmpdm_layout(tmp_path):
+    data = read_spharmpdm_coef(_COEF_PATH)
+    out = tmp_path / "six.coef"
+    write_spharmpdm_coef(out, data, precision=6)
+    original = _COEF_PATH.read_text()
+    written = out.read_text()
+    # SPHARM-PDM prints negative zero for values that round to zero from
+    # below. That sign does not survive the complex packing and carries no
+    # information. Compare with it normalized.
+    normalize = lambda t: t.replace("-0.000000", "0.000000")  # noqa: E731
+    assert normalize(written) == normalize(original)
+    assert written.startswith("{ 676,{")
+    assert written.endswith("}}")
+    assert written.count("\n") == original.count("\n")
+
+
+def test_write_from_sha_coeffs_round_trip(tmp_path):
+    data = read_spharmpdm_coef(_COEF_PATH)
+    flat = spharmpdm_to_sha_coeffs(data)
+    out = tmp_path / "sha.coef"
+    write_spharmpdm_coef(out, sha_coeffs_to_spharmpdm(flat, ["andesred_07"])[0])
+    back = spharmpdm_to_sha_coeffs(read_spharmpdm_coef(out))
+    np.testing.assert_allclose(back, flat, atol=1e-14)
+
+
+def test_write_rejects_non_spharmpdm_data(tmp_path):
+    with pytest.raises(ValueError, match="SpharmPdmData"):
+        write_spharmpdm_coef(tmp_path / "x.coef", np.zeros((1, 3)))

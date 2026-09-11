@@ -22,7 +22,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from ._converters import _cvt_spharm_coef_spharmpdm_to_list
+from ._converters import (
+    _cvt_spharm_coef_list_to_spharmpdm,
+    _cvt_spharm_coef_spharmpdm_to_list,
+)
 from ._protocols import MorphoDataMixin
 
 
@@ -175,3 +178,70 @@ def read_spharmpdm_coef(path: str | Path) -> SpharmPdmData:
 
     specimen_name = Path(path).stem
     return SpharmPdmData(specimen_name=specimen_name, coeffs=coef)
+
+
+def write_spharmpdm_coef(
+    path: str | Path,
+    data: SpharmPdmData,
+    precision: int | None = None,
+) -> None:
+    """Write SPHARM coefficients to a SPHARM-PDM ``.coef`` file.
+
+    The inverse of :func:`read_spharmpdm_coef`. The file layout matches the
+    output of ``ParaToSPHARMMesh`` in SPHARM-PDM: the number of coefficients
+    per coordinate, then one ``{x, y, z}`` triple per line in SPHARM-PDM's
+    interleaved real/imaginary order.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Path of the ``.coef`` file to write.
+    data : SpharmPdmData
+        SPHARM-PDM coefficient data for a single specimen.
+    precision : int, optional
+        Number of decimals to write. ``None`` writes the shortest
+        representation that reads back to the same ``float64``. SPHARM-PDM
+        itself writes six decimals; pass ``precision=6`` to reproduce that
+        format.
+
+    Raises
+    ------
+    ValueError
+        If ``data`` is not a :class:`SpharmPdmData` or its coefficients are
+        malformed.
+    IOError
+        If the file cannot be written.
+
+    See Also
+    --------
+    read_spharmpdm_coef : Read a ``.coef`` file.
+    sha_coeffs_to_spharmpdm : Convert ktch coefficient vectors for writing.
+    """
+    if not isinstance(data, SpharmPdmData):
+        raise ValueError(
+            f"data must be a SpharmPdmData, got {type(data).__name__}; "
+            "convert ktch coefficient vectors with sha_coeffs_to_spharmpdm first."
+        )
+    path = Path(path)
+
+    coef_spharmpdm = _cvt_spharm_coef_list_to_spharmpdm(list(data.coeffs))
+    n_coef_per_coord = coef_spharmpdm.shape[0]
+
+    if precision is None:
+
+        def fmt(v):
+            return repr(float(v))
+
+    else:
+
+        def fmt(v):
+            return f"{v:.{precision}f}"
+
+    triples = ["{" + ", ".join(fmt(v) for v in row) + "}" for row in coef_spharmpdm]
+    text = "{ " + str(n_coef_per_coord) + "," + ",\n".join(triples) + "}"
+
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+    except IOError as e:
+        raise IOError(f"Error writing SPHARM-PDM file: {e}")

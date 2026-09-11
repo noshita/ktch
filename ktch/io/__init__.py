@@ -30,6 +30,7 @@ from ._protocols import MorphoData, MorphoDataMixin
 from ._spharm_pdm import (
     SpharmPdmData,
     read_spharmpdm_coef,
+    write_spharmpdm_coef,
 )
 from ._tps import TPSData, read_tps, write_tps
 
@@ -46,6 +47,7 @@ __all__ = [
     "read_tps",
     "write_tps",
     "read_spharmpdm_coef",
+    "write_spharmpdm_coef",
     "read_chc",
     "write_chc",
     "read_nef",

@@ -24,6 +24,7 @@
    io.read_nef
    io.write_nef
    io.read_spharmpdm_coef
+   io.write_spharmpdm_coef
 ```
 
 ## Data Containers
