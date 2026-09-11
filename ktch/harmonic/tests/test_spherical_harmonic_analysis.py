@@ -697,6 +697,71 @@ class TestSHAInverseTransformLMaxTruncation:
             sha.inverse_transform(flat, theta_range=th, phi_range=ph, l_max=-1)
 
 
+class TestSHAInverseTransformBatch:
+    """Batch reconstruction must agree with sample-by-sample reconstruction.
+
+    ``inverse_transform`` builds one shared design matrix and reconstructs
+    the whole batch with a single matrix product. The reshape and axis
+    move that make this possible are the part that can silently mix
+    samples or codomain axes, so each batched output is compared against
+    the same sample reconstructed on its own.
+    """
+
+    @staticmethod
+    def _coefficients(n_samples, n_harmonics, n_dim, seed=0):
+        rng = np.random.default_rng(seed)
+        return rng.standard_normal((n_samples, n_dim * (n_harmonics + 1) ** 2))
+
+    def _assert_batch_matches_singles(self, sha, flat, **kwargs):
+        batch = sha.inverse_transform(flat, **kwargs)
+        singles = np.concatenate(
+            [sha.inverse_transform(flat[i : i + 1], **kwargs) for i in range(len(flat))]
+        )
+        assert batch.shape == singles.shape
+        assert_allclose(batch, singles, rtol=0, atol=1e-12)
+
+    def test_batch_matches_singles(self):
+        th = np.linspace(0, np.pi, 15)
+        ph = np.linspace(0, 2 * np.pi, 19)
+        sha = SphericalHarmonicAnalysis(n_harmonics=5)
+        flat = self._coefficients(4, 5, 3)
+        self._assert_batch_matches_singles(sha, flat, theta_range=th, phi_range=ph)
+
+    @pytest.mark.parametrize("n_dim", [1, 2, 4])
+    def test_batch_matches_singles_other_n_dim(self, n_dim):
+        """Codomain dimensions other than 3 keep their axis order."""
+        th = np.linspace(0, np.pi, 11)
+        ph = np.linspace(0, 2 * np.pi, 13)
+        sha = SphericalHarmonicAnalysis(n_harmonics=4, n_dim=n_dim)
+        flat = self._coefficients(3, 4, n_dim, seed=n_dim)
+        self._assert_batch_matches_singles(sha, flat, theta_range=th, phi_range=ph)
+
+    def test_batch_matches_singles_truncated(self):
+        """Truncation to l_max < n_harmonics survives batching."""
+        th = np.linspace(0, np.pi, 9)
+        ph = np.linspace(0, 2 * np.pi, 17)
+        sha = SphericalHarmonicAnalysis(n_harmonics=6)
+        flat = self._coefficients(3, 6, 3, seed=1)
+        self._assert_batch_matches_singles(
+            sha, flat, theta_range=th, phi_range=ph, l_max=2
+        )
+
+    def test_batch_grid_orientation(self):
+        """Rows index theta and columns index phi on a non-square grid."""
+        th = np.linspace(0, np.pi, 12)
+        ph = np.linspace(0, 2 * np.pi, 25)
+        sha = SphericalHarmonicAnalysis(n_harmonics=3)
+        flat = self._coefficients(2, 3, 3, seed=2)
+        recon = sha.inverse_transform(flat, theta_range=th, phi_range=ph)
+        assert recon.shape == (2, len(th), len(ph), 3)
+
+        coef_per_lm = flat[1].reshape(3, (3 + 1) ** 2).T
+        expected = np.stack(
+            spharm(3, cvt_spharm_coef_to_list(coef_per_lm), th, ph), axis=-1
+        )
+        assert_allclose(recon[1], expected, rtol=0, atol=1e-12)
+
+
 class TestSHAFlatRoundTripAxisOrder:
     """Regression test for axis-order layout bug in inverse_transform.
 

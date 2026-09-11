@@ -528,6 +528,63 @@ class TestDHAInverseTransformDefaults:
         assert result.shape == (1, 180, 100, 3)
 
 
+class TestDHAInverseTransformBatch:
+    """Batch reconstruction must agree with sample-by-sample reconstruction.
+
+    ``inverse_transform`` builds one shared design matrix and reconstructs
+    the whole batch with a single matrix product. The reshape and axis
+    move that make this possible are the part that can silently mix
+    samples or codomain axes, so each batched output is compared against
+    the same sample reconstructed on its own.
+    """
+
+    @staticmethod
+    def _coefficients(n_samples, n_harmonics, n_dim, seed=0):
+        rng = np.random.default_rng(seed)
+        return rng.standard_normal((n_samples, n_dim * (n_harmonics + 1) ** 2))
+
+    def _assert_batch_matches_singles(self, dha, flat, **kwargs):
+        batch = dha.inverse_transform(flat, **kwargs)
+        singles = np.concatenate(
+            [dha.inverse_transform(flat[i : i + 1], **kwargs) for i in range(len(flat))]
+        )
+        assert batch.shape == singles.shape
+        assert_allclose(batch, singles, rtol=0, atol=1e-12)
+
+    @pytest.mark.parametrize("n_dim", [2, 3])
+    def test_batch_matches_singles(self, n_dim):
+        r = np.linspace(0, 1, 14)
+        th = np.linspace(0, 2 * np.pi, 21)
+        dha = DiskHarmonicAnalysis(n_harmonics=4, n_dim=n_dim)
+        flat = self._coefficients(4, 4, n_dim, seed=n_dim)
+        self._assert_batch_matches_singles(dha, flat, r_range=r, theta_range=th)
+
+    def test_batch_matches_singles_truncated(self):
+        """Truncation to n_max < n_harmonics survives batching."""
+        r = np.linspace(0, 1, 11)
+        th = np.linspace(0, 2 * np.pi, 17)
+        dha = DiskHarmonicAnalysis(n_harmonics=5, n_dim=3)
+        flat = self._coefficients(3, 5, 3, seed=1)
+        self._assert_batch_matches_singles(
+            dha, flat, r_range=r, theta_range=th, n_max=2
+        )
+
+    def test_batch_grid_orientation(self):
+        """Rows index theta and columns index r on a non-square grid."""
+        r = np.linspace(0, 1, 13)
+        th = np.linspace(0, 2 * np.pi, 23)
+        dha = DiskHarmonicAnalysis(n_harmonics=3, n_dim=2)
+        flat = self._coefficients(2, 3, 2, seed=2)
+        recon = dha.inverse_transform(flat, r_range=r, theta_range=th)
+        assert recon.shape == (2, len(th), len(r), 2)
+
+        coef_matrix = flat[1].reshape(2, (3 + 1) ** 2).T
+        expected = np.stack(
+            disk_harm(3, _cvt_dha_coef_to_list(coef_matrix), r, th), axis=-1
+        )
+        assert_allclose(recon[1], expected, rtol=0, atol=1e-12)
+
+
 #
 #   2D mode (n_dim=2)
 #
