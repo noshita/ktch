@@ -111,7 +111,30 @@ reg = SphericalHarmonicRegistration(method="first_order", scale=False)
 registered = reg.fit_transform(coefficients)
 ```
 
-It maps coefficients to coefficients, so it composes in a scikit-learn `Pipeline` before PCA on a morphospace. For near-symmetric shapes, the axis and sign tie-break is ill-conditioned, so different implementations may pick different canonical frames of the same shape.
+It maps coefficients to coefficients and composes in a scikit-learn `Pipeline` before PCA on a morphospace.
+
+#### What degree 1 leaves undetermined
+
+The degree-1 ellipsoid fixes the principal axes only as lines: a half turn about any of its axes maps it onto itself. What remains is a sign on each axis of the parameter sphere, eight patterns that describe the same surface with different correspondences between parameter values and surface points. `first_order` resolves it with the third moment of the surface, which is invariant to rotation and reparameterization but ill-conditioned for near-symmetric shapes. SPHARM-PDM has no intrinsic rule: the signs come from its eigensolver, a right-handedness constraint, and optionally a template or an explicit flip index. The two agree on clearly triaxial shapes and may settle on different frames of the same shape near symmetry; per-degree amplitude spectra agree either way. SPHARM-PDM's flip indices are the eight patterns (x is the longest axis in both programs):
+
+| flip index | signs on (x, y, z) | proper rotation |
+|---|---|---|
+| 0 | (+, +, +) | yes |
+| 1 | (+, -, -) | yes |
+| 2 | (-, +, -) | yes |
+| 3 | (-, -, +) | yes |
+| 4 | (+, -, +) | no |
+| 5 | (+, +, -) | no |
+| 6 | (-, -, -) | no |
+| 7 | (-, +, +) | no |
+
+An odd number of minus signs reverses the handedness of the parameter sphere. That is a reparameterization, not a mirror image of the shape, and unrelated to the `reflect` parameter.
+
+To keep a frame the input already carries, register with `align_parameter=False`: the coordinates are rotated onto the parameter axes and the parameter sphere is left as it is. This presupposes an upstream parameter alignment, which is detected from the orthogonality of the degree-1 columns. SPHARM-PDM's frame differs from ktch's by a half turn about z for every specimen, a sign convention of its basis functions; a rotation shared by all specimens leaves a shape analysis unchanged. See {doc}`../how-to/data/load_spharm`.
+
+#### Correcting a specimen after registration
+
+A specimen that registration placed on the wrong sign pattern looks rotated by a half turn about a principal axis, which is indistinguishable by eye from a specimen that is merely posed differently. The two need different corrections. A representative mismatch is a coupled discrepancy, in the coordinates and on the parameter sphere together; rotating the coordinates alone aligns the pose and leaves the correspondence broken, which no rendering shows and every coefficient-space comparison detects. `rotate_spharm_coeffs` therefore takes the domain explicitly. Use `domain="coupled"` to correct one specimen. Use `domain="codomain"` or `domain="parameter"` for a convention applied to every specimen alike, such as a display up-axis or a pole placed at an anatomical landmark; applied uniformly, each leaves coefficient-space distances unchanged. Per specimen, a single domain is sound only when the other half is supplied elsewhere: a field defined on the same parameter sphere receives the geometry's correction with `domain="parameter"`, and a codomain-only rotation of one specimen is safe only when its parameterization already carries the correspondence. Do not register again after a correction; registration recomputes the frame and discards it.
 
 ### Applications
 

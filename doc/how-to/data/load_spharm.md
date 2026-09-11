@@ -74,6 +74,73 @@ print(f"registered coefficients shape: {registered.shape}")
 Because it maps coefficients to coefficients, it composes in a
 scikit-learn `Pipeline`.
 
+## Reproduce SPHARM-PDM's ellipsoid alignment
+
+In a `*_SPHARM.coef` file of SPHARM-PDM, the parameter sphere is already aligned to the
+degree-1 ellipsoid. The `*_SPHARM_ellalign.coef` file additionally rotates
+the coordinates so that the ellipsoid axes fall on x, y, and z. That
+second step touches the coordinates only, which is what
+`align_parameter=False` does:
+
+```{code-cell} ipython3
+ellalign = SphericalHarmonicRegistration(
+    method="first_order", scale=False, align_parameter=False
+).fit_transform(coeffs)
+```
+
+This keeps the file's own choice among the eight sign patterns of the
+parameter sphere. It therefore agrees with `*_SPHARM_ellalign.coef` for
+near-symmetric shapes too, where the default may settle on a different,
+equally valid frame of the same shape. It warns when the degree-1 columns
+are not orthogonal, which means the parameter sphere was not aligned
+upstream; use the default in that case. See
+{doc}`../../explanation/harmonic` for the conventions.
+
+One convention differs: SPHARM-PDM's frame is ktch's turned by a half turn
+about z, a sign convention of its basis functions. The turn is the same
+for every specimen and changes nothing in a shape analysis. To write the
+file SPHARM-PDM would have written, turn the result:
+
+```{code-cell} ipython3
+import numpy as np
+
+from ktch.harmonic import rotate_spharm_coeffs
+
+spharm_pdm_frame = rotate_spharm_coeffs(
+    ellalign, np.diag([-1.0, -1.0, 1.0]), domain="codomain"
+)
+```
+
+Register every specimen with one and the same call, whichever file it
+comes from; a specimen taken from an `_ellalign.coef` file without
+registration sits a half turn away from the registered ones.
+
+## Write coefficients to a `.coef` file
+
+Convert flat coefficient vectors back to
+{class}`~ktch.io.SpharmPdmData` with
+{func}`~ktch.io.sha_coeffs_to_spharmpdm`, then write each specimen with
+{func}`~ktch.io.write_spharmpdm_coef`:
+
+```{code-cell} ipython3
+import tempfile
+from pathlib import Path
+
+from ktch.io import sha_coeffs_to_spharmpdm, write_spharmpdm_coef
+
+out_dir = Path(tempfile.mkdtemp())
+for item in sha_coeffs_to_spharmpdm(spharm_pdm_frame, [data.specimen_name]):
+    write_spharmpdm_coef(out_dir / f"{item.specimen_name}_ellalign.coef", item)
+
+sorted(p.name for p in out_dir.iterdir())
+```
+
+By default the writer uses full precision, and reading the file back gives
+the same numbers. Pass `precision=6` to reproduce SPHARM-PDM's own layout.
+Registration survives the conversion in both directions. Do not register
+again after reading a registered file back; in a pipeline, use
+`method=None` as the pass-through.
+
 ## Plot the 3D shape
 
 ```{code-cell} ipython3
