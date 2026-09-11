@@ -168,19 +168,14 @@ def morphospace_plot(
     and reducing surface resolution via a
     ``descriptor_inverse_transform`` wrapper.
 
-    For 3-D shape types, ``descriptor.inverse_transform`` typically
-    dominates the runtime. ``morphospace_plot`` issues a single batched
-    call covering all ``n_shapes ** 2`` grid points, so descriptors that
-    parallelize across the batch dimension speed up plotting directly.
-    :class:`~ktch.harmonic.SphericalHarmonicAnalysis`,
-    :class:`~ktch.harmonic.EllipticFourierAnalysis`, and
-    :class:`~ktch.harmonic.DiskHarmonicAnalysis` all accept ``n_jobs``
-    at construction time:
-
-    .. code-block:: python
-
-        sha = SphericalHarmonicAnalysis(n_harmonics=20, n_jobs=-1)
-        morphospace_plot(..., descriptor=sha)
+    ``morphospace_plot`` issues a single batched
+    ``descriptor.inverse_transform`` call covering all ``n_shapes ** 2``
+    grid points. :class:`~ktch.harmonic.SphericalHarmonicAnalysis` and
+    :class:`~ktch.harmonic.DiskHarmonicAnalysis` reconstruct such a batch
+    from one shared harmonic basis, which ties the cost of that call to
+    the reconstruction grid and the harmonic degree rather than to
+    ``n_shapes``. The per-inset rendering is what grows with
+    ``n_shapes ** 2``.
 
     See Also
     --------
