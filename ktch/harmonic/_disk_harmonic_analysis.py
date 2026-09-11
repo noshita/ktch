@@ -462,12 +462,20 @@ class DiskHarmonicAnalysis(
             ``np.linspace(0, 2*pi, 180)``.
         n_max : int, optional
             Maximum degree of harmonics to use.  Defaults to
-            ``self.n_harmonics``.
+            ``self.n_harmonics``.  When smaller, the input coefficient
+            vector is truncated to the leading ``(n_max + 1) ** 2`` terms
+            per axis.  Values greater than ``self.n_harmonics`` raise
+            ``ValueError``.
 
         Returns
         -------
         X_coords : ndarray of shape (n_samples, n_theta, n_r, n_dim)
             Reconstructed surface coordinates.
+
+        Raises
+        ------
+        ValueError
+            If ``n_max`` is negative or greater than ``self.n_harmonics``.
         """
         if r_range is None:
             r_range = np.linspace(0, 1, 100)
@@ -475,6 +483,12 @@ class DiskHarmonicAnalysis(
             theta_range = np.linspace(0, 2 * np.pi, 180)
         if n_max is None:
             n_max = self.n_harmonics
+        if n_max < 0:
+            raise ValueError(f"n_max must be >= 0, got {n_max}")
+        if n_max > self.n_harmonics:
+            raise ValueError(
+                f"n_max ({n_max}) cannot exceed n_harmonics ({self.n_harmonics})"
+            )
 
         n_full = (self.n_harmonics + 1) ** 2
         n_coeffs = (n_max + 1) ** 2

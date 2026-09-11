@@ -360,6 +360,18 @@ class TestDHAValidation:
                 r_theta=[np.zeros((10, 2)), np.zeros((5, 2))],
             )
 
+    def test_n_max_gt_n_harmonics_raises(self):
+        dha = DiskHarmonicAnalysis(n_harmonics=3, n_dim=2)
+        flat = np.zeros((1, 2 * (3 + 1) ** 2))
+        with pytest.raises(ValueError, match="cannot exceed"):
+            dha.inverse_transform(flat, n_max=4)
+
+    def test_n_max_negative_raises(self):
+        dha = DiskHarmonicAnalysis(n_harmonics=3, n_dim=2)
+        flat = np.zeros((1, 2 * (3 + 1) ** 2))
+        with pytest.raises(ValueError, match=">= 0"):
+            dha.inverse_transform(flat, n_max=-1)
+
     def test_underdetermined_warns(self):
         n_max = 3
         n_coords = 5  # < (n_max+1)**2 = 16
