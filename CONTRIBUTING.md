@@ -112,10 +112,24 @@ Format:
 | `feat` | New feature | Features |
 | `fix` | Bug fix | Bug Fixes |
 | `docs` | Documentation only | Documentation |
-| `refactor` | Code change that neither fixes a bug nor adds a feature | — |
-| `test` | Adding or updating tests | — |
 | `perf` | Performance improvement | Performance Improvements |
-| `chore` | Maintenance tasks | Miscellaneous Chores |
+| `refactor` | Code change that neither fixes a bug nor adds a feature | Code Refactoring |
+| `test` | Adding or updating tests | — |
+| `chore` | Maintenance tasks | — |
+| `ci` | CI and workflow configuration | — |
+
+Types with no changelog section do not produce a release on their own.
+
+#### Breaking changes and deprecations
+
+The type says what kind of change it is. `!` after the type, or a
+`BREAKING CHANGE:` footer, says whether users have to be told. The two are
+independent. Renaming, moving or removing a public name, or changing a
+signature or an exception type, is not a new feature. Such a change is
+`refactor!`, not `feat`.
+
+Announce a deprecation as `feat` while the old spelling still works: users
+need to see it, and nothing is broken yet.
 
 #### Examples
 

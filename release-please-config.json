@@ -25,11 +25,13 @@
         },
         {
             "type": "style",
-            "section": "Styles"
+            "section": "Styles",
+            "hidden": true
         },
         {
             "type": "chore",
-            "section": "Miscellaneous Chores"
+            "section": "Miscellaneous Chores",
+            "hidden": true
         },
         {
             "type": "refactor",
@@ -47,7 +49,8 @@
         },
         {
             "type": "ci",
-            "section": "Continuous Integration"
+            "section": "Continuous Integration",
+            "hidden": true
         }
     ],
     "packages": {

@@ -34,10 +34,18 @@ the version is below 1.0.0:
 
 | Commit type | Version bump |
 |-------------|-------------|
-| `fix:` | patch (0.7.0 → 0.7.1) |
-| `feat:` | patch (0.7.0 → 0.7.1) |
-| `feat!:` / `BREAKING CHANGE` | minor (0.7.0 → 0.8.0) |
-| `docs:`, `chore:`, etc. | no bump |
+| `fix:`, `feat:`, `docs:`, `perf:`, `refactor:`, `revert:` | patch (0.7.0 → 0.7.1) |
+| any type with `!` or a `BREAKING CHANGE` footer | minor (0.7.0 → 0.8.0) |
+| `style:`, `chore:`, `test:`, `build:`, `ci:` | no release PR |
+
+Whether a release PR appears depends not on the version impact of the type, but
+on whether the changelog would come out empty. Types marked `hidden` in
+`release-please-config.json` produce no changelog entry, and commits of only
+those types leave nothing to release. A `!` or a `BREAKING CHANGE` footer is
+rendered even for a hidden type.
+
+`refactor:` is visible on purpose while the API is still moving. Hide it at the
+1.0 transition, once `refactor` reliably means a change no user can observe.
 
 Since `feat:` only produces a patch bump in this configuration, a minor
 version bump for feature releases requires explicit specification via
@@ -351,9 +359,10 @@ A `workflow_dispatch` run of the Docs workflow can rebuild without a new release
 
 #### Release Please PR not appearing
 
-Ensure recent commits on `main` include at least one `feat:` or `fix:` commit.
-Commits with types like `docs:`, `chore:`, or `refactor:` alone do not trigger
-a version bump.
+Ensure recent commits on `main` include at least one commit of a type that
+appears in the changelog (see [Version numbering](#version-numbering)).
+`style:`, `chore:`, `test:`, `build:` and `ci:` are hidden; commits of only
+those types leave the changelog empty and produce no release PR.
 
 #### Release Please picks the wrong version
 
