@@ -94,8 +94,8 @@ See [doc.ktch.dev](https://doc.ktch.dev/stable/) for full documentation:
 
 Bug reports, feature requests, and usage questions are all welcome via [GitHub Issues](https://github.com/noshita/ktch/issues).
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and conventions.
+See [CONTRIBUTING.md](https://doc.ktch.dev/dev/CONTRIBUTING/) for development setup and conventions.
 
 ## License
 
-ktch is licensed under the [Apache License, Version 2.0](LICENSE).
+ktch is licensed under the [Apache License, Version 2.0](https://github.com/noshita/ktch/blob/main/LICENSE).
