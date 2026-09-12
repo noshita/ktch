@@ -80,6 +80,11 @@ Do not manually edit `pyproject.toml` version — let Release Please manage it.
    git push origin release-please--branches--main
    ```
 
+   Do this once the last commit of the release has landed on `main`.
+   Release Please rebuilds its branch from `main` on every push and
+   force-pushes the result, discarding a `versions.json` commit made
+   before that.
+
    Edit the `"name"` and `"version"` fields in the stable entry:
 
    ```json
@@ -109,6 +114,21 @@ Do not manually edit `pyproject.toml` version — let Release Please manage it.
    When data is unchanged, no registry update is needed — the loader
    falls back to the latest compatible version automatically.
 
+4. Verify what the source distribution ships:
+
+   ```bash
+   rm -rf dist
+   uv build
+   tar -tzf dist/ktch-*.tar.gz
+   ```
+
+   The archive should contain `ktch/` plus `CHANGELOG.md`, `LICENSE`,
+   `README.md`, `pyproject.toml`, `PKG-INFO`, and `.gitignore`, and nothing
+   else. `[tool.hatch.build.targets.sdist]` selects the contents by
+   allowlist, which replaced a denylist that had shipped untracked working
+   directories in earlier releases. A new top-level file that belongs in the
+   distribution has to be added to that list; anything else stays out.
+
 ### Merging the Release Please PR
 
 1. Review the auto-generated CHANGELOG in the PR
@@ -128,9 +148,13 @@ Do not manually edit `pyproject.toml` version — let Release Please manage it.
 After the GitHub Release is created:
 
 ```bash
+rm -rf dist
 uv build
 uv publish
 ```
+
+`uv publish` uploads every file in `dist/`. Clear the directory first;
+artifacts built for an earlier release would otherwise be uploaded again.
 
 > Note: PyPI publishing could be automated using
 > [Trusted Publishers](https://docs.pypi.org/trusted-publishers/)
