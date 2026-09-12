@@ -7,12 +7,25 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write  # dispatch documentation.yml
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v5
+        id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # documentation.yml's `release: published` trigger never fires: a release
+      # created with GITHUB_TOKEN starts no workflow, and workflow_dispatch is
+      # the documented exception.
+      - name: Rebuild the documentation for the new tag
+        # The action emits the string "false", which is itself truthy.
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        run: gh workflow run documentation.yml --ref main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}  # no checkout in this job

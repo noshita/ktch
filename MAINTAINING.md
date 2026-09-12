@@ -18,7 +18,7 @@ Conventional Commits on main
     (bumps pyproject.toml, CHANGELOG.md, .release-please-manifest.json)
   -> Maintainer merges the PR (merge commit)
     -> Release Please creates v0.X.Y tag + GitHub Release
-      -> documentation.yml triggers (release: published)
+      -> Release Please dispatches documentation.yml (workflow_dispatch)
       -> sphinx-multiversion builds /stable/ and /dev/
   -> Maintainer publishes to PyPI
     -> conda-forge feedstock auto-creates a PR
@@ -141,7 +141,13 @@ Do not manually edit `pyproject.toml` version — let Release Please manage it.
    After merge, Release Please automatically:
    - Creates a `v0.X.Y` tag
    - Creates a GitHub Release with the changelog
-   - Triggers the documentation workflow via `release: published`
+   - Dispatches the Docs workflow, which rebuilds `/stable/` and `/dev/`
+
+   The dispatch is deliberate rather than event-driven. A release created with
+   `GITHUB_TOKEN` does not start a workflow. The `release: published`
+   trigger on `documentation.yml` never fires; `workflow_dispatch` is the
+   documented exception. The Docs workflow also skips its own push build for
+   this merge commit, because that build would race the tag it needs.
 
 ### Publishing to PyPI
 
@@ -304,6 +310,11 @@ from your personal fork. The bot PR is then closed.
 
 - [ ] <https://doc.ktch.dev/stable/> shows the new version
 - [ ] Version switcher works correctly
+
+  The first item is the only detector for a dispatch that never ran. A dispatch
+  that fails turns the release-please run red, but a step that is removed or
+  whose condition stops matching produces no build and no failed run, and the
+  push build that used to cover this case by accident is now skipped.
 - [ ] <https://pypi.org/project/ktch/> shows the new version
 - [ ] conda-forge feedstock PR is created (may take a few hours)
 - [ ] (Minor releases only) Re-run the Docs workflow with cache disabled

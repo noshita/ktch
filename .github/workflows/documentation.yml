@@ -32,6 +32,10 @@ env:
 
 jobs:
   build:
+    # Skip the release merge: it can start before the tag versions.json names
+    # exists. release-please dispatches this workflow for that commit.
+    if: ${{ github.event_name != 'push' ||
+            !contains(github.event.head_commit.message, 'release-please--branches--main') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -74,12 +78,18 @@ jobs:
           python -c "from jupyter_cache import get_cache; get_cache('doc/_build/.jupyter_cache').list_cache_records()"
 
       - name: Build multi-version docs
+        env:
+          NO_CACHE: ${{ github.event.inputs.no-cache }}  # via env, not ${{ }} in run
         run: |
           # Build all versions with sphinx-multiversion
           # -j auto enables parallel build (auto-detects CPU cores)
           # -b dirhtml publishes each page as <name>/index.html, served at the
           # clean directory URL <name>/ instead of <name>.html
-          sphinx-multiversion doc doc/_build/html -b dirhtml -j auto
+          #
+          # A cold cache executes notebooks in the read phase, where parallel
+          # readers race to bind ipykernel ports.
+          if [ "$NO_CACHE" = "true" ]; then JOBS=1; else JOBS=auto; fi
+          sphinx-multiversion doc doc/_build/html -b dirhtml -j "$JOBS"
 
           # Rename main -> dev
           if [ -d "doc/_build/html/main" ]; then
