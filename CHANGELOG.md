@@ -1,5 +1,64 @@
 # Changelog
 
+## [0.11.0](https://github.com/noshita/ktch/compare/v0.10.1...v0.11.0) (2026-09-12)
+
+
+### Features
+
+* **harmonic:** ✨ add codomain-only first-order registration ([28c1afc](https://github.com/noshita/ktch/commit/28c1afc7b2aaef3f94b77945af1dafffaa5f05a4))
+* **harmonic:** ✨ add domain-aware SPHARM coefficient rotation ([cb1160b](https://github.com/noshita/ktch/commit/cb1160b6394a1d84a9dec5224d7ac78891a659cb))
+* **io:** ✨ add write_spharmpdm_coef ([7f94041](https://github.com/noshita/ktch/commit/7f940418f23b8d2578bbc56745040b4f3847186d))
+
+
+### Bug Fixes
+
+* **harmonic:** 🐛 scale by the cube root of the ellipsoid volume ([48e5e68](https://github.com/noshita/ktch/commit/48e5e68ecfa7a4dd794d4dee4c8067863031cc6d))
+* **harmonic:** 🐛 validate n_max in DHA inverse_transform ([030265e](https://github.com/noshita/ktch/commit/030265e16c72c4faaba12676086554c175eaca01))
+
+
+### Performance Improvements
+
+* **harmonic:** ⚡️ build the inverse-transform basis once per batch ([1b7e43c](https://github.com/noshita/ktch/commit/1b7e43cc32c9a3c9396c61e624b88c212e06f26b))
+
+
+### Documentation
+
+* 📚 document dirhtml build, redirects, and the indexing reality ([db413c6](https://github.com/noshita/ktch/commit/db413c697ee83134520937430ab7b1f9f379a1e6))
+* 📚 emit clean directory-style canonical URLs ([4d0e0e7](https://github.com/noshita/ktch/commit/4d0e0e754c173634f9d8c9781dc7a22c3eca8695))
+* 📚 exclude opensearch/ from the sitemap under dirhtml ([60a6abb](https://github.com/noshita/ktch/commit/60a6abb45984a9cdccd45e95944bb8c7dddaae9c))
+* 📚 keep old .html URLs alive after the dirhtml switch ([363defd](https://github.com/noshita/ktch/commit/363defd9a9c1023f93a7a890c015130bd2954a7c))
+* 📚 point contributing guide URL to stable docs ([f68c1c3](https://github.com/noshita/ktch/commit/f68c1c3599c8e4afb22f12fb42c0fa7a68b500be))
+* 📚 point project URLs to stable docs ([dec1d46](https://github.com/noshita/ktch/commit/dec1d46cfe0de6851c2cf6c218c368c818bb7aa9))
+* 📚 redirect documentation URLs from earlier layouts ([faeaafe](https://github.com/noshita/ktch/commit/faeaafec01f65c57b623fb3c98bb9f44a461399c))
+* 📚 remove Google Analytics from the documentation site ([87b8a7f](https://github.com/noshita/ktch/commit/87b8a7f8abe633e880f12d88fcf63081ff8e2aac))
+* 📚 state the problem and audience on the landing page ([9059c62](https://github.com/noshita/ktch/commit/9059c625b0efe5c7ae130dbf6dbf78af02345405))
+* 📚 state the support pathway and the PR policy rationale ([3a46a84](https://github.com/noshita/ktch/commit/3a46a84c144ee8e4764178d979ebc7484bdc8d9c))
+* 📚 switch documentation to the dirhtml builder ([124e138](https://github.com/noshita/ktch/commit/124e1383db76fa53a72a2c68a00e30d208f24bdb))
+* 📚 update versions.json for v0.10.1 ([4bafb47](https://github.com/noshita/ktch/commit/4bafb47d900f457bb5a41c6c961373c095ef070e))
+* 📚 use :doc: roles for landing page navigation links ([18ee054](https://github.com/noshita/ktch/commit/18ee054a1491fad1174cc152b52b38abd74cee24))
+* **coiling:** 📚 teach RaupModel and GrowingTubeModel in both directions ([eb75a95](https://github.com/noshita/ktch/commit/eb75a9557296518385052f8d1d086ca12a2689b0))
+* **harmonic:** 📚 explain sign patterns and the SPHARM-PDM frame ([9ce9df2](https://github.com/noshita/ktch/commit/9ce9df2f7f062ae79dc5d040dccc418fd135f6b7))
+* **plot:** 📚 stop advertising n_jobs for morphospace plots ([4647b57](https://github.com/noshita/ktch/commit/4647b5770af5c61f9db613a15d5fc4f551975dff))
+
+
+### Miscellaneous Chores
+
+* 🔧 align the advertised API with what ships ([e1e333d](https://github.com/noshita/ktch/commit/e1e333da789cc73de654393bdab22b144e3c56d5))
+* **deps-dev:** bump jupyterlab from 4.6.1 to 4.6.2 ([c70979a](https://github.com/noshita/ktch/commit/c70979a2cdf2a48724dbff9e8de26beee1e2cfab))
+* **deps-dev:** bump jupyterlab from 4.6.1 to 4.6.2 ([c9f661d](https://github.com/noshita/ktch/commit/c9f661d17e0d21dd6bc563be4476746934af8265))
+* **deps:** 🔧 refresh the lockfile ([2deddcd](https://github.com/noshita/ktch/commit/2deddcd8177b0cd8c3e306ef0067bd1f3fb91271))
+* **deps:** bump actions/setup-python from 6 to 7 ([318916b](https://github.com/noshita/ktch/commit/318916bcc2c2d83df55cd5c93317b6adc926a56e))
+* **deps:** bump actions/setup-python from 6 to 7 ([f48aad3](https://github.com/noshita/ktch/commit/f48aad36ab490199de1d533cfe7955301aeaccfb))
+* **deps:** bump astral-sh/setup-uv from 8.3.2 to 10.0.1 ([3a821ce](https://github.com/noshita/ktch/commit/3a821ce0f634428200e31f76a5574f72e85aaedb))
+* **deps:** bump astral-sh/setup-uv from 8.3.2 to 10.0.1 ([c2ee125](https://github.com/noshita/ktch/commit/c2ee125cc7858732ae30434e1d60a3c4eb762172))
+* **paper:** 🔧 add the JOSS paper skeleton and draft PDF workflow ([aed8b03](https://github.com/noshita/ktch/commit/aed8b032f86c2094b2a4510fcae1a2adf12b9039))
+* release 0.11.0 ([1a1cc1f](https://github.com/noshita/ktch/commit/1a1cc1f805e5140b33a41779564696d53aa7877c))
+
+
+### Code Refactoring
+
+* **harmonic:** ♻️ name the parameter rotation for its domain ([2e31a3e](https://github.com/noshita/ktch/commit/2e31a3ef72d7fa453fbdb17dd00e67f06aa75c34))
+
 ## [0.10.1](https://github.com/noshita/ktch/compare/v0.10.0...v0.10.1) (2026-07-14)
 
 
