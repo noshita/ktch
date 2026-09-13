@@ -171,6 +171,14 @@ jobs:
             -o -name "opensearch.xml" \) -exec \
             sed -i "s|https://doc.ktch.dev/${ACTUAL_STABLE}/|https://doc.ktch.dev/stable/|g" {} +
 
+          # Date each sitemap entry from the commit that last touched its
+          # source. Runs here rather than in Sphinx: sphinx-multiversion builds
+          # each ref from a git archive, where no git lookup works.
+          python3 scripts/stamp_sitemap_lastmod.py \
+            --sitemap doc/_build/html/stable/sitemap.xml \
+            --ref "v${ACTUAL_STABLE}" \
+            --base-url https://doc.ktch.dev/stable/
+
           # Copy robots.txt to site root (html_extra_path places it inside each
           # version subdirectory, but Google expects it at the domain root)
           cp doc/_build/html/stable/robots.txt doc/_build/html/robots.txt
