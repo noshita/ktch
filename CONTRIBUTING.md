@@ -32,7 +32,21 @@ uv run pytest --benchmark-skip
 ```
 
 Tests are co-located with source code at `ktch/<module>/tests/test_<name>.py`.
-The CI matrix runs on Ubuntu, macOS, and Windows with Python 3.11, 3.12, and 3.13.
+
+CI reads the Python versions from `pyproject.toml`: `requires-python` gives the
+floor and the classifiers give the range. Linux runs every version in that
+range, macOS and Windows run the newest, and Windows also runs the floor. Two
+further jobs run on every push: one resolves the minimum versions declared for
+each dependency instead of the lockfile, and one checks that an install without
+the extras still imports every subpackage. A weekly run adds two more that
+report without blocking, resolving the newest releases of every dependency and
+installing ktch on top of the versions Google Colab ships.
+
+To install the test tools without the notebook and lint groups:
+
+```bash
+uv sync --no-default-groups --group test
+```
 
 ### Code style
 

@@ -401,6 +401,11 @@ SEO configuration of the documentation site:
   (`_modules/*`, `genindex`, `py-modindex`, `search`, `opensearch`)
 - `sphinxext-opengraph`: generates Open Graph meta tags
 - `scripts/gen_redirects.py`: redirect stubs for legacy and pre-dirhtml URLs
+- `scripts/stamp_sitemap_lastmod.py`: dates each sitemap entry from the last
+  commit that touched the page's source. It runs in `documentation.yml` after
+  the build, because sphinx-multiversion builds each ref from a `git archive`
+  where no git lookup works. Pages with no source in the repository, the
+  generated API reference among them, are left without a date
 
 The technical crawl configuration above was audited in July 2026 and is
 healthy: the sitemap is valid, `robots.txt` allows `/stable/`, canonical tags
