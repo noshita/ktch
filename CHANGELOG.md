@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.11.2](https://github.com/noshita/ktch/compare/v0.11.1...v0.11.2) (2026-09-13)
+
+
+### Features
+
+* ✨ declare support for Python 3.14 ([c57643f](https://github.com/noshita/ktch/commit/c57643fe5c4f8743948a42a95ea4567ddad50d7f))
+
+
+### Bug Fixes
+
+* **deps:** 🐛 declare dependency floors that actually install and import ([beaf14b](https://github.com/noshita/ktch/commit/beaf14b3888a9559330e17a02c281766640a6d24))
+
+
+### Documentation
+
+* 📚 date the sitemap entries from each page's git history ([68a95f4](https://github.com/noshita/ktch/commit/68a95f41692d9b0e18b49c6249ca9e715519616c))
+* 📚 describe the CI matrix and the sitemap dating script ([bc25495](https://github.com/noshita/ktch/commit/bc25495395e9e1b5a3246b272d947680807733fd))
+* 📚 make the README links work off GitHub ([5a65a1d](https://github.com/noshita/ktch/commit/5a65a1d4890350197e886d0ac718f62ef3af6c86))
+* 📚 write down how the supported version floors move ([539db10](https://github.com/noshita/ktch/commit/539db106bfdac394f448bb48a9c3b896f7312e4c))
+
 ## [0.11.1](https://github.com/noshita/ktch/compare/v0.11.0...v0.11.1) (2026-09-12)
 
 
