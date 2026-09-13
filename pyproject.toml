@@ -56,9 +56,11 @@ notebook = [
   "ipykernel<7",
 ]
 lint = ["ruff>=0.15.20"]
+test = ["pytest>=8.3", "pytest-benchmark>=5.1.0", "pytest-cov>=6.0"]
 dev = [
   { include-group = "notebook" },
   { include-group = "lint" },
+  { include-group = "test" },
   "jupyter>=1.1",
   "jupyterlab>=4.3",
   "licensecheck>=2025.1",
@@ -66,9 +68,6 @@ dev = [
   "networkx>=3.6",
   "numba>=0.61",
   "pre-commit>=4.6.0",
-  "pytest>=8.3",
-  "pytest-benchmark>=5.1.0",
-  "pytest-cov>=6.0",
   "tqdm>=4.67",
   "tslearn>=0.6.3",
   "xarray>=2025.1",

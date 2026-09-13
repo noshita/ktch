@@ -6,42 +6,83 @@ on:
       [
         "ktch/**",
         .github/workflows/test-codecov.yml,
+        .github/actions/uv-python/action.yml,
         pyproject.toml,
       ]
+  schedule:
+    # Mondays, 15:00 JST (06:00 UTC).
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Python versions come from pyproject.toml: requires-python and the
+  # classifiers.
+  versions:
+    runs-on: ubuntu-latest
+    outputs:
+      supported: ${{ steps.read.outputs.supported }}
+      floor: ${{ steps.read.outputs.floor }}
+      latest: ${{ steps.read.outputs.latest }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: read
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import pathlib
+          import re
+
+          text = pathlib.Path("pyproject.toml").read_text()
+          floor = re.search(r'requires-python\s*=\s*">=(\d+\.\d+)"', text).group(1)
+          supported = sorted(
+              re.findall(r'"Programming Language :: Python :: (\d+\.\d+)"', text),
+              key=lambda v: tuple(int(part) for part in v.split(".")),
+          )
+          if supported[0] != floor:
+              raise SystemExit(
+                  f"requires-python says {floor}, lowest classifier says {supported[0]}"
+              )
+          print("floor=" + floor)
+          print("latest=" + supported[-1])
+          print("supported=" + json.dumps(supported))
+          PY
+
   test:
+    if: github.event_name != 'schedule'
+    needs: versions
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: read
       pull-requests: write
-    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
-        python-version: ["3.11", "3.12", "3.13"]
+        os: [ubuntu-latest]
+        python-version: ${{ fromJSON(needs.versions.outputs.supported) }}
+        include:
+          - os: macOS-latest
+            python-version: ${{ needs.versions.outputs.latest }}
+          - os: windows-latest
+            python-version: ${{ needs.versions.outputs.latest }}
+          - os: windows-latest
+            python-version: ${{ needs.versions.outputs.floor }}
     env:
       OS: ${{ matrix.os }}
       PYTHON: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v7
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
+      - uses: ./.github/actions/uv-python
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          enable-cache: true
-          cache-dependency-glob: "**/pyproject.toml"
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --frozen --no-default-groups --group test --all-extras
       - name: Test with pytest
-        run: uv run pytest --benchmark-skip --cov=./ --cov-report=xml
+        run: uv run --no-sync pytest --benchmark-skip --cov=./ --cov-report=xml
       - name: Upload coverage reports to Codecov
-        if: github.actor != 'dependabot[bot]'
+        if: matrix.os == 'ubuntu-latest' && github.actor != 'dependabot[bot]'
         uses: codecov/codecov-action@v7
         with:
           env_vars: OS,PYTHON
@@ -50,3 +91,96 @@ jobs:
           flags: unittests
           token: ${{ secrets.CODECOV_TOKEN }}
           verbose: true
+
+  # Resolves the floors declared in pyproject.toml instead of the lockfile.
+  floors:
+    if: github.event_name != 'schedule'
+    needs: versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/uv-python
+        with:
+          python-version: ${{ needs.versions.outputs.floor }}
+      - name: Install dependencies at the declared floors
+        run: |
+          uv lock --resolution lowest-direct
+          uv sync --frozen --no-default-groups --group test --all-extras
+      - name: Test with pytest
+        run: uv run --no-sync pytest --benchmark-skip
+
+  # A core install must not import the optional dependencies.
+  core:
+    if: github.event_name != 'schedule'
+    needs: versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/uv-python
+        with:
+          python-version: ${{ needs.versions.outputs.latest }}
+      - name: Install without the extras
+        run: uv sync --frozen --no-default-groups --group test
+      - name: Import every subpackage
+        run: |
+          uv run --no-sync python - <<'PY'
+          import sys
+
+          import ktch
+          import ktch.coiling
+          import ktch.harmonic
+          import ktch.io
+          import ktch.landmark
+
+          leaked = [n for n in ("matplotlib", "plotly", "seaborn") if n in sys.modules]
+          assert not leaked, f"optional dependencies imported unconditionally: {leaked}"
+          print(ktch.__version__)
+          PY
+
+  # Resolves the newest compatible releases. Reports, does not block.
+  latest:
+    if: github.event_name != 'push'
+    needs: versions
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/uv-python
+        with:
+          python-version: ${{ needs.versions.outputs.latest }}
+      - name: Install the newest compatible releases
+        run: |
+          uv lock --upgrade
+          uv sync --frozen --no-default-groups --group test --all-extras
+      - name: Test with pytest
+        run: uv run --no-sync pytest --benchmark-skip
+
+  # Installs ktch on top of the versions Google Colab ships, and prints what
+  # the install upgrades. Reports, does not block.
+  colab:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read the Colab runtime
+        id: colab
+        run: |
+          base=https://raw.githubusercontent.com/googlecolab/backend-info/main
+          curl -sSfL -o colab-os-info.txt "$base/os-info.txt"
+          curl -sSfL -o colab-freeze.txt "$base/pip-freeze.txt"
+          version=$(grep -oE 'Python [0-9]+\.[0-9]+' colab-os-info.txt | head -1 | cut -d' ' -f2)
+          echo "python-version=$version" >> "$GITHUB_OUTPUT"
+          grep -E '^(numpy|pandas|scipy|scikit-learn|matplotlib|plotly|seaborn|pillow|pooch|pyarrow)==' \
+            colab-freeze.txt > colab-pins.txt
+          cat colab-pins.txt
+      - uses: ./.github/actions/uv-python
+        with:
+          python-version: ${{ steps.colab.outputs.python-version }}
+      - name: Install Colab's versions, then ktch on top of them
+        run: |
+          uv pip install --system -r colab-pins.txt
+          uv pip install --system ".[data,plot]" "pytest>=8.3" "pytest-benchmark>=5.1.0"
+          uv pip list | grep -E '^(numpy|pandas|scipy|scikit-learn|matplotlib|plotly|seaborn|pillow|pooch|pyarrow) '
+      - name: Test with pytest
+        run: pytest --benchmark-skip
