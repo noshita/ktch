@@ -137,6 +137,17 @@ Do not manually edit `pyproject.toml` version — let Release Please manage it.
    directories in earlier releases. A new top-level file that belongs in the
    distribution has to be added to that list; anything else stays out.
 
+5. Confirm that the supported-version ends have not moved, per
+   [Supported versions policy](#supported-versions-policy):
+
+   ```bash
+   curl -s https://raw.githubusercontent.com/conda-forge/conda-forge-pinning-feedstock/main/recipe/conda_build_config.yaml | grep -A3 '^python_min'
+   curl -s https://raw.githubusercontent.com/googlecolab/backend-info/main/os-info.txt | grep Python
+   ```
+
+   A change in either value does not block the release. It schedules the
+   floor update for the next minor release.
+
 ### Merging the Release Please PR
 
 1. Review the auto-generated CHANGELOG in the PR
@@ -198,28 +209,35 @@ After the PyPI package is published:
    in the feedstock repository within a few hours
 2. The bot updates the source URL, version, and SHA256 hash in `meta.yaml`
    automatically
-3. Review the PR — the bot does not update dependency version
-   constraints, so check `pyproject.toml` against `meta.yaml` and
-   fix any mismatches. To apply fixes, close the bot PR and create
-   a new one from a personal fork.
+3. Review the PR. The bot updates the source URL, the version, and the
+   hash, and leaves everything else alone. Check `pyproject.toml` against
+   `meta.yaml` for dependency floors that moved under
+   [Supported versions policy](#supported-versions-policy), and confirm the
+   recipe does not set `python_min`. That value comes from the conda-forge
+   pinning.
 
-   Note: the bot's PR branch lives on the bot's own fork
-   (`regro-cf-autotick-bot/ktch-feedstock`), not on
-   `conda-forge/ktch-feedstock`. You cannot push commits to the
-   bot's branch even though the PR description says "Feel free to
-   push to the bot's branch." Always create a new PR from your
-   personal fork instead.
-
-   The local clone used here is `noshita/ktch-feedstock` (personal fork),
-   with `origin` pointing to the personal fork. The `--repo` flag tells
-   `gh` to fetch the PR from the upstream `conda-forge/ktch-feedstock`
-   even though `origin` is the personal fork.
+   Fixes go on the bot's branch. The PR description invites this and the
+   branch allows edits by maintainers, which a `maintainerCanModify` of
+   `true` on the PR confirms. The local clone has `bot` pointing at the
+   bot's fork, `origin` at the personal fork, and `upstream` at
+   `conda-forge/ktch-feedstock`.
 
    ```bash
-   cd ktch-feedstock   # local clone of noshita/ktch-feedstock (personal fork)
+   cd ktch-feedstock
+   git fetch bot <BOT_BRANCH>   # e.g. 0.11.1_hdf33bd, shown on the PR page
+   git switch --track bot/<BOT_BRANCH>
+   # edit recipe/meta.yaml
+   git commit -am "<what changed>"
+   git push bot HEAD
+   gh pr checks <PR_NUMBER> --repo conda-forge/ktch-feedstock --watch
+   ```
+
+   Pushing re-runs both the build and the linting service. If the push is
+   rejected, fall back to a PR from the personal fork and close the bot PR:
+
+   ```bash
    gh pr checkout <PR_NUMBER> --repo conda-forge/ktch-feedstock
-   # Edit meta.yaml and commit
-   git checkout -b <new-branch-name>
+   git switch -c <new-branch-name>
    git push origin <new-branch-name>
    gh pr create --repo conda-forge/ktch-feedstock \
      --head noshita:<new-branch-name>
@@ -401,6 +419,140 @@ Only if a specific page is genuinely missing from the index, first rule out the
 mechanical causes: the URL is in `/stable/sitemap.xml`, returns 200 (not a
 redirect stub or 404), and has no unintended `noindex`; then request indexing
 via GSC's URL Inspection tool.
+
+## Supported versions policy
+
+ktch declares a minimum Python version and a minimum version for each
+dependency. This section fixes how those minimums move, so that the reasoning
+does not have to be reconstructed at every release.
+
+### Python
+
+The floor equals conda-forge's `python_min`, as long as that value stays at or
+below the Python that Google Colab runs. Both ends are external. Check them
+rather than assume them.
+
+conda-forge sets the lower end. CFEP-25 pins `python_min` in the global
+pinning file, and conda-forge does not ship new `noarch: python` packages
+below it. Declaring a lower floor in `pyproject.toml` therefore does not
+produce a conda package that installs on an older Python.
+
+Colab sets the upper end. Its Python version cannot be changed from inside a
+session, and the Colab FAQ names it as an example of a core dependency that
+cannot be changed back. Libraries are a separate matter: `pip install`
+upgrades them at the cost of a session restart. Colab therefore constrains the
+Python floor only. Colab also lets a notebook pin a past runtime for one year,
+and workshop material depends on that. Keep the floor at or below the Python
+of the oldest pinnable runtime.
+
+When conda-forge raises `python_min`, raise `requires-python` to match in the
+next minor release. If `python_min` ever rises above the Python that Colab
+runs, keep `requires-python` at the Colab version and let the conda package's
+floor move on its own. CFEP-25 allows the two ecosystems to differ, and states
+the reason: conda-forge will not ship new packages for Python versions it no
+longer supports.
+
+The feedstock recipe must not redefine `python_min`. Without a redefinition
+the conda side follows the global pinning by itself, which is what keeps this
+rule self-maintaining.
+
+```bash
+curl -s https://raw.githubusercontent.com/conda-forge/conda-forge-pinning-feedstock/main/recipe/conda_build_config.yaml | grep -A3 '^python_min'
+curl -s https://raw.githubusercontent.com/googlecolab/backend-info/main/os-info.txt | grep Python
+```
+
+The `googlecolab/backend-info` README also lists the pinnable past runtimes
+with their Python versions.
+
+### Dependency tiers
+
+| Tier | Packages | Floor policy |
+|---|---|---|
+| 1 | numpy, scipy, pandas, scikit-learn | Track the newest major version |
+| 2 | matplotlib, plotly, seaborn, pillow, pyarrow, pooch | Whatever the APIs in use require |
+
+Tier 1 is the layer the public API is built on. Keeping current there is what
+keeps the code free of deprecated usage. Tier 2 reaches users through extras,
+where raising a floor excludes environments for little gain. polars is Tier 2
+and is not a dependency today.
+
+Being compatible with a new release and requiring it are separate decisions.
+The first is routine and breaks nothing. The second excludes environments and
+needs the conditions below.
+
+A new upstream release should be green in CI within one month for a major
+version, and by the next ktch release for a minor version. The weekly CI job
+that resolves the newest compatible releases is the detector.
+
+### Raising a floor
+
+Raise a floor in the next minor release once all four conditions hold:
+
+1. The version is available on conda-forge's main channel
+2. CI passes with the newest resolution
+3. Three months have passed since that version was released
+4. The invariant below still holds
+
+Record the reason in the changelog entry, such as the API the new floor makes
+available or the compatibility code it lets us delete.
+
+[SPEC 0](https://scientific-python.org/specs/spec-0000/) is the backstop at
+the other end. It is the Scientific Python ecosystem's shared recommendation
+for support windows: drop a Python version 3 years after its release and a
+core package 2 years after its release. A floor should not be older than
+that.
+
+### The Python floor caps the dependency floors
+
+No dependency floor may require a Python newer than ktch's own Python floor.
+
+Core packages drop old Python versions on their own schedule, and the newest
+release of one of them regularly requires a Python newer than the floor. The
+floor therefore caps every dependency floor, and the cap moves on someone
+else's timetable. Breaking the invariant also breaks the conda-forge build,
+because the recipe builds and tests in a host environment pinned to the
+minimum Python.
+
+Operations therefore run in one order: conda-forge raises `python_min`, then
+ktch raises `requires-python`, then the dependency floors can move.
+
+```bash
+curl -s https://pypi.org/pypi/<package>/<version>/json \
+  | python -c "import json,sys; print(json.load(sys.stdin)['info']['requires_python'])"
+```
+
+### Where the versions are declared
+
+| Location | What it carries |
+|---|---|
+| `pyproject.toml` `requires-python` | The Python floor |
+| `pyproject.toml` classifiers | The supported Python versions |
+| `pyproject.toml` dependencies, optional-dependencies | The dependency floors |
+| `.github/workflows/test-codecov.yml` | The jobs that test them; the versions are read from `pyproject.toml` |
+| `README.md`, installation section | The Python floor, in prose |
+| `doc/installation.md`, dependencies section | The Python floor and the dependency floors |
+
+The feedstock recipe follows the Python floor on its own. Dependency floors in
+`recipe/meta.yaml` do not: update them by hand in the next version-bump PR, as
+described under [Version update (routine)](#version-update-routine).
+
+### How CI covers the range
+
+The `versions` job reads `requires-python` and the Python classifiers, and
+every other job takes its Python version from that output. Adding a version to
+the classifiers therefore adds it to the matrix.
+
+ktch is pure Python, and what differs between operating systems is file IO and
+the plotting backends rather than the language minor version. Linux runs the
+whole supported range. macOS and Windows run the newest version, and Windows
+also runs the floor, since the file parsers meet different path and newline
+handling there.
+
+Three jobs stand outside the matrix. `floors` resolves the declared minimums
+instead of the lockfile, which is what keeps them honest. `core` checks that
+an install without the extras imports every subpackage. The weekly `latest`
+and `colab` jobs report without blocking: one resolves the newest compatible
+releases, the other installs ktch on top of the versions Colab ships.
 
 ## Remote datasets (Cloudflare R2)
 
