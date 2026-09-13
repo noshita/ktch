@@ -25,14 +25,14 @@ classifiers = [
 dependencies = [
   "numpy>=2.0",
   "pandas[pyarrow]>=3.0",
-  "scikit-learn>=1.5",
+  "scikit-learn>=1.6",
   "scipy>=1.15",
 ]
 
 [project.optional-dependencies]
-data = ["pillow>=9.0", "pooch>=1.3"]
+data = ["pillow>=9.3", "pooch>=1.3"]
 docs = []
-plot = ["matplotlib>=3.10", "plotly>=6.0", "seaborn>=0.13.2"]
+plot = ["matplotlib>=3.10", "plotly>=7.0", "seaborn>=0.13.2"]
 
 [project.urls]
 Homepage = "https://doc.ktch.dev/stable/"
