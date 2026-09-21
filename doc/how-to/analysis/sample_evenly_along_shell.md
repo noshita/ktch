@@ -115,7 +115,7 @@ Y_arclength = growing_tube_model.inverse_transform(
 ## Visualization
 
 Compare the meshes side by side. The arc-length grids space the rings evenly
-along the coil.
+along the growth trajectory.
 
 ```{code-cell} ipython3
 panels = [

@@ -136,7 +136,7 @@ X.shape
 ```
 
 The result is a `(n_s, n_phi, 3)` array: `n_s` samples along the growth stage
-`s`, `n_phi` samples around the tube, and the `(x, y, z)` coordinates.
+`s`, `n_phi` samples around the aperture, and the `(x, y, z)` coordinates.
 
 ```{code-cell} ipython3
 fig = plot_surface3d(X, title="Growing tube (e_g=0.02, c_g=0.4, t_g=0.06)")
@@ -363,9 +363,9 @@ generates, and the parameters estimated from that shell describe the same form.
 
 ```{note}
 The `"surface"` method assumes that rows run along the growth stage and
-columns run once around the tube, as in the output of `inverse_transform`. It
-uses the coordinates only: the grid values `s_range` and `phi_range` are not
-needed. A surface generated with `method="ode"` is estimated the same way.
+columns run once around the aperture, as in the output of `inverse_transform`.
+It uses the coordinates only: the grid values `s_range` and `phi_range` are
+not needed. A surface generated with `method="ode"` is estimated the same way.
 ```
 
 ## Many shells at once

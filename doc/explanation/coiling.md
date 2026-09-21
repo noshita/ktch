@@ -102,3 +102,4 @@ describe their correspondence, including the conversion between their parameters
   {doc}`../tutorials/coiling/growing_tube_model` for generating shells with each
   model.
 - {doc}`../api/coiling` for the API reference.
+- {doc}`../glossary` for the terms this page uses.

@@ -21,7 +21,8 @@ mimics the aperture shape, that expands, rotates, and translates along a fixed
 coiling axis. Three parameters control the geometry:
 
 - whorl expansion rate `w_r`: how fast the tube widens per revolution
-- translation rate `t_r`: how fast the coil moves down along the coiling axis
+- translation rate `t_r`: how fast the aperture moves down along the
+  coiling axis
 - relative distance of the generating curve from the coiling axis `d_r`
 
 ## Setup
@@ -55,9 +56,8 @@ pio.renderers.default = "sphinx_gallery"
 ## Generate your first shell
 
 `RaupModel` provides the model. Its `inverse_transform` takes the parameters
-and returns a sampled surface.
-We also pass a sampling grid (`theta_range` along the growth trajectory, `phi_range` around
-the aperture).
+and returns a sampled surface. We also pass a sampling grid (`theta_range`
+along the growth trajectory, `phi_range` around the aperture).
 
 ```{code-cell} ipython3
 theta = np.linspace(0.0, 2.0 * np.pi * 4.0, 240)  # four whorls
@@ -68,9 +68,9 @@ X = raup_model.inverse_transform([1.3, 1.5, 0.2], theta_range=theta, phi_range=p
 X.shape
 ```
 
-You should see a `(n_theta, n_phi, 3)` array: `n_theta` samples along the coil,
-`n_phi` samples around the tube, and the last axis holds the `(x, y, z)`
-coordinates of each surface point.
+You should see a `(n_theta, n_phi, 3)` array: `n_theta` samples along the
+growth trajectory, `n_phi` samples around the aperture, and the last axis
+holds the `(x, y, z)` coordinates of each surface point.
 
 ## Visualize in 3D
 
@@ -340,9 +340,10 @@ The two surfaces coincide. This is the sense in which `transform` and
 generates, and the parameters estimated from that shell describe the same form.
 
 ```{note}
-The `"surface"` method assumes that rows run along the coil and columns run
-once around the tube, as in the output of `inverse_transform`. It uses the
-coordinates only: the grid values `theta_range` and `phi_range` are not needed.
+The `"surface"` method assumes that rows run along the growth trajectory and
+columns run once around the aperture, as in the output of `inverse_transform`.
+It uses the coordinates only: the grid values `theta_range` and `phi_range` are
+not needed.
 ```
 
 ## Many shells at once

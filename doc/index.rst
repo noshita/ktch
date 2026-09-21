@@ -57,6 +57,7 @@ shows what this looks like in practice, including the scikit-learn estimator API
    :caption: Reference
 
    api/index
+   glossary
 
 
 Installation
@@ -91,6 +92,12 @@ API reference
 
 :doc:`Complete API documentation <api/index>` for all classes, functions,
 and modules.
+
+Glossary
+-------------------------------------------------
+
+:doc:`Definitions <glossary>` of the terms the documentation shares across
+tutorials, how-to guides, and explanation pages.
 
 Getting help
 -------------------------------------------------
