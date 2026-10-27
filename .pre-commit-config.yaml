@@ -1,6 +1,6 @@
 # Local hooks run ruff from the project's uv environment.
 # The lint and format version has a single source of truth in uv.lock.
-# Install with `uv run pre-commit install`.
+# Install with `uv tool install pre-commit`, then `pre-commit install`.
 repos:
   - repo: local
     hooks:

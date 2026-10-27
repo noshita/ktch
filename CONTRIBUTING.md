@@ -65,10 +65,12 @@ uv run ruff format .
 ```
 
 Or install the pre-commit hook so it runs automatically on changed files at
-commit:
+commit. pre-commit is installed as a uv tool, not as a project dependency: it
+only dispatches the hooks, which run ruff from the project environment.
 
 ```bash
-uv run pre-commit install
+uv tool install pre-commit
+pre-commit install
 ```
 
 ### Building documentation
