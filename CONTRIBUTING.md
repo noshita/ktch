@@ -52,12 +52,16 @@ uv sync --no-default-groups --group test
 
 ktch uses [ruff](https://docs.astral.sh/ruff/) for linting and formatting.
 The ruff version is pinned in `uv.lock` (the `lint` dependency group).
+The formatter also covers the Python code blocks in Markdown files. A code
+block laid out by hand for the reader can opt out: enclose it in
+`<!-- fmt: off -->` and `<!-- fmt: on -->`, which do not show in the rendered
+page.
 
 Run it directly:
 
 ```bash
 uv run ruff check ktch/
-uv run ruff format ktch/
+uv run ruff format .
 ```
 
 Or install the pre-commit hook so it runs automatically on changed files at
@@ -187,6 +191,7 @@ function body:
 # ktch/plot/_new_module.py
 from ._base import require_dependencies
 
+
 def my_plot_function(data, ax=None):
     require_dependencies("matplotlib")
     import matplotlib.pyplot as plt
@@ -281,9 +286,7 @@ Analysis classes that support `n_jobs` use `sklearn.utils.parallel`:
 ```python
 from sklearn.utils.parallel import Parallel, delayed
 
-results = Parallel(n_jobs=self.n_jobs)(
-    delayed(self._process_single)(x) for x in X
-)
+results = Parallel(n_jobs=self.n_jobs)(delayed(self._process_single)(x) for x in X)
 ```
 
 Renamed or moved APIs use `__getattr__` hooks with `DeprecationWarning`:
@@ -294,6 +297,7 @@ def __getattr__(name):
     if name == "EllipticFourierAnalysis":
         warnings.warn("...", DeprecationWarning, stacklevel=2)
         from ktch.harmonic import EllipticFourierAnalysis
+
         return EllipticFourierAnalysis
     raise AttributeError(...)
 ```

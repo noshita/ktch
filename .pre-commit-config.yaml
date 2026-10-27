@@ -14,5 +14,7 @@ repos:
         name: ruff format
         entry: uv run --no-sync ruff format --force-exclude
         language: system
-        types_or: [python, pyi]
+        # ruff check does not lint Markdown; the formatter covers its Python
+        # code blocks.
+        types_or: [python, pyi, markdown]
         require_serial: true

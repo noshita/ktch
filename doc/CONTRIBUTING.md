@@ -46,6 +46,9 @@ Each directory corresponds to one quadrant:
   Analysis, etc.) keep their established capitalization.
 - Avoid bold (`**...**`) unless emphasis is truly essential. Prefer plain
   text, code formatting, or headings to convey structure.
+- Python code blocks are formatted by ruff at commit, following the code
+  style section of the repository's `CONTRIBUTING.md`. Executable
+  `{code-cell}` blocks are not formatted.
 
 ## Content guidelines
 
