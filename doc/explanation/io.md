@@ -20,8 +20,12 @@ Bridge converters translate between a data container and the flat coefficient ar
 
 ```python
 from ktch.io import (
-    nef_to_efa_coeffs, efa_coeffs_to_nef,           # NEF <-> EFA
-    spharmpdm_to_sha_coeffs, sha_coeffs_to_spharmpdm,  # SPHARM-PDM <-> SHA
+    # NEF <-> EFA
+    nef_to_efa_coeffs,
+    efa_coeffs_to_nef,
+    # SPHARM-PDM <-> SHA
+    spharmpdm_to_sha_coeffs,
+    sha_coeffs_to_spharmpdm,
 )
 ```
 

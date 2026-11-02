@@ -67,7 +67,7 @@ all dependency licenses are compatible with the project license (Apache-2.0).
 Licenses to reject are configured in `pyproject.toml` under `[tool.licensecheck]`.
 
 ```bash
-uv run licensecheck -r pyproject.toml --zero
+uvx licensecheck -r pyproject.toml --zero
 ```
 
 `--zero` returns a non-zero exit code if an incompatible license is found,

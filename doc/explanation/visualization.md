@@ -108,8 +108,14 @@ An axes-level function can be dropped into any existing subplot:
 fig, axes = plt.subplots(2, 2)
 for ax, (i, j) in zip(axes.flat[:3], [(0, 1), (1, 2), (2, 0)]):
     morphospace_plot(
-        data=df, x=f"PC{i+1}", y=f"PC{j+1}", hue="genus",
-        reducer=pca, descriptor=efa, components=(i, j), ax=ax,
+        data=df,
+        x=f"PC{i + 1}",
+        y=f"PC{j + 1}",
+        hue="genus",
+        reducer=pca,
+        descriptor=efa,
+        components=(i, j),
+        ax=ax,
     )
 explained_variance_ratio_plot(pca, ax=axes[1, 1])
 ```
@@ -121,8 +127,7 @@ A figure-level function controls the entire figure and is called standalone.
 Built-in renderers cover common cases, but the `render_fn` parameter accepts any callable with the signature:
 
 ```python
-def render_fn(coords, ax, *, color="gray", alpha=1.0, links=None, **kwargs):
-    ...
+def render_fn(coords, ax, *, color="gray", alpha=1.0, links=None, **kwargs): ...
 ```
 
 This enables filled shapes, custom projections, annotation overlays, or any other matplotlib drawing without modifying the reconstruction pipeline.

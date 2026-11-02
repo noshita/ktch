@@ -1,9 +1,17 @@
 version: 2
 updates:
   - package-ecosystem: "github-actions"
-    directory: "/"
+    # "/" covers .github/workflows only, not the local composite actions.
+    directories:
+      - "/"
+      - "/.github/actions/*"
     schedule:
       interval: "weekly"
+    groups:
+      # One pull request per action, covering every directory that uses it.
+      actions:
+        patterns: ["*"]
+        group-by: dependency-name
   - package-ecosystem: "uv"
     directory: "/"
     schedule:

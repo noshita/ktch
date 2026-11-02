@@ -8,6 +8,7 @@ on:
         .github/workflows/test-codecov.yml,
         .github/actions/uv-python/action.yml,
         pyproject.toml,
+        uv.lock,
       ]
   schedule:
     # Mondays, 15:00 JST (06:00 UTC).
@@ -16,6 +17,9 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   # Python versions come from pyproject.toml: requires-python and the
