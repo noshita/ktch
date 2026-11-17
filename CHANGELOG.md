@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.11.2](https://github.com/noshita/ktch/compare/v0.11.1...v0.11.2) (2026-11-17)
+
+
+### Features
+
+* ✨ declare support for Python 3.14 ([c57643f](https://github.com/noshita/ktch/commit/c57643fe5c4f8743948a42a95ea4567ddad50d7f))
+
+
+### Bug Fixes
+
+* **deps:** 🐛 declare dependency floors that actually install and import ([beaf14b](https://github.com/noshita/ktch/commit/beaf14b3888a9559330e17a02c281766640a6d24))
+* **deps:** 🐛 lower the pandas floor to what Colab ships ([1447226](https://github.com/noshita/ktch/commit/14472265ff3263128df152ab79ad258ba8618185)), closes [#242](https://github.com/noshita/ktch/issues/242)
+* **deps:** 🐛 lower the plotly floor to what Colab ships ([724f7fe](https://github.com/noshita/ktch/commit/724f7fe1d8f0393874966c20dd2eded6871030ab))
+
+
+### Documentation
+
+* 📚 add a glossary and align the coiling terminology ([d6c84a3](https://github.com/noshita/ktch/commit/d6c84a31b88f4b945cee1fe0e535cdd146909080))
+* 📚 base the supported-versions policy on Colab runtimes ([37f9fd2](https://github.com/noshita/ktch/commit/37f9fd2b399ff1b4f0a27b661cbd6c8412b92070))
+* 📚 date the sitemap entries from each page's git history ([68a95f4](https://github.com/noshita/ktch/commit/68a95f41692d9b0e18b49c6249ca9e715519616c))
+* 📚 describe the CI matrix and the sitemap dating script ([bc25495](https://github.com/noshita/ktch/commit/bc25495395e9e1b5a3246b272d947680807733fd))
+* 📚 make the README links work off GitHub ([5a65a1d](https://github.com/noshita/ktch/commit/5a65a1d4890350197e886d0ac718f62ef3af6c86))
+* 📚 write down how the supported version floors move ([539db10](https://github.com/noshita/ktch/commit/539db106bfdac394f448bb48a9c3b896f7312e4c))
+
 ## [0.11.1](https://github.com/noshita/ktch/compare/v0.11.0...v0.11.1) (2026-09-12)
 
 
