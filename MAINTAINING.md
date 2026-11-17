@@ -142,7 +142,7 @@ Do not manually edit `pyproject.toml` version — let Release Please manage it.
 
    ```bash
    curl -s https://raw.githubusercontent.com/conda-forge/conda-forge-pinning-feedstock/main/recipe/conda_build_config.yaml | grep -A3 '^python_min'
-   curl -s https://raw.githubusercontent.com/googlecolab/backend-info/main/os-info.txt | grep Python
+   uv run scripts/colab_runtimes.py list
    ```
 
    A change in either value does not block the release. It schedules the
@@ -463,11 +463,13 @@ rule self-maintaining.
 
 ```bash
 curl -s https://raw.githubusercontent.com/conda-forge/conda-forge-pinning-feedstock/main/recipe/conda_build_config.yaml | grep -A3 '^python_min'
-curl -s https://raw.githubusercontent.com/googlecolab/backend-info/main/os-info.txt | grep Python
+uv run scripts/colab_runtimes.py list
 ```
 
-The `googlecolab/backend-info` README also lists the pinnable past runtimes
-with their Python versions.
+`scripts/colab_runtimes.py` reads the current runtime and every pinnable past
+runtime from `googlecolab/backend-info`. `list` shows the Python version and
+the versions of ktch's dependencies in each. `check` reports the packages that
+installing `ktch[data,plot]` would change in each runtime.
 
 ### Development environment floor
 
@@ -573,7 +575,9 @@ Three jobs stand outside the matrix. `floors` resolves the declared minimums
 instead of the lockfile, which is what keeps them honest. `core` checks that
 an install without the extras imports every subpackage. The weekly `latest`
 and `colab` jobs report without blocking: one resolves the newest compatible
-releases, the other installs ktch on top of the versions Colab ships.
+releases, the other installs ktch on top of what each Colab runtime ships,
+current and pinnable, and fails when the install would change one of those
+packages.
 
 ## Remote datasets (Cloudflare R2)
 

@@ -41,7 +41,7 @@ further jobs run on every push: one resolves the minimum versions declared for
 each dependency instead of the lockfile, and one checks that an install without
 the extras still imports every subpackage. A weekly run adds two more that
 report without blocking, resolving the newest releases of every dependency and
-installing ktch on top of the versions Google Colab ships.
+installing ktch on top of what each Google Colab runtime ships.
 
 To install the test tools without the notebook and lint groups:
 

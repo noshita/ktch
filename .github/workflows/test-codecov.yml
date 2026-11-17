@@ -159,32 +159,50 @@ jobs:
       - name: Test with pytest
         run: uv run --no-sync pytest --benchmark-skip
 
-  # Installs ktch on top of the versions Google Colab ships, and prints what
-  # the install upgrades. Reports, does not block.
-  colab:
+  # The Colab runtimes: the current one and every past one a notebook can pin.
+  colab-runtimes:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
-    continue-on-error: true
+    outputs:
+      runtimes: ${{ steps.list.outputs.runtimes }}
     steps:
       - uses: actions/checkout@v7
-      - name: Read the Colab runtime
-        id: colab
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - name: List the runtimes
+        id: list
         run: |
-          base=https://raw.githubusercontent.com/googlecolab/backend-info/main
-          curl -sSfL -o colab-os-info.txt "$base/os-info.txt"
-          curl -sSfL -o colab-freeze.txt "$base/pip-freeze.txt"
-          version=$(grep -oE 'Python [0-9]+\.[0-9]+' colab-os-info.txt | head -1 | cut -d' ' -f2)
-          echo "python-version=$version" >> "$GITHUB_OUTPUT"
-          grep -E '^(numpy|pandas|scipy|scikit-learn|matplotlib|plotly|seaborn|pillow|pooch|pyarrow)==' \
-            colab-freeze.txt > colab-pins.txt
-          cat colab-pins.txt
+          uv run scripts/colab_runtimes.py list
+          runtimes=$(uv run scripts/colab_runtimes.py list --json | jq -c '[.[] | {runtime, python}]')
+          echo "runtimes=$runtimes" >> "$GITHUB_OUTPUT"
+
+  # Installs ktch on top of what each Colab runtime ships. Reports, does not
+  # block. The job fails when the install would change a package Colab ships.
+  colab:
+    needs: colab-runtimes
+    name: colab (${{ matrix.runtime }})
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.colab-runtimes.outputs.runtimes) }}
+    env:
+      RUNTIME: ${{ matrix.runtime }}
+    steps:
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/uv-python
         with:
-          python-version: ${{ steps.colab.outputs.python-version }}
+          python-version: ${{ matrix.python }}
+      - name: Check that installing ktch changes no Colab package
+        id: check
+        continue-on-error: true
+        run: uv run scripts/colab_runtimes.py check "$RUNTIME" --preinstall colab-preinstalled.txt
       - name: Install Colab's versions, then ktch on top of them
         run: |
-          uv pip install --system -r colab-pins.txt
+          uv pip install --system -r colab-preinstalled.txt
           uv pip install --system ".[data,plot]" "pytest>=8.3" "pytest-benchmark>=5.1.0"
-          uv pip list | grep -E '^(numpy|pandas|scipy|scikit-learn|matplotlib|plotly|seaborn|pillow|pooch|pyarrow) '
       - name: Test with pytest
         run: pytest --benchmark-skip
+      - name: Fail if the install changed a Colab package
+        if: steps.check.outcome == 'failure'
+        run: exit 1
