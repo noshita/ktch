@@ -1267,7 +1267,7 @@ doc = ">=3.11.5"
 requires-dist = [
     { name = "matplotlib", marker = "extra == 'plot'", specifier = ">=3.10" },
     { name = "numpy", specifier = ">=2.0" },
-    { name = "pandas", extras = ["pyarrow"], specifier = ">=3.0" },
+    { name = "pandas", extras = ["pyarrow"], specifier = ">=2.2.2" },
     { name = "pillow", marker = "extra == 'data'", specifier = ">=9.3" },
     { name = "plotly", marker = "extra == 'plot'", specifier = ">=5.24" },
     { name = "pooch", marker = "extra == 'data'", specifier = ">=1.3" },

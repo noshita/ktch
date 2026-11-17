@@ -47,7 +47,7 @@ ktch requires:
 - NumPy >= 2.0
 - SciPy >= 1.15
 - scikit-learn >= 1.6
-- pandas >= 3.0 (with PyArrow)
+- pandas >= 2.2.2 (with PyArrow)
 
 ### Optional Dependencies
 
