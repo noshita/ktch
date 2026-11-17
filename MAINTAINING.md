@@ -469,6 +469,21 @@ curl -s https://raw.githubusercontent.com/googlecolab/backend-info/main/os-info.
 The `googlecolab/backend-info` README also lists the pinnable past runtimes
 with their Python versions.
 
+### Development environment floor
+
+A development tool can require a later patch release than the Python floor.
+`[tool.uv.dependency-groups]` in `pyproject.toml` sets a floor per dependency
+group for that case, apart from `requires-python`. It affects the lockfile and
+`uv sync` only, not the published metadata. Without it, uv keeps a separate
+resolution for the older patch releases, and a vulnerable version can stay in
+the lockfile there.
+
+The development floor may rise to any patch release within the minor version
+of `requires-python`. Raise it when a development dependency requires it, or
+at a release. CI tests the newest patch release of each minor version, and
+raising it therefore does not narrow what is tested. When `requires-python`
+rises, remove the development floor if it no longer exceeds the new floor.
+
 ### Dependency tiers
 
 | Tier | Packages | Floor policy |
@@ -531,6 +546,7 @@ curl -s https://pypi.org/pypi/<package>/<version>/json \
 | Location | What it carries |
 |---|---|
 | `pyproject.toml` `requires-python` | The Python floor |
+| `pyproject.toml` `[tool.uv.dependency-groups]` | The development environment floor, where it sits above the Python floor |
 | `pyproject.toml` classifiers | The supported Python versions |
 | `pyproject.toml` dependencies, optional-dependencies | The dependency floors |
 | `.github/workflows/test-codecov.yml` | The jobs that test them; the versions are read from `pyproject.toml` |

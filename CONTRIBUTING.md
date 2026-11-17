@@ -13,7 +13,8 @@ and conventions used in this project.
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.11.5 or later (ktch itself runs on 3.11; the documentation tools
+  need 3.11.5)
 - [uv](https://docs.astral.sh/uv/) (package manager)
 - Git
 
