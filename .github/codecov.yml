@@ -1,0 +1,29 @@
+# Small drops carry little signal without a review on every commit. The
+# library may lose up to one point, and the changed lines are reported only.
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+        paths:
+          - "ktch/"
+    patch:
+      default:
+        informational: true
+
+# Running a test covers the test itself, which says nothing about the code it
+# tests.
+ignore:
+  - "**/tests/**"
+
+component_management:
+  individual_components:
+    - component_id: library
+      name: library
+      paths:
+        - "ktch/**"
+    - component_id: scripts
+      name: scripts
+      paths:
+        - "scripts/**"

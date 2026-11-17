@@ -33,7 +33,7 @@ dependencies = [
 [project.optional-dependencies]
 data = ["pillow>=9.3", "pooch>=1.3"]
 docs = []
-plot = ["matplotlib>=3.10", "plotly>=7.0", "seaborn>=0.13.2"]
+plot = ["matplotlib>=3.10", "plotly>=5.24", "seaborn>=0.13.2"]
 
 [project.urls]
 Homepage = "https://doc.ktch.dev/stable/"
@@ -45,7 +45,7 @@ Repository = "https://github.com/noshita/ktch"
 notebook = [
   "matplotlib>=3.10",
   "seaborn>=0.13.2",
-  "plotly>=6.0",
+  "plotly>=5.24",
   "opencv-python>=4.11",
   "vtk>=9.5.2",
   "pillow>=9.0",
@@ -84,6 +84,12 @@ doc = [
 
 [tool.uv]
 default-groups = ["dev", "doc"]
+
+[tool.uv.dependency-groups]
+# Python floor for the development environment, separate from
+# requires-python (see MAINTAINING.md). soupsieve 4, which
+# pydata-sphinx-theme pulls in, requires Python 3.11.5.
+doc = { requires-python = ">=3.11.5" }
 
 [build-system]
 requires = ["hatchling"]
