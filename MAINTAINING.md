@@ -138,14 +138,17 @@ Do not manually edit `pyproject.toml` version — let Release Please manage it.
    distribution has to be added to that list; anything else stays out.
 
 5. Confirm that the supported-version ends have not moved, per
-   [Supported versions policy](#supported-versions-policy):
+   [Supported versions policy](#supported-versions-policy): the end-of-life
+   dates in the [Python Developer's Guide](https://devguide.python.org/versions/),
+   conda-forge's `python_min`, and the Colab runtimes.
 
    ```bash
    curl -s https://raw.githubusercontent.com/conda-forge/conda-forge-pinning-feedstock/main/recipe/conda_build_config.yaml | grep -A3 '^python_min'
    uv run scripts/colab_runtimes.py list
+   uv run scripts/colab_runtimes.py check
    ```
 
-   A change in either value does not block the release. It schedules the
+   A change in any of them does not block the release. It schedules the
    floor update for the next minor release.
 
 ### Merging the Release Please PR
@@ -213,8 +216,7 @@ After the PyPI package is published:
    hash, and leaves everything else alone. Check `pyproject.toml` against
    `meta.yaml` for dependency floors that moved under
    [Supported versions policy](#supported-versions-policy), and confirm the
-   recipe does not set `python_min`. That value comes from the conda-forge
-   pinning.
+   recipe overrides `python_min` only when that policy calls for it.
 
    Fixes go on the bot's branch. The PR description invites this and the
    branch allows edits by maintainers, which a `maintainerCanModify` of
@@ -431,45 +433,66 @@ ktch declares a minimum Python version and a minimum version for each
 dependency. This section fixes how those minimums move, so that the reasoning
 does not have to be reconstructed at every release.
 
+### Colab runtimes
+
+Google Colab is the reference environment for both kinds of floor. A notebook
+runs on the current runtime, or on a past runtime it pins under Runtime >
+Change runtime type > Runtime Version. Colab keeps each past runtime for one
+year after its release, and workshop material depends on that pinning.
+
+The covered runtimes are the current one and every pinnable past one. When
+ktch needs something that an old runtime cannot give, drop runtimes from the
+oldest end until `check` passes on every remaining one. The current runtime is
+never dropped. What it cannot give, ktch cannot require yet. State a drop in
+the commit message of the floor change, which carries it into the changelog.
+`scripts/colab_runtimes.py` has no setting for a drop yet. The first drop adds
+one, and `list`, `check` and the `colab` CI job then skip the dropped runtimes.
+
+`scripts/colab_runtimes.py` reads the runtimes from `googlecolab/backend-info`.
+`list` shows the Python version and the versions of ktch's dependencies in
+each. `check` reports the packages that installing `ktch[data,plot]` would
+change in each. The `colab` CI job runs it weekly without blocking. Run it
+yourself before changing a floor.
+
+```bash
+uv run scripts/colab_runtimes.py list
+uv run scripts/colab_runtimes.py check
+```
+
 ### Python
 
-The floor equals conda-forge's `python_min`, as long as that value stays at or
-below the Python that Google Colab runs. Both ends are external. Check them
-rather than assume them.
+The floor is the oldest Python minor version that has not reached its end of
+life, adjusted by two limits. The
+[Python Developer's Guide](https://devguide.python.org/versions/) lists the
+end-of-life dates.
 
-conda-forge sets the lower end. CFEP-25 pins `python_min` in the global
-pinning file, and conda-forge does not ship new `noarch: python` packages
-below it. Declaring a lower floor in `pyproject.toml` therefore does not
-produce a conda package that installs on an older Python.
+- The Colab limit comes first. Colab's Python cannot be changed from inside a
+  session, and the Colab FAQ names it as an example of a core dependency that
+  cannot be changed back. While a covered runtime still runs a Python past its
+  end of life, the floor stays at that Python.
+- A dependency floor that requires a newer Python raises the Python floor to
+  match. When a covered runtime runs an older Python, drop it first as
+  described under [Colab runtimes](#colab-runtimes).
 
-Colab sets the upper end. Its Python version cannot be changed from inside a
-session, and the Colab FAQ names it as an example of a core dependency that
-cannot be changed back. Libraries are a separate matter: `pip install`
-upgrades them at the cost of a session restart. Colab therefore constrains the
-Python floor only. Colab also lets a notebook pin a past runtime for one year,
-and workshop material depends on that. Keep the floor at or below the Python
-of the oldest pinnable runtime.
+Move the Python floor in the first minor release that these rules allow.
 
-When conda-forge raises `python_min`, raise `requires-python` to match in the
-next minor release. If `python_min` ever rises above the Python that Colab
-runs, keep `requires-python` at the Colab version and let the conda package's
-floor move on its own. CFEP-25 allows the two ecosystems to differ, and states
-the reason: conda-forge will not ship new packages for Python versions it no
-longer supports.
+Keep `requires-python` at a minor version. Patch-level needs of development
+tools go to the [development environment floor](#development-environment-floor).
+A patch release in `requires-python` is reserved for a CPython bug that ktch
+itself hits, with a comment beside it naming the release that fixed it.
 
-The feedstock recipe must not redefine `python_min`. Without a redefinition
-the conda side follows the global pinning by itself, which is what keeps this
-rule self-maintaining.
+conda-forge's `python_min` (CFEP-25) is often the same version. conda-forge
+does not ship new `noarch: python` packages below `python_min`. A lower floor
+in `pyproject.toml` therefore does not produce a conda package that installs
+on an older Python, and CFEP-25 accepts that the two ecosystems differ. When
+ktch's floor is the higher one, override `python_min` in the feedstock recipe
+with ktch's floor, and remove the override once the global value catches up.
+Do not override it otherwise. Without an override, the conda side follows the
+global pinning by itself.
 
 ```bash
 curl -s https://raw.githubusercontent.com/conda-forge/conda-forge-pinning-feedstock/main/recipe/conda_build_config.yaml | grep -A3 '^python_min'
-uv run scripts/colab_runtimes.py list
 ```
-
-`scripts/colab_runtimes.py` reads the current runtime and every pinnable past
-runtime from `googlecolab/backend-info`. `list` shows the Python version and
-the versions of ktch's dependencies in each. `check` reports the packages that
-installing `ktch[data,plot]` would change in each runtime.
 
 ### Development environment floor
 
@@ -486,57 +509,74 @@ at a release. CI tests the newest patch release of each minor version, and
 raising it therefore does not narrow what is tested. When `requires-python`
 rises, remove the development floor if it no longer exceeds the new floor.
 
-### Dependency tiers
+### Dependency floors
 
-| Tier | Packages | Floor policy |
-|---|---|---|
-| 1 | numpy, scipy, pandas, scikit-learn | Track the newest major version |
-| 2 | matplotlib, plotly, seaborn, pillow, pyarrow, pooch | Whatever the APIs in use require |
+Installing `ktch[data,plot]` on a covered Colab runtime must not change the
+version of any package the runtime already has, whether ktch depends on it
+directly or through another package. Adding a package that the runtime lacks
+is fine. An upgrade costs the user a session restart, and a pinned runtime
+exists to keep its versions fixed. The rule holds when:
 
-Tier 1 is the layer the public API is built on. Keeping current there is what
-keeps the code free of deprecated usage. Tier 2 reaches users through extras,
-where raising a floor excludes environments for little gain. polars is Tier 2
-and is not a dependency today.
+- each floor is at most the lowest version of that package across the covered
+  runtimes that ship it,
+- an upper bound, if one is ever needed, is at least the highest version
+  across them, and
+- the packages ktch adds do not require other versions of what the runtime
+  has.
+
+The oldest runtime alone does not settle this. A newer runtime can ship an
+older version of a package, and an upper bound can fall below what only the
+newest runtime ships. `check` resolves the whole set against each runtime's
+pip freeze, and is how the rule is checked.
+
+Within that limit, a floor is the lowest version that the APIs in use
+require. Lower a floor that breaks the rule in the next release, once the
+`floors` CI job passes at the lower version.
 
 Being compatible with a new release and requiring it are separate decisions.
-The first is routine and breaks nothing. The second excludes environments and
-needs the conditions below.
+Requiring one is bounded by the Colab runtimes as above. Compatibility is not
+optional, because Colab's next runtime may ship the newest release and ktch
+must not need it downgraded. A new upstream release should be green in CI
+within one month for a major version, and by the next ktch release for a
+minor version. The weekly CI job that resolves the newest compatible releases
+is the detector. When the current runtime ships a release that ktch fails on,
+fix ktch in a patch release. An upper bound is no remedy, because it would
+force a downgrade there.
 
-A new upstream release should be green in CI within one month for a major
-version, and by the next ktch release for a minor version. The weekly CI job
-that resolves the newest compatible releases is the detector.
+### Raising a dependency floor
 
-### Raising a floor
+Raise a dependency floor in the next minor release once all five conditions
+hold:
 
-Raise a floor in the next minor release once all four conditions hold:
-
-1. The version is available on conda-forge's main channel
-2. CI passes with the newest resolution
-3. Three months have passed since that version was released
-4. The invariant below still holds
+1. `check` reports no change on any covered runtime, after any drop described
+   under [Colab runtimes](#colab-runtimes)
+2. The version is available on conda-forge's main channel
+3. CI passes with the newest resolution
+4. Three months have passed since that version was released
+5. The Python floor still meets
+   [Dependency floors and the Python floor](#dependency-floors-and-the-python-floor)
 
 Record the reason in the changelog entry, such as the API the new floor makes
 available or the compatibility code it lets us delete.
 
-[SPEC 0](https://scientific-python.org/specs/spec-0000/) is the backstop at
-the other end. It is the Scientific Python ecosystem's shared recommendation
-for support windows: drop a Python version 3 years after its release and a
-core package 2 years after its release. A floor should not be older than
-that.
+[SPEC 0](https://scientific-python.org/specs/spec-0000/) is the Scientific
+Python ecosystem's shared recommendation for support windows: drop a Python
+version 3 years after its release and a core package 2 years after its
+release. ktch departs from it on purpose. The Python floor follows CPython's
+end of life, and the dependency floors follow the Colab runtimes.
 
-### The Python floor caps the dependency floors
+### Dependency floors and the Python floor
 
-No dependency floor may require a Python newer than ktch's own Python floor.
+No dependency floor may require a Python newer than ktch's own Python floor. A
+floor that did would also break the conda-forge build, because the recipe
+builds and tests in a host environment pinned to the minimum Python.
 
 Core packages drop old Python versions on their own schedule, and the newest
-release of one of them regularly requires a Python newer than the floor. The
-floor therefore caps every dependency floor, and the cap moves on someone
-else's timetable. Breaking the invariant also breaks the conda-forge build,
-because the recipe builds and tests in a host environment pinned to the
-minimum Python.
-
-Operations therefore run in one order: conda-forge raises `python_min`, then
-ktch raises `requires-python`, then the dependency floors can move.
+release of one of them regularly requires a Python newer than the floor. When
+ktch needs such a release, raise the Python floor in the same release, within
+the limits under [Python](#python). The new Python floor then usually sits
+above conda-forge's `python_min`, which is the case for the override described
+there.
 
 ```bash
 curl -s https://pypi.org/pypi/<package>/<version>/json \
@@ -555,9 +595,11 @@ curl -s https://pypi.org/pypi/<package>/<version>/json \
 | `README.md`, installation section | The Python floor, in prose |
 | `doc/installation.md`, dependencies section | The Python floor and the dependency floors |
 
-The feedstock recipe follows the Python floor on its own. Dependency floors in
-`recipe/meta.yaml` do not: update them by hand in the next version-bump PR, as
-described under [Version update (routine)](#version-update-routine).
+The feedstock recipe takes the Python floor from conda-forge's global
+`python_min` and overrides it only as described under [Python](#python).
+Dependency floors in `recipe/meta.yaml` do not follow on their own: update
+them by hand in the next version-bump PR, as described under
+[Version update (routine)](#version-update-routine).
 
 ### How CI covers the range
 
@@ -575,9 +617,8 @@ Three jobs stand outside the matrix. `floors` resolves the declared minimums
 instead of the lockfile, which is what keeps them honest. `core` checks that
 an install without the extras imports every subpackage. The weekly `latest`
 and `colab` jobs report without blocking: one resolves the newest compatible
-releases, the other installs ktch on top of what each Colab runtime ships,
-current and pinnable, and fails when the install would change one of those
-packages.
+releases, the other installs ktch on top of what each covered Colab runtime
+ships, and fails when the install would change one of those packages.
 
 ## Remote datasets (Cloudflare R2)
 
