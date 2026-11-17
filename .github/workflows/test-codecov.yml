@@ -188,21 +188,26 @@ jobs:
         include: ${{ fromJSON(needs.colab-runtimes.outputs.runtimes) }}
     env:
       RUNTIME: ${{ matrix.runtime }}
+      PYTHON: ${{ matrix.python }}
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/uv-python
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
-          python-version: ${{ matrix.python }}
+          enable-cache: true
+          cache-dependency-glob: "**/pyproject.toml"
+      # setup-python lacks old patch releases on new runner images; uv has them.
+      - name: Create an environment on the runtime's Python
+        run: uv venv --python "$PYTHON"
       - name: Check that installing ktch changes no Colab package
         id: check
         continue-on-error: true
         run: uv run scripts/colab_runtimes.py check "$RUNTIME" --preinstall colab-preinstalled.txt
       - name: Install Colab's versions, then ktch on top of them
         run: |
-          uv pip install --system -r colab-preinstalled.txt
-          uv pip install --system ".[data,plot]" "pytest>=8.3" "pytest-benchmark>=5.1.0"
+          uv pip install -r colab-preinstalled.txt
+          uv pip install ".[data,plot]" "pytest>=8.3" "pytest-benchmark>=5.1.0"
       - name: Test with pytest
-        run: pytest --benchmark-skip
+        run: .venv/bin/python -m pytest --benchmark-skip
       - name: Fail if the install changed a Colab package
         if: steps.check.outcome == 'failure'
         run: exit 1
