@@ -1,0 +1,27 @@
+name: Docs latest dependencies
+
+# Tutorials run only in docs builds, and every other docs build installs from
+# uv.lock.
+
+on:
+  schedule:
+    # Mondays, 15:00 JST (06:00 UTC).
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/docs-build.yml
+    with:
+      version: dev
+      ref: ${{ github.sha }}
+      strict: true
+      upgrade: true

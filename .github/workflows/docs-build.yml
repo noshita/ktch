@@ -1,8 +1,9 @@
 name: Docs build
 
 # Builds one version of the documentation from its own ref, in the environment
-# that ref's uv.lock records, and uploads the dirhtml tree with a manifest as an
-# Actions artifact. Called by the workflows that publish or check the docs.
+# that ref's uv.lock records unless `upgrade` is set, and uploads the dirhtml
+# tree with a manifest as an Actions artifact. Called by the workflows that
+# publish or check the docs.
 
 on:
   workflow_call:
@@ -19,6 +20,10 @@ on:
         # Off for released versions: an older tag's own warnings must not fail
         # its rebuild.
         description: "Fail on any Sphinx warning (-W)"
+        type: boolean
+        default: false
+      upgrade:
+        description: "Install the newest compatible releases (uv lock --upgrade) instead of the ref's lock"
         type: boolean
         default: false
     outputs:
@@ -64,7 +69,11 @@ jobs:
       # --frozen, not --locked: release-please bumps pyproject.toml without
       # relocking, so a tag's lock records the previous ktch version.
       - name: Install the locked environment
-        run: uv sync --frozen --no-default-groups --group doc --python "$PYTHON_VERSION"
+        env:
+          UPGRADE: ${{ inputs.upgrade }}
+        run: |
+          if [ "$UPGRADE" = true ]; then uv lock --upgrade; fi
+          uv sync --frozen --no-default-groups --group doc --python "$PYTHON_VERSION"
 
       # From doc/, as a notebook kernel runs: at the repository root the
       # source tree would be imported whatever is installed.
@@ -79,8 +88,9 @@ jobs:
           '
 
       # Never for a release build: a cache must not carry outputs across versions.
+      # Nor with an upgraded lock, whose cache no dev run would restore.
       - name: Restore the notebook cache
-        if: inputs.version == 'dev'
+        if: inputs.version == 'dev' && !inputs.upgrade
         uses: actions/cache@v6.1.0
         with:
           path: doc/_build/.jupyter_cache

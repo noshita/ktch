@@ -1,0 +1,83 @@
+name: Docs release check
+
+on:
+  # Release Please's own pushes start no workflow. This runs when the
+  # maintainer pushes the versions.json update.
+  push:
+    branches: ["release-please--branches--main"]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Read the version and check versions.json
+        id: read
+        run: |
+          python3 - <<'EOF'
+          import json, os, sys, tomllib
+
+          with open("pyproject.toml", "rb") as f:
+              version = tomllib.load(f)["project"]["version"]
+          with open("doc/_static/versions.json") as f:
+              preferred = [e["version"] for e in json.load(f) if e.get("preferred")]
+          if preferred != [version]:
+              print(f"::error::versions.json names {preferred} as preferred; "
+                    f"pyproject.toml releases {version}")
+              sys.exit(1)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"version={version}\n")
+          print(version)
+          EOF
+
+  build:
+    needs: version
+    permissions:
+      contents: read
+    uses: ./.github/workflows/docs-build.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+      ref: ${{ github.sha }}
+      strict: true
+
+  redirects:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      ARTIFACT: ${{ needs.build.outputs.artifact }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Download the build
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: ${{ runner.temp }}/build
+
+      - name: Check the redirect map against the build
+        run: |
+          tar -xzf "$RUNNER_TEMP/build/$ARTIFACT.tar.gz" -C "$RUNNER_TEMP/build"
+          mkdir "$RUNNER_TEMP/site"
+          # gen_redirects.py resolves the map's targets under stable/.
+          mv "$RUNNER_TEMP/build/html" "$RUNNER_TEMP/site/stable"
+          python3 scripts/gen_redirects.py --site-dir "$RUNNER_TEMP/site"

@@ -120,6 +120,10 @@ Do not manually edit `pyproject.toml` version — let Release Please manage it.
    target version, then update `versions.json` on the release-please
    branch as described above.
 
+   The push starts `docs-release-check.yml` ("Docs release check"), which
+   builds the branch as the new version and checks `versions.json` and the
+   redirect map. Merge the release PR once it passes.
+
 3. If remote datasets were added or changed, update
    [`registry.toml`](#registrytoml) and run the
    [registry update script](#updating-the-dataset-registry).
@@ -369,6 +373,16 @@ Two workflows publish the documentation. The Actions page lists them as
   `doc/_static/versions.json` names, assembles the site
   (`scripts/assemble_site.py`) and deploys it to GitHub Pages. `/stable/` is a
   copy of the preferred version.
+
+Two more workflows build the documentation without deploying it:
+
+- `docs-release-check.yml` checks the release PR (see
+  [Pre-release checklist](#pre-release-checklist)). It is not a required
+  status check: it runs only on the release PR, and a required check that
+  never runs leaves a pull request blocked.
+- `docs-latest.yml` ("Docs latest dependencies") builds `/dev/` weekly with
+  the newest compatible dependencies instead of those in `uv.lock`. A failure
+  shows what a lock refresh would break.
 
 A released version is built once and keeps the content and look (`conf.py`,
 templates, theme) of the commit it was built from. A change on `main` reaches
