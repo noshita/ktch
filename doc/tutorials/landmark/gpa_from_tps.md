@@ -68,7 +68,7 @@ df_shapes
 ```{code-cell} ipython3
 df_shapes_vis = df_shapes.copy()
 df_shapes_vis.columns = pd.MultiIndex.from_tuples([[int(landmark_idx), dim] for dim, landmark_idx in [idx.split("_") for idx in df_shapes_vis.columns]], names=["coord_id","dim"])
-df_shapes_vis.sort_index(axis=1, inplace=True)
+df_shapes_vis = df_shapes_vis.sort_index(axis=1)
 df_shapes_vis = df_shapes_vis.swaplevel(0,1,axis=1).stack(level=1)
 df_shapes_vis
 ```

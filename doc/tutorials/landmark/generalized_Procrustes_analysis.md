@@ -147,7 +147,7 @@ df_shapes_vis.columns = pd.MultiIndex.from_tuples(
     ],
     names=["coord_id", "dim"],
 )
-df_shapes_vis.sort_index(axis=1, inplace=True)
+df_shapes_vis = df_shapes_vis.sort_index(axis=1)
 df_shapes_vis = df_shapes_vis.swaplevel(0, 1, axis=1).stack(level=1, future_stack=True)
 df_shapes_vis
 ```

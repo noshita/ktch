@@ -63,11 +63,11 @@ class DiskHarmonicAnalysis(
     scale : bool, default=True
         Whether registration removes size or keeps it.
         Only used when ``registration != None``.
-    scale_method : {None, "semi_major_axis", "ellipse_area", "centroid_size"}, \
-            default=None
-        Size measure when ``scale=True``. ``None`` resolves to the method
-        default: ``"ellipse_area"`` for ``"first_order"`` (all dimensions),
-        ``"centroid_size"`` for ``"moment"``.
+    scale_method : str or None, default=None
+        Size measure when ``scale=True``; one of ``"semi_major_axis"``,
+        ``"ellipse_area"``, ``"centroid_size"``, or ``None``. ``None`` resolves
+        to the method default: ``"ellipse_area"`` for ``"first_order"`` (all
+        dimensions), ``"centroid_size"`` for ``"moment"``.
         ``"semi_major_axis"`` / ``"ellipse_area"`` require
         ``registration="first_order"``; ``"centroid_size"`` requires
         ``registration="moment"``.

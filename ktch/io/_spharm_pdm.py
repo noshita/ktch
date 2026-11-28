@@ -105,6 +105,7 @@ def read_spharmpdm_coef(path: str | Path) -> SpharmPdmData:
     and contains SPHARM coefficients.
 
     The file format consists of:
+
     - First value: total number of coefficients (3*(lmax+1)^2)
     - Remaining values: real and imaginary parts of coefficients
       arranged in SPHARM-PDM's specific order

@@ -192,14 +192,14 @@ def load_landmark_trilobite_cephala(*, as_frame: bool = False) -> Bunch:
     This dataset contains 2D landmark and curve semilandmark data for
     300 trilobite cephala specimens, with 16 fixed landmarks and 4 curves.
 
-    ============================   ============
-    Specimens                            300
-    Landmarks per specimen                16
-    Curves per specimen                    4
-    Curve points              12, 20, 20, 20
-    Landmark dimensionality                2
-    Features                            real
-    ============================   ============
+    ============================   ==============
+    Specimens                                 300
+    Landmarks per specimen                     16
+    Curves per specimen                         4
+    Curve points                   12, 20, 20, 20
+    Landmark dimensionality                     2
+    Features                                 real
+    ============================   ==============
 
     Parameters
     ----------
@@ -357,12 +357,12 @@ def load_outline_leaf_bending(*, as_frame: bool = False) -> Bunch:
     This dataset contains 3D outlines of synthetic wheat-like leaves
     with bending deformation.
 
-    ========================   ===========
-    Specimens                       60
-    Points per specimen            200
-    Coordinate dimensionality        3
-    Features                      real
-    ========================   ===========
+    ============================   ===========
+    Specimens                               60
+    Points per specimen                    200
+    Coordinate dimensionality                3
+    Features                              real
+    ============================   ===========
 
     Parameters
     ----------

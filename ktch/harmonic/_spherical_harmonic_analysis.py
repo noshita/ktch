@@ -97,11 +97,11 @@ class SphericalHarmonicAnalysis(
     scale : bool, default=True
         Whether registration removes size or keeps it.
         Only used when ``registration != None``.
-    scale_method : {None, "semi_major_axis", "ellipsoid_volume", "centroid_size"}, \
-            default=None
-        Size measure when ``scale=True``. ``None`` resolves to the method
-        default (``"first_order"``: ``"semi_major_axis"``; ``"moment"``:
-        ``"centroid_size"``).
+    scale_method : str or None, default=None
+        Size measure when ``scale=True``; one of ``"semi_major_axis"``,
+        ``"ellipsoid_volume"``, ``"centroid_size"``, or ``None``. ``None``
+        resolves to the method default (``"first_order"``:
+        ``"semi_major_axis"``; ``"moment"``: ``"centroid_size"``).
     align_parameter : bool, default=True
         Whether ``"first_order"`` rotates the parameter sphere (SO(3)) as well
         as the codomain. ``False`` rotates the codomain only and keeps the
