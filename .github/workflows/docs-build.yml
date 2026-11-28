@@ -53,6 +53,18 @@ jobs:
           # The build executes the ref's notebooks.
           persist-credentials: false
 
+      # Before anything imports ktch, whose __pycache__ would change the key.
+      # Never for a release build: a cache must not carry outputs across versions.
+      # Nor with an upgraded lock: its key is dev's, and every notebook has to run.
+      - name: Restore the notebook cache
+        if: inputs.version == 'dev' && !inputs.upgrade
+        uses: actions/cache@v6.1.0
+        with:
+          path: doc/_build/.jupyter_cache
+          key: jupyter-cache-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('ktch/**', 'uv.lock') }}-${{ hashFiles('doc/**') }}
+          restore-keys: |
+            jupyter-cache-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('ktch/**', 'uv.lock') }}-
+
       # Not the local uv-python action: it would be read from the checked-out
       # ref, which may predate it.
       - name: Set up Python
@@ -86,17 +98,6 @@ jobs:
           print(ktch.__version__, path)
           sys.exit(not path.startswith(os.path.realpath(os.environ["GITHUB_WORKSPACE"]) + os.sep))
           '
-
-      # Never for a release build: a cache must not carry outputs across versions.
-      # Nor with an upgraded lock, whose cache no dev run would restore.
-      - name: Restore the notebook cache
-        if: inputs.version == 'dev' && !inputs.upgrade
-        uses: actions/cache@v6.1.0
-        with:
-          path: doc/_build/.jupyter_cache
-          key: jupyter-cache-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('ktch/**', 'uv.lock') }}-${{ hashFiles('doc/**') }}
-          restore-keys: |
-            jupyter-cache-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('ktch/**', 'uv.lock') }}-
 
       - name: Build
         working-directory: doc
