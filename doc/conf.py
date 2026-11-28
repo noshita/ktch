@@ -125,35 +125,36 @@ version = __version__
 # The full version, including alpha/beta/rc tags.
 release = __version__
 
-# Version match for version switcher
-# When building with sphinx-multiversion, use the environment variable
-# to get the correct version being built (e.g., "main" -> "dev", "v0.6.1" -> "0.6.1")
-_smv_name = os.environ.get("SPHINX_MULTIVERSION_NAME", "")
+# The docs build names the ref it builds (main or vX.Y.Z). v0.11 and earlier
+# read SPHINX_MULTIVERSION_NAME.
+_docs_version = os.environ.get("KTCH_DOCS_VERSION") or os.environ.get(
+    "SPHINX_MULTIVERSION_NAME", ""
+)
 
 # Debug output for CI
 if os.environ.get("CI"):
-    print(f"[DEBUG] SPHINX_MULTIVERSION_NAME={_smv_name!r}")
+    print(f"[DEBUG] KTCH_DOCS_VERSION={_docs_version!r}")
     print(f"[DEBUG] __version__={version!r}")
 
-if _smv_name == "main":
+if _docs_version == "main":
     version_match = "dev"
-elif _smv_name.startswith("v"):
+elif _docs_version.startswith("v"):
     # Strip 'v' prefix: "v0.6.1" -> "0.6.1"
-    version_match = _smv_name[1:]
+    version_match = _docs_version[1:]
 elif "dev" in version or "rc" in version or "a" in version or "b" in version:
-    # Fallback for non-multiversion builds (local development)
+    # Fallback for local builds
     version_match = "dev"
 else:
     version_match = version
 
-# Override version/release to match version_match for sphinx-multiversion builds.
+# Override version/release to match version_match in CI builds.
 # This ensures DOCUMENTATION_OPTIONS.VERSION reflects the documented version:
 # - For tags (v0.6.1): VERSION="0.6.1" — matches preferred version, no warning banner
 # - For main branch: VERSION="dev" — does NOT match preferred, triggers warning banner
-if _smv_name == "main":
+if _docs_version == "main":
     version = "dev"
     release = "dev"
-elif _smv_name.startswith("v"):
+elif _docs_version.startswith("v"):
     version = version_match
     release = version_match
 
@@ -348,10 +349,10 @@ sitemap_excludes = [
     "opensearch/",
 ]
 
-if _smv_name == "main":
+if _docs_version == "main":
     html_baseurl = "https://doc.ktch.dev/dev/"
-elif _smv_name.startswith("v"):
-    html_baseurl = f"https://doc.ktch.dev/{_smv_name[1:]}/"
+elif _docs_version.startswith("v"):
+    html_baseurl = f"https://doc.ktch.dev/{_docs_version[1:]}/"
 else:
     html_baseurl = "https://doc.ktch.dev/"
 
@@ -486,55 +487,15 @@ myst_enable_extensions = [
 ]
 myst_url_schemes = ("http", "https", "mailto")
 nb_execution_timeout = 300
+# A cell meant to raise needs the `raises-exception` tag.
+nb_execution_raise_on_error = True
 
-# Use jupyter-cache to avoid re-executing unchanged notebooks.
-# With sphinx-multiversion, all version builds share the same parent outdir
-# (_build/html/), so the default cache path (_build/html/.jupyter_cache) is
-# shared across versions automatically. An explicit absolute path ensures
-# stability regardless of sphinx-build's cwd (which SMV sets to a temp dir).
+# docs-build.yml restores dev's cache at this path.
 nb_execution_mode = "cache"
 nb_execution_cache_path = os.environ.get(
     "JUPYTER_CACHE_PATH",
     str(Path(__file__).resolve().parent / "_build" / ".jupyter_cache"),
 )
-
-# -- sphinx-multiversion configuration ---------------------------------------
-# Load version info from versions.json (single source of truth)
-
-import json
-import re
-
-_versions_path = Path(__file__).parent / "_static" / "versions.json"
-if _versions_path.exists():
-    with open(_versions_path) as f:
-        _versions_data = json.load(f)
-
-    # Extract version tags (e.g., "0.7.0" -> "v0.7.0")
-    # Skip "dev" version as it corresponds to the main branch
-    _tag_versions = [
-        f"v{entry['version']}"
-        for entry in _versions_data
-        if entry.get("version") and entry["version"] != "dev"
-    ]
-
-    # Build regex pattern: ^(v0\.6\.1|v0\.7\.0)$
-    if _tag_versions:
-        _escaped = [re.escape(v) for v in _tag_versions]
-        smv_tag_whitelist = f"^({'|'.join(_escaped)})$"
-    else:
-        smv_tag_whitelist = r"^$"  # Match nothing
-else:
-    # Fallback for environments without versions.json
-    smv_tag_whitelist = r"^v\d+\.\d+\.\d+$"
-
-# Branch whitelist: only main branch
-smv_branch_whitelist = r"^main$"
-# Remote whitelist
-smv_remote_whitelist = r"^origin$"
-# Released pattern: tags are considered released versions
-smv_released_pattern = r"^tags/v\d+\.\d+\.\d+$"
-# Output directory format
-smv_outputdir_format = "{ref.name}"
 
 
 def mv_jupyter_execute(app, exception):

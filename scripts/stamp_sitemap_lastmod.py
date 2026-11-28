@@ -7,10 +7,9 @@ build or release date across every URL fails that test as soon as one page in
 the sitemap has not changed, which is why the dates here come per page from the
 last commit that touched its source.
 
-``sphinx-last-updated-by-git`` does this inside Sphinx and cannot be used:
-sphinx-multiversion materialises each ref with ``git archive`` into a plain
-directory, so every git lookup inside the build fails with "not a git
-repository". This script runs after the build instead, against the real clone.
+``sphinx-last-updated-by-git`` cannot be used: a kept version is built once,
+from a shallow checkout. This script runs at site assembly instead, in a full
+clone.
 
 Pages whose source is not in the repository, the generated API reference among
 them, get no ``<lastmod>``. The field is optional, and omitting it says less
@@ -72,13 +71,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if not git("rev-parse", "--verify", f"{args.ref}^{{commit}}"):
-        print(f"warning: ref {args.ref} not found; sitemap left without lastmod")
-        return 0
+        print(f"error: ref {args.ref} not found in this clone", file=sys.stderr)
+        return 1
 
     tracked = sources_at(args.ref, args.doc_dir)
     if not tracked:
-        print(f"warning: no sources under {args.doc_dir} at {args.ref}")
-        return 0
+        print(f"error: no sources under {args.doc_dir} at {args.ref}", file=sys.stderr)
+        return 1
 
     ElementTree.register_namespace("", SITEMAP_NS)
     tree = ElementTree.parse(args.sitemap)

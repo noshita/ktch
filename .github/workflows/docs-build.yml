@@ -72,6 +72,16 @@ jobs:
           sys.exit(not path.startswith(os.path.realpath(os.environ["GITHUB_WORKSPACE"]) + os.sep))
           '
 
+      # Never for a release build: a cache must not carry outputs across versions.
+      - name: Restore the notebook cache
+        if: inputs.version == 'dev'
+        uses: actions/cache@v6.1.0
+        with:
+          path: doc/_build/.jupyter_cache
+          key: jupyter-cache-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('ktch/**', 'uv.lock') }}-${{ hashFiles('doc/**') }}
+          restore-keys: |
+            jupyter-cache-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('ktch/**', 'uv.lock') }}-
+
       - name: Build
         working-directory: doc
         env:
@@ -81,8 +91,7 @@ jobs:
         # A notebook error fails the build where the ref's conf.py sets
         # nb_execution_raise_on_error; elsewhere myst-nb logs it as a warning.
         run: |
-          # -j 1: the notebook cache is cold, and parallel readers executing
-          # notebooks race to bind ipykernel ports.
+          # -j 1: parallel readers executing notebooks race for ipykernel ports.
           uv run --no-sync python -m sphinx -b dirhtml -j 1 \
             -d "$RUNNER_TEMP/doctrees" . "$RUNNER_TEMP/docs/html"
 

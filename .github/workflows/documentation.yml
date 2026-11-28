@@ -1,225 +1,93 @@
 name: Docs
 
+# Released versions come from their stored builds (docs-release.yml).
+
 on:
   push:
     branches: ["main"]
     paths:
       - "doc/**"
       - "ktch/**"
+      - "scripts/assemble_site.py"
+      - "scripts/gen_redirects.py"
+      - "scripts/stamp_sitemap_lastmod.py"
       - ".github/workflows/documentation.yml"
+      - ".github/workflows/docs-build.yml"
       - "pyproject.toml"
-  release:
-    types: [published]
+      - "uv.lock"
   workflow_dispatch:
-    inputs:
-      no-cache:
-        description: "Disable notebook execution cache"
-        type: boolean
-        default: false
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+permissions: {}
 
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
-env:
-  PYTHON_VERSION: "3.11"
-  CI: "true"
-
 jobs:
-  build:
-    # Skip the release merge: it can start before the tag versions.json names
-    # exists. release-please dispatches this workflow for that commit.
+  build-dev:
+    # Skip the release merge, whose version has no stored build yet.
+    # docs-release.yml dispatches this workflow once it has.
     if: ${{ github.event_name != 'push' ||
             !contains(github.event.head_commit.message, 'release-please--branches--main') }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/docs-build.yml
+    with:
+      version: dev
+      ref: ${{ github.sha }}
+
+  assemble:
+    needs: build-dev
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DEV_ARTIFACT: ${{ needs.build-dev.outputs.artifact }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          # The stable sitemap is dated from git history.
           fetch-depth: 0
-          fetch-tags: true
+          persist-credentials: false
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - name: Download the dev build
+        uses: actions/download-artifact@v8
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          name: ${{ env.DEV_ARTIFACT }}
+          path: ${{ runner.temp }}/dev
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-        with:
-          enable-cache: true
-          cache-dependency-glob: "**/pyproject.toml"
-
-      - name: Install dependencies
+      - name: Download the released versions' builds
         run: |
-          # Install the package plus the `doc` dependency group from pyproject.toml
-          uv pip install --system -e . --group doc
+          mkdir "$RUNNER_TEMP/assets"
+          jq -r '.[] | select(.version != "dev") | .version' doc/_static/versions.json |
+            while read -r version; do
+              gh release download "v$version" --pattern "ktch-docs-html-$version.tar.gz" \
+                --dir "$RUNNER_TEMP/assets"
+            done
 
-      - name: Restore notebook execution cache
-        if: ${{ github.event.inputs.no-cache != 'true' }}
-        uses: actions/cache@v6.1.0
-        with:
-          path: doc/_build/.jupyter_cache
-          key: jupyter-cache-${{ runner.os }}-${{ hashFiles('doc/**/*.md', 'ktch/**/*.py') }}
-          restore-keys: |
-            jupyter-cache-${{ runner.os }}-
-
-      - name: Initialize notebook cache (serialize jupyter-cache schema creation)
+      - name: Assemble the site
         run: |
-          # jupyter-cache 1.0.1 is not concurrency-safe on first init: a parallel
-          # sphinx build (-j auto) races to CREATE the schema on a cold cache and
-          # fails with "table settings already exists". Create the DB serially first.
-          mkdir -p doc/_build/.jupyter_cache
-          python -c "from jupyter_cache import get_cache; get_cache('doc/_build/.jupyter_cache').list_cache_records()"
+          python3 scripts/assemble_site.py --dev "$RUNNER_TEMP/dev/$DEV_ARTIFACT.tar.gz" \
+            --assets-dir "$RUNNER_TEMP/assets" --out "$RUNNER_TEMP/site"
+          ls -la "$RUNNER_TEMP/site"
 
-      - name: Build multi-version docs
-        env:
-          NO_CACHE: ${{ github.event.inputs.no-cache }}  # via env, not ${{ }} in run
-        run: |
-          # Build all versions with sphinx-multiversion
-          # -j auto enables parallel build (auto-detects CPU cores)
-          # -b dirhtml publishes each page as <name>/index.html, served at the
-          # clean directory URL <name>/ instead of <name>.html
-          #
-          # A cold cache executes notebooks in the read phase, where parallel
-          # readers race to bind ipykernel ports.
-          if [ "$NO_CACHE" = "true" ]; then JOBS=1; else JOBS=auto; fi
-          sphinx-multiversion doc doc/_build/html -b dirhtml -j "$JOBS"
-
-          # Rename main -> dev
-          if [ -d "doc/_build/html/main" ]; then
-            mv doc/_build/html/main doc/_build/html/dev
-          fi
-
-          # Rename v* directories to remove 'v' prefix (e.g., v0.6.1 -> 0.6.1)
-          # This follows NumPy/scikit-learn conventions
-          for dir in doc/_build/html/v[0-9]*; do
-            if [ -d "$dir" ]; then
-              version_num=$(basename "$dir" | sed 's/^v//')
-              echo "Renaming $dir -> doc/_build/html/$version_num"
-              mv "$dir" "doc/_build/html/$version_num"
-            fi
-          done
-
-          # Keep old <page>.html URLs working after the dirhtml switch, which
-          # publishes each page at <page>/ instead. Runs on every version
-          # directory before the /stable/ copy, so /stable/ inherits the
-          # aliases and the version -> stable URL rewrite below fixes their
-          # canonical links.
-          python3 scripts/gen_redirects.py --site-dir doc/_build/html --emit html-aliases
-
-          # Get stable version number from versions.json (the preferred entry's version)
-          STABLE_VERSION=$(python3 -c "
-          import json
-          with open('doc/_static/versions.json') as f:
-              versions = json.load(f)
-          # Find version with 'preferred: true' and get its version number
-          for v in versions:
-              if v.get('preferred') and v.get('version') != 'dev':
-                  print(v['version'])  # e.g., '0.7.0'
-                  break
-          else:
-              # Fallback: first non-dev version
-              for v in versions:
-                  if v.get('version') != 'dev':
-                      print(v['version'])
-                      break
-          ")
-          echo "Stable version: $STABLE_VERSION"
-
-          # Create /stable/ directory as a copy of the versioned directory
-          # This allows URLs like /stable/api/index.html to work directly
-          #
-          # conf.py builds only the tags versions.json names, so a missing
-          # directory means the stable tag does not exist yet. Fail instead
-          # of publishing another version as /stable/: Pages keeps serving
-          # the previous deployment.
-          SOURCE_DIR="doc/_build/html/${STABLE_VERSION}"
-          if [ ! -d "$SOURCE_DIR" ]; then
-            echo "::error::$SOURCE_DIR not found: is tag v${STABLE_VERSION} pushed?"
-            ls -la doc/_build/html/
-            exit 1
-          fi
-
-          echo "Creating /stable/ directory as copy of ${STABLE_VERSION}"
-          cp -r "$SOURCE_DIR" doc/_build/html/stable
-
-          # Rewrite the version-prefixed absolute URLs baked into the copied
-          # version so they point at /stable/. This covers canonical tags and
-          # og:url in the HTML, the sitemap, and the OpenSearch search URL.
-          # The dirhtml builder already emits clean directory URLs, so no
-          # index.html stripping is needed.
-          echo "Fixing URLs in /stable/ (${STABLE_VERSION} -> stable)"
-          find doc/_build/html/stable \( -name "*.html" -o -name "sitemap.xml" \
-            -o -name "opensearch.xml" \) -exec \
-            sed -i "s|https://doc.ktch.dev/${STABLE_VERSION}/|https://doc.ktch.dev/stable/|g" {} +
-
-          # Date each sitemap entry from the commit that last touched its
-          # source. Runs here rather than in Sphinx: sphinx-multiversion builds
-          # each ref from a git archive, where no git lookup works.
-          python3 scripts/stamp_sitemap_lastmod.py \
-            --sitemap doc/_build/html/stable/sitemap.xml \
-            --ref "v${STABLE_VERSION}" \
-            --base-url https://doc.ktch.dev/stable/
-
-          # Copy robots.txt to site root (html_extra_path places it inside each
-          # version subdirectory, but Google expects it at the domain root)
-          cp doc/_build/html/stable/robots.txt doc/_build/html/robots.txt
-
-          # Create root index.html (redirect to /stable/)
-          cat > doc/_build/html/index.html << EOF
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="utf-8">
-              <meta http-equiv="refresh" content="0; url=stable/">
-              <link rel="canonical" href="https://doc.ktch.dev/stable/">
-              <title>Redirecting to stable documentation</title>
-            </head>
-            <body>
-              <p>Redirecting to <a href="stable/">stable documentation</a>...</p>
-            </body>
-          </html>
-          EOF
-
-          # Emit redirects for URLs that earlier documentation layouts
-          # published and that external pages still link to. This runs after
-          # /stable/ exists because the redirect targets are resolved against
-          # the tree that was actually built, and it fails the build if the map
-          # has gone stale -- that is what stops a page rename from silently
-          # turning inbound links into 404s.
-          python3 scripts/gen_redirects.py --site-dir doc/_build/html
-
-          # Create .nojekyll for GitHub Pages
-          touch doc/_build/html/.nojekyll
-
-          # Create CNAME for custom domain
-          echo "doc.ktch.dev" > doc/_build/html/CNAME
-
-          # List built versions
-          echo "Built versions:"
-          ls -la doc/_build/html/
-
-      - name: Upload artifact
+      - name: Upload the Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: doc/_build/html
-
-      - name: Minimize uv cache
-        if: always()
-        run: uv cache prune --ci
+          path: ${{ runner.temp }}/site
 
   deploy:
-    needs: build
+    needs: assemble
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
