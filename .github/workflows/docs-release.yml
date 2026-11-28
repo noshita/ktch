@@ -90,8 +90,21 @@ jobs:
           cat tree/manifest.json
           exit "$errors"
 
+      # --clobber alone deletes the old asset before the upload. A run that stops
+      # midway leaves the .new asset: dispatch again.
       - name: Upload to the release
-        run: gh release upload "v$VERSION" "$RUNNER_TEMP/build/$ASSET" --clobber
+        working-directory: ${{ runner.temp }}/build
+        run: |
+          tmp="${ASSET%.tar.gz}.new.tar.gz"
+          mv "$ASSET" "$tmp"
+          gh release upload "v$VERSION" "$tmp" --clobber
+          assets=$(gh api "repos/$GH_REPO/releases/tags/v$VERSION" --jq '.assets[] | [.id, .name] | @tsv')
+          old_id=$(awk -F'\t' -v name="$ASSET" '$2 == name {print $1}' <<<"$assets")
+          new_id=$(awk -F'\t' -v name="$tmp" '$2 == name {print $1}' <<<"$assets")
+          if [ -n "$old_id" ]; then
+            gh api -X DELETE "repos/$GH_REPO/releases/assets/$old_id"
+          fi
+          gh api -X PATCH "repos/$GH_REPO/releases/assets/$new_id" -f name="$ASSET" --silent
 
       - name: Rebuild the site
         run: gh workflow run documentation.yml --ref main
