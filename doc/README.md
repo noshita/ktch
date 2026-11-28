@@ -25,31 +25,28 @@ cd doc
 uv run sphinx-autobuild . _build/html
 ```
 
-## Multi-version build
+A notebook that raises an error fails the build. Tag a cell that is meant to
+raise with `raises-exception`.
 
-The CI workflow (`.github/workflows/documentation.yml`) uses
-[sphinx-multiversion](https://github.com/sphinx-contrib/multiversion)
-to build documentation for all versions listed in `_static/versions.json`,
-with `-b dirhtml`.
+## Versions
 
-sphinx-multiversion builds every version with the *current* checkout's
-`conf.py` (it passes `-c` pointing at the working tree's `doc/`), while taking
-each version's *source documents* from that version's git ref. So `conf.py`
-changes and workflow changes reach `/stable/` on the next build, but changes to
-source files under `doc/` only appear once a release tag carries them. `conf.py`
-branches on `SPHINX_MULTIVERSION_NAME` to render each version correctly.
+CI builds each version from its own git ref, in the environment that ref's
+`uv.lock` records (`.github/workflows/docs-build.yml`). A released version is
+built once, and the build is stored on its GitHub release.
+`.github/workflows/documentation.yml` builds `dev` from `main` and assembles the
+site from it and the stored builds of the versions listed in
+`_static/versions.json` (`scripts/assemble_site.py`). A change under `doc/` on
+`main` therefore reaches `/dev/` only. To change a released version's pages,
+see [Documentation builds](../MAINTAINING.md#documentation-builds).
 
-Because older versions' *source* is built with today's toolchain, CI must
-install any build-time dependency an older version's source still needs (not its
-`conf.py`, which is not used). When removing a version from `versions.json`,
-drop any dependency it alone required from
-`.github/workflows/documentation.yml`.
+The build sets `KTCH_DOCS_VERSION` (`main` or `vX.Y.Z`). `conf.py` reads it to
+set the version switcher's entry and the canonical URLs.
 
 ## Redirects
 
 `scripts/gen_redirects.py` writes redirect stubs into the built site so that old
-URLs keep working; the CI workflow runs it after the version builds. It has
-three modes: `stubs` maps the legacy pre-`/stable/` layout URLs listed in
+URLs keep working; `scripts/assemble_site.py` runs it on every deployment. It
+has three modes: `stubs` maps the legacy pre-`/stable/` layout URLs listed in
 `doc/_redirects.toml` onto current pages (and fails the build if a target is
 missing); `html-aliases` keeps every old `page.html` URL working after the
 dirhtml switch by walking the built tree; `cloudflare` emits a `_redirects` file

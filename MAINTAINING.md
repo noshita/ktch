@@ -18,8 +18,10 @@ Conventional Commits on main
     (bumps pyproject.toml, CHANGELOG.md, .release-please-manifest.json)
   -> Maintainer merges the PR (merge commit)
     -> Release Please creates v0.X.Y tag + GitHub Release
-      -> Release Please dispatches documentation.yml (workflow_dispatch)
-      -> sphinx-multiversion builds /stable/ and /dev/
+      -> Release Please dispatches docs-release.yml (workflow_dispatch)
+        -> docs-release.yml builds the tag's docs, stores them on the release
+           and dispatches documentation.yml
+        -> documentation.yml builds /dev/, assembles the site and deploys it
   -> Maintainer publishes to PyPI
     -> conda-forge feedstock auto-creates a PR
       -> Maintainer reviews and merges feedstock PR(s)
@@ -76,8 +78,10 @@ Do not manually edit `pyproject.toml` version — let Release Please manage it.
 1. Verify CI is green on `main`
 2. Update `doc/_static/versions.json` on the release-please branch.
    Push the change to the release-please branch (not `main`) so that
-   it only reaches `main` when the release PR is merged. This avoids
-   triggering a push-based Docs build before the release tag exists.
+   it only reaches `main` when the release PR is merged. If the change were on
+   `main` earlier, `versions.json` would name a version whose documentation is
+   not built yet, and every `documentation.yml` run would fail until the
+   release.
 
    ```bash
    git fetch origin release-please--branches--main
@@ -163,13 +167,15 @@ Do not manually edit `pyproject.toml` version — let Release Please manage it.
    After merge, Release Please automatically:
    - Creates a `v0.X.Y` tag
    - Creates a GitHub Release with the changelog
-   - Dispatches the Docs workflow, which rebuilds `/stable/` and `/dev/`
+   - Dispatches `docs-release.yml`, which builds the tag's documentation,
+     stores it on the release and then dispatches `documentation.yml` to
+     deploy the site
 
-   The dispatch is deliberate rather than event-driven. A release created with
-   `GITHUB_TOKEN` does not start a workflow. The `release: published`
-   trigger on `documentation.yml` never fires; `workflow_dispatch` is the
-   documented exception. The Docs workflow also skips its own push build for
-   this merge commit, because that build would race the tag it needs.
+   The dispatch is explicit because a release created with `GITHUB_TOKEN`
+   starts no workflow (`workflow_dispatch` is the documented exception).
+   `documentation.yml` skips the run that the merge commit's push would
+   start. At that point the new version's build is not stored yet, and the
+   run would fail.
 
 ### Publishing to PyPI
 
@@ -341,41 +347,96 @@ from your personal fork. The bot PR is then closed.
 
   The first item is the only detector for a dispatch that never ran. A dispatch
   that fails turns the release-please run red, but a step that is removed or
-  whose condition stops matching produces no build and no failed run, and the
-  push build that used to cover this case by accident is now skipped.
+  whose condition stops matching produces no build and no failed run. No other
+  run covers this case.
 - [ ] <https://pypi.org/project/ktch/> shows the new version
 - [ ] conda-forge feedstock PR is created (may take a few hours)
-- [ ] (Minor releases only) Re-run the Docs workflow with cache disabled
-  (see below)
 - [ ] Google Search Console: sitemap (`/stable/sitemap.xml`) is detected
   and page count is correct
 
-`/stable/` is rebuilt from the release tag, so any documentation *source* fix
-merged to `main` after the previous release first appears on `/stable/` with
-this release (it was only on `/dev/` before). `conf.py` and workflow changes, by
-contrast, apply to `/stable/` on every build regardless of the tag. When a
-release is expected to carry such a docs fix, confirm it on `/stable/` here.
+### Documentation builds
 
-#### Re-building documentation without cache
+Two workflows publish the documentation. The Actions page lists them as
+"Docs release" and "Docs".
 
-Before v1.0, minor version releases (e.g., 0.8.0 → 0.9.0) may introduce
-API changes that affect notebook outputs. To ensure all notebooks are
-re-executed from scratch, manually trigger the Docs workflow with the
-"Disable notebook execution cache" option checked:
+- `docs-release.yml` ("Docs release") builds one released version from its
+  tag, in the environment the tag's `uv.lock` records. It stores the build on
+  the GitHub release `vX.Y.Z` as the asset `ktch-docs-html-X.Y.Z.tar.gz`. The
+  archive holds a `manifest.json` that records the commit, the hash of
+  `uv.lock` and the run. It then dispatches `documentation.yml`.
+- `documentation.yml` ("Docs") runs on pushes to `main` and on dispatch. It
+  builds `/dev/` from `main`, downloads the stored build of each version that
+  `doc/_static/versions.json` names, assembles the site
+  (`scripts/assemble_site.py`) and deploys it to GitHub Pages. `/stable/` is a
+  copy of the preferred version.
 
-Actions → Docs → Run workflow → check "Disable notebook execution cache"
+A released version is built once and keeps the content and look (`conf.py`,
+templates, theme) of the commit it was built from. A change on `main` reaches
+`/dev/` only. Two things apply to every version:
 
-This is not automated because patch releases rarely need it and the
-no-cache build takes significantly longer.
+- What the assembly adds on each deployment: redirects, the `/stable/` copy,
+  sitemap dates and `robots.txt`.
+- What pages load at run time, such as the version switcher's
+  `versions.json`. Anything all versions must share has to be loaded this way.
+
+A notebook that raises an error fails the build. The `/dev/` build reuses a
+notebook's cached outputs while `ktch/`, `uv.lock` and the notebook are
+unchanged. Release builds use no cache. To execute every `/dev/` notebook
+again, delete the `jupyter-cache-` entries under the repository's
+Actions → Caches, then run `documentation.yml`:
+
+```bash
+gh workflow run documentation.yml
+```
+
+#### Rebuilding a released version
+
+```bash
+# from the tag vX.Y.Z
+gh workflow run docs-release.yml -f version=X.Y.Z
+# from the minor's maintenance branch
+gh workflow run docs-release.yml -f version=X.Y.Z -f ref=maintenance/X.Y.x
+```
+
+The new build replaces the stored one only after it passes validation. The
+workflow then dispatches `documentation.yml`, which redeploys the site. If the
+run fails, the site is unchanged. Dispatch it again.
+
+#### Maintenance branches
+
+To fix the documentation of a released version, commit the fix to the minor's
+maintenance branch and rebuild the version from that branch.
+
+- There is one branch per minor, named `maintenance/X.Y.x`. Cut it from the
+  minor's latest tag when it is first needed.
+- Between releases it takes documentation changes only (`doc/` and
+  docstrings). A code change lands on it only with a patch release.
+- Pushing to it starts no workflow. Rebuild with the second command above.
+- Keep the branch while the minor's documentation is on the site. The
+  assembly dates the sitemap from the commit the build was made from, and
+  that commit must stay reachable.
 
 ### Troubleshooting
 
-#### Documentation shows 404 at /stable/
+#### Documentation site did not update
 
-`versions.json` was not updated before the release, or the version listed
-does not match any tag. Verify that `doc/_static/versions.json` contains
-the released version and that the corresponding `v0.X.Y` tag exists.
-A `workflow_dispatch` run of the Docs workflow can rebuild without a new release.
+A failed `documentation.yml` run deploys nothing, and GitHub Pages keeps
+serving the previous deployment. Find the failed run:
+
+```bash
+gh run list --workflow documentation.yml --limit 5
+```
+
+The usual cause is that `doc/_static/versions.json` names a version whose
+release has no `ktch-docs-html-X.Y.Z.tar.gz` asset. Either the
+`docs-release.yml` run for that version failed, or it stopped during the
+upload and left `ktch-docs-html-X.Y.Z.new.tar.gz` on the release. In both
+cases dispatch `docs-release.yml` for the version again (see
+[Rebuilding a released version](#rebuilding-a-released-version)). It stores
+the build and redeploys the site.
+
+If no run started after a release, check the release-please run, which
+dispatches `docs-release.yml`.
 
 #### Release Please PR not appearing
 
@@ -404,10 +465,10 @@ SEO configuration of the documentation site:
 - `sphinxext-opengraph`: generates Open Graph meta tags
 - `scripts/gen_redirects.py`: redirect stubs for legacy and pre-dirhtml URLs
 - `scripts/stamp_sitemap_lastmod.py`: dates each sitemap entry from the last
-  commit that touched the page's source. It runs in `documentation.yml` after
-  the build, because sphinx-multiversion builds each ref from a `git archive`
-  where no git lookup works. Pages with no source in the repository, the
-  generated API reference among them, are left without a date
+  commit that touched the page's source. `scripts/assemble_site.py` runs it,
+  not the build, because a version's build has no git history (shallow
+  checkout). Pages with no source in the repository, the generated API
+  reference among them, are left without a date
 
 The technical crawl configuration above was audited in July 2026 and is
 healthy: the sitemap is valid, `robots.txt` allows `/stable/`, canonical tags
