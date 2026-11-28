@@ -15,6 +15,12 @@ on:
         description: "Git ref to check out: a tag, a docs maintenance branch or main"
         type: string
         required: true
+      strict:
+        # Off for released versions: an older tag's own warnings must not fail
+        # its rebuild.
+        description: "Fail on any Sphinx warning (-W)"
+        type: boolean
+        default: false
     outputs:
       artifact:
         description: "Name of the uploaded artifact, which holds one file of the same name plus .tar.gz"
@@ -85,6 +91,7 @@ jobs:
       - name: Build
         working-directory: doc
         env:
+          STRICT: ${{ inputs.strict }}
           CI: "true"
           SPHINX_MULTIVERSION_NAME: ${{ inputs.version == 'dev' && 'main' || format('v{0}', inputs.version) }}
           KTCH_DOCS_VERSION: ${{ inputs.version == 'dev' && 'main' || format('v{0}', inputs.version) }}
@@ -92,7 +99,9 @@ jobs:
         # nb_execution_raise_on_error; elsewhere myst-nb logs it as a warning.
         run: |
           # -j 1: parallel readers executing notebooks race for ipykernel ports.
-          uv run --no-sync python -m sphinx -b dirhtml -j 1 \
+          opts=(-b dirhtml -j 1)
+          if [ "$STRICT" = true ]; then opts+=(-W); fi
+          uv run --no-sync python -m sphinx "${opts[@]}" \
             -d "$RUNNER_TEMP/doctrees" . "$RUNNER_TEMP/docs/html"
 
       - name: Write the manifest and package

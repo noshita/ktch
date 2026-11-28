@@ -35,6 +35,7 @@ jobs:
     with:
       version: dev
       ref: ${{ github.sha }}
+      strict: true
 
   assemble:
     needs: build-dev
