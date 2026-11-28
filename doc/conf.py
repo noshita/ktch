@@ -19,7 +19,6 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, os.path.abspath("sphinxext"))
-# import sphinx_gallery
 
 # import sphinx_rtd_theme
 
@@ -41,7 +40,6 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
-    # "sphinx_gallery.gen_gallery",
     # "sphinx.ext.linkcode",
     "sphinxcontrib.bibtex",
     "sphinxcontrib.mermaid",
@@ -103,9 +101,6 @@ source_suffix = ".rst"
 
 # The encoding of source files.
 # source_encoding = 'utf-8-sig'
-
-# Generate the plots for the gallery
-plot_gallery = "True"
 
 # The master toctree document.
 master_doc = "index"
@@ -456,19 +451,6 @@ intersphinx_mapping = {
     "seaborn": ("https://seaborn.pydata.org/", None),
     "xarray": ("https://xarray.pydata.org/en/stable/", None),
 }
-
-# sphinx-gallery configuration
-# sphinx_gallery_conf = {
-#     "doc_module": "ktch",
-#     "examples_dirs": "../notebooks",
-#     "backreferences_dir": os.path.join("generated"),
-#     "reference_url": {"ktch": None},
-# }
-
-# def setup(app):
-#     # a copy button to copy snippet of code from the documentation
-#     app.add_javascript('js/copybutton.js')
-
 
 # for myst-nb
 # MyST Markdown notebooks (.md with jupytext header) are processed directly

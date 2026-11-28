@@ -71,7 +71,6 @@ doc = [
   "sphinx>=8.1,<9.0",
   "sphinx-autobuild>=2024.10,<2026.0",
   "sphinx-favicon>=1.0.1",
-  "sphinx-gallery>=0.18",
   "sphinx-sitemap>=2.6",
   "sphinxcontrib-bibtex>=2.6",
   "sphinxcontrib-mermaid>=2.0",

@@ -1233,7 +1233,6 @@ doc = [
     { name = "sphinx", marker = "python_full_version >= '3.11.5'" },
     { name = "sphinx-autobuild", marker = "python_full_version >= '3.11.5'" },
     { name = "sphinx-favicon", marker = "python_full_version >= '3.11.5'" },
-    { name = "sphinx-gallery", marker = "python_full_version >= '3.11.5'" },
     { name = "sphinx-sitemap", marker = "python_full_version >= '3.11.5'" },
     { name = "sphinxcontrib-bibtex", marker = "python_full_version >= '3.11.5'" },
     { name = "sphinxcontrib-mermaid", marker = "python_full_version >= '3.11.5'" },
@@ -1305,7 +1304,6 @@ doc = [
     { name = "sphinx", marker = "python_full_version >= '3.11.5'", specifier = ">=8.1,<9.0" },
     { name = "sphinx-autobuild", marker = "python_full_version >= '3.11.5'", specifier = ">=2024.10,<2026.0" },
     { name = "sphinx-favicon", marker = "python_full_version >= '3.11.5'", specifier = ">=1.0.1" },
-    { name = "sphinx-gallery", marker = "python_full_version >= '3.11.5'", specifier = ">=0.18" },
     { name = "sphinx-sitemap", marker = "python_full_version >= '3.11.5'", specifier = ">=2.6" },
     { name = "sphinxcontrib-bibtex", marker = "python_full_version >= '3.11.5'", specifier = ">=2.6" },
     { name = "sphinxcontrib-mermaid", marker = "python_full_version >= '3.11.5'", specifier = ">=2.0" },
@@ -3013,19 +3011,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/2c/26/e7ca2321e6286d6ed6a2e824a0ee35ae660ec9a45a4719e33a627ce9e4d2/sphinx_favicon-1.1.0.tar.gz", hash = "sha256:6f65939fc2a6ac4259c88b09169f0b72681cd4c03dd1d0cf91c57a1fa314e50b", size = 8744, upload-time = "2026-02-12T20:55:41.294Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/99/c85bc52d785557abddc4d8fdacfbcbda56fb3e715f76b9675fb9c2018aa5/sphinx_favicon-1.1.0-py3-none-any.whl", hash = "sha256:3ca71506fbb4d9a30bddc60a29e3fb8854f3e237ad95abad5a5c15f857d987b2", size = 7241, upload-time = "2026-02-12T20:55:40.312Z" },
-]
-
-[[package]]
-name = "sphinx-gallery"
-version = "0.22.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pillow" },
-    { name = "sphinx" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/73/64/5f1e9b7780d387c6804d0f9d6f2f2dd89ac70e3bee73f61ffbfcc38defde/sphinx_gallery-0.22.1.tar.gz", hash = "sha256:15560a4c2dc0b4a4924c64e3bcb8c6dba7ddad6dcb77c50e255615e645eb18aa", size = 509262, upload-time = "2026-09-18T19:38:54.518Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/64/fb/bbaef2395227fd4053184383a32fc43d6d42aa7c49097d9518103ffb6615/sphinx_gallery-0.22.1-py3-none-any.whl", hash = "sha256:5a5ef17bd1d1d127845b09f2cf33a4d4295033a0ef00e1f2623fabcc9365aff3", size = 487224, upload-time = "2026-09-18T19:38:52.964Z" },
 ]
 
 [[package]]
