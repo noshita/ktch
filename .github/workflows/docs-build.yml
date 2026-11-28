@@ -1,0 +1,130 @@
+name: Docs build
+
+# Builds one version of the documentation from its own ref, in the environment
+# that ref's uv.lock records, and uploads the dirhtml tree with a manifest as an
+# Actions artifact. Called by the workflows that publish or check the docs.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Version to build: X.Y.Z, or dev for main"
+        type: string
+        required: true
+      ref:
+        description: "Git ref to check out: a tag, a docs maintenance branch or main"
+        type: string
+        required: true
+    outputs:
+      artifact:
+        description: "Name of the uploaded artifact, which holds one file of the same name plus .tar.gz"
+        value: ${{ jobs.build.outputs.artifact }}
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact: ${{ steps.package.outputs.artifact }}
+    env:
+      VERSION: ${{ inputs.version }}
+      REF: ${{ inputs.ref }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          # The build executes the ref's notebooks.
+          persist-credentials: false
+
+      # Not the local uv-python action: it would be read from the checked-out
+      # ref, which may predate it.
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      # --frozen, not --locked: release-please bumps pyproject.toml without
+      # relocking, so a tag's lock records the previous ktch version.
+      - name: Install the locked environment
+        run: uv sync --frozen --no-default-groups --group doc --python "$PYTHON_VERSION"
+
+      # From doc/, as a notebook kernel runs: at the repository root the
+      # source tree would be imported whatever is installed.
+      - name: Check that ktch imports from the checkout
+        working-directory: doc
+        run: |
+          uv run --no-sync python -c '
+          import os, sys, ktch
+          path = os.path.realpath(ktch.__file__)
+          print(ktch.__version__, path)
+          sys.exit(not path.startswith(os.path.realpath(os.environ["GITHUB_WORKSPACE"]) + os.sep))
+          '
+
+      - name: Build
+        working-directory: doc
+        env:
+          CI: "true"
+          SPHINX_MULTIVERSION_NAME: ${{ inputs.version == 'dev' && 'main' || format('v{0}', inputs.version) }}
+          KTCH_DOCS_VERSION: ${{ inputs.version == 'dev' && 'main' || format('v{0}', inputs.version) }}
+        # A notebook error fails the build where the ref's conf.py sets
+        # nb_execution_raise_on_error; elsewhere myst-nb logs it as a warning.
+        run: |
+          # -j 1: the notebook cache is cold, and parallel readers executing
+          # notebooks race to bind ipykernel ports.
+          uv run --no-sync python -m sphinx -b dirhtml -j 1 \
+            -d "$RUNNER_TEMP/doctrees" . "$RUNNER_TEMP/docs/html"
+
+      - name: Write the manifest and package
+        id: package
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+        run: |
+          python3 - <<'EOF'
+          import datetime, hashlib, json, os, subprocess
+
+          def out(*cmd):
+              return subprocess.run(cmd, check=True, capture_output=True, text=True).stdout.strip()
+
+          manifest = {
+              "version": os.environ["VERSION"],
+              "ref": os.environ["REF"],
+              "sha": out("git", "rev-parse", "HEAD"),
+              "python": out("uv", "run", "--no-sync", "python", "-c",
+                            "import platform; print(platform.python_version())"),
+              "uv": out("uv", "--version"),
+              "uv_lock_sha256": hashlib.sha256(open("uv.lock", "rb").read()).hexdigest(),
+              "image_os": os.environ.get("ImageOS", ""),
+              "image_version": os.environ.get("ImageVersion", ""),
+              "built_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+              "run_url": os.environ["RUN_URL"],
+          }
+          path = os.path.join(os.environ["RUNNER_TEMP"], "docs", "manifest.json")
+          with open(path, "w") as f:
+              json.dump(manifest, f, indent=2)
+              f.write("\n")
+          print(json.dumps(manifest, indent=2))
+          EOF
+          artifact="ktch-docs-html-$VERSION"
+          tar -C "$RUNNER_TEMP/docs" -czf "$RUNNER_TEMP/$artifact.tar.gz" manifest.json html
+          ls -l "$RUNNER_TEMP/$artifact.tar.gz"
+          echo "artifact=$artifact" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.package.outputs.artifact }}
+          path: ${{ runner.temp }}/${{ steps.package.outputs.artifact }}.tar.gz
+          compression-level: 0
+          if-no-files-found: error

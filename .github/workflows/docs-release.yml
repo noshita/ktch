@@ -1,0 +1,97 @@
+name: Docs release
+
+# Builds a released version's documentation once, from its tag or a docs
+# maintenance branch, and keeps it as an asset of the version's GitHub release.
+# A failed build stores nothing: dispatch the same version again.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Released version (X.Y.Z)"
+        type: string
+        required: true
+      ref:
+        description: "Ref to build (default: the tag vX.Y.Z)"
+        type: string
+        required: false
+        default: ""
+
+permissions: {}
+
+# Per version and outside the Docs workflow's group, where a queued run would
+# cancel this one while it is pending.
+concurrency:
+  group: docs-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  check-inputs:
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.check.outputs.ref }}
+    steps:
+      - id: check
+        env:
+          VERSION: ${{ inputs.version }}
+          REF: ${{ inputs.ref }}
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version must be X.Y.Z, got '$VERSION'"
+            exit 1
+          fi
+          echo "ref=${REF:-v$VERSION}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: check-inputs
+    permissions:
+      contents: read
+    uses: ./.github/workflows/docs-build.yml
+    with:
+      version: ${{ inputs.version }}
+      ref: ${{ needs.check-inputs.outputs.ref }}
+
+  store:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # upload the release asset
+      actions: write  # dispatch documentation.yml
+    env:
+      VERSION: ${{ inputs.version }}
+      ASSET: ${{ needs.build.outputs.artifact }}.tar.gz
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}  # no checkout in this job
+    steps:
+      - name: Download the build
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.build.outputs.artifact }}
+          path: ${{ runner.temp }}/build
+
+      # Checked before the upload, which replaces an existing asset.
+      - name: Validate
+        working-directory: ${{ runner.temp }}/build
+        run: |
+          mkdir tree
+          tar -xzf "$ASSET" -C tree
+          errors=0
+          manifest_version=$(jq -r .version tree/manifest.json)
+          if [ "$manifest_version" != "$VERSION" ]; then
+            echo "::error::manifest version is '$manifest_version', expected '$VERSION'"
+            errors=1
+          fi
+          for path in html/index.html html/api html/tutorials; do
+            if [ ! -e "tree/$path" ]; then
+              echo "::error::$path is missing"
+              errors=1
+            fi
+          done
+          cat tree/manifest.json
+          exit "$errors"
+
+      - name: Upload to the release
+        run: gh release upload "v$VERSION" "$RUNNER_TEMP/build/$ASSET" --clobber
+
+      - name: Rebuild the site
+        run: gh workflow run documentation.yml --ref main
