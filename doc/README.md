@@ -45,7 +45,8 @@ set the version switcher's entry and the canonical URLs.
 ## Redirects
 
 `scripts/gen_redirects.py` writes redirect stubs into the built site so that old
-URLs keep working; `scripts/assemble_site.py` runs it on every deployment. It
+URLs keep working; `scripts/assemble_site.py` runs it on every deployment and
+`.github/workflows/docs-release-check.yml` on the release PR. It
 has three modes: `stubs` maps the legacy pre-`/stable/` layout URLs listed in
 `doc/_redirects.toml` onto current pages (and fails the build if a target is
 missing); `html-aliases` keeps every old `page.html` URL working after the
